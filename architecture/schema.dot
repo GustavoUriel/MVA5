@@ -1,0 +1,31 @@
+digraph schema {
+  graph [rankdir=LR, fontsize=10];
+  node [shape=record, fontname="Helvetica", fontsize=10];
+
+  users [label="{users|id : PK\lemail : String(120)\lusername : String(80)\lfirst_name : String(50)\llast_name : String(50)\lprofile_picture_url : String(255)\linstitution : String(100)\ldepartment : String(100)\lpassword_hash : String(255)\lgoogle_id : String(100)\lis_active : Boolean\lis_verified : Boolean\lrole : String(20)\lpermissions : Text (JSON)\lfailed_login_attempts : Integer\laccount_locked_until : DateTime\llast_login : DateTime\llast_activity : DateTime\lsession_timeout : Integer\lcreated_at : DateTime\lupdated_at : DateTime\lpreferences : Text\lsaved_views : Text\lsaved_datasets : Text\lsaved_results : Text\ltotal_analyses : Integer\llast_analysis_date : DateTime\lstorage_used_mb : Float\l}"];
+
+  datasets [label="{datasets|id : PK\luser_id : FK -> users.id\lname : String(200)\lslug : String(200)\ldescription : Text\ltype : String(50)\lversion : Integer\lstorage_path : String(400)\lmetadata : JSON\lcreated_at : DateTime\lupdated_at : DateTime\l}"];
+
+  patients [label="{patients|id : PK\ldataset_id : FK -> datasets.id\lpatient_id : String(50)\lage : Float\lgender : String(20)\lrace : String(50)\lethnicity : String(50)\lweight_kg : Float\lheight_m : Float\lbmi : Float\lsmoking : String(20)\lsmoking_status : String(50)\ligg : Float\liga : Float\lbiclonal : String(10)\llightchain : String(20)\ligh_rearrangement : String(50)\lhr_mutations : String(100)\lultrahr_mutations : String(100)\limwg_hr : String(20)\lfunctional_hr : String(20)\liss : String(10)\lriss : String(10)\lbeta2microglobulin : Float\lcreatinine : Float\lalbumin : Float\n-- FISH indicators --\lmonosomy_3 : Boolean\lgain_3 : Boolean\lgain_5 : Boolean\lgain_7 : Boolean\lmonosomy_9 : Boolean\lgain_9 : Boolean\lmonosomy_11 : Boolean\lgain_11 : Boolean\lmonosomy_13 : Boolean\lgain_15 : Boolean\lmonosomy_17 : Boolean\lgain_19 : Boolean\lgain_21 : Boolean\ldel_13q : Boolean\lt_11_14 : Boolean\lt_4_14 : Boolean\lt_14_16 : Boolean\lt_14_20 : Boolean\lgain_1q : Boolean\ldel_1p32 : Boolean\ldel_17p : Boolean\labnorm_6q21 : Boolean\lt_12_22 : Boolean\n-- Genomic markers --\ltp53_mutation : Boolean\lrb1_deletion : Boolean\lmyc_rearrangement : Boolean\lcyclin_d1 : Float\lcyclin_d2 : Float\lcyclin_d3 : Float\lmaf_rearrangement : Boolean\n-- Labs & treatment --\lldh : Float\lhemoglobin : Float\lplatelet_count : Float\lneutrophil_count : Float\llymphocyte_count : Float\linduction_therapy : String(100)\lmelphalan_mg_per_m2 : Float\lfirst_transplant_date : Date\ldate_engraftment : Date\lmonths_first_transplant : Float\lsecond_transplant_date : Date\lmonths_second_transplant : Float\n-- Outcomes --\lduration_pfs : Float\lduration_survival : Float\lpfs_status : Boolean\ldeath_status : Boolean\lrelapse_date : Date\lrelapse_months_first_transplant : Float\ldeath_date : Date\n-- Dates & metadata --\llast_contact_date : Date\lstart_date : Date\lend_date : Date\lstart_date_engraftment : Date\lend_date_engraftment : Date\lcreated_at : DateTime\lupdated_at : DateTime\ladditional_data : JSON\l}"];
+
+  taxonomies [label="{taxonomies|id : PK\ldataset_id : FK -> datasets.id\ltaxonomy_id : String(100)\lasv : String(100)\ldomain : String(100)\lphylum : String(100)\lclass (class_name) : String(100)\lorder : String(100)\lfamily : String(100)\lgenus : String(100)\lspecies : String(100)\lfull_taxonomy : Text\lclassification_confidence : Float\lquality_score : Float\ltotal_abundance : Float\lmax_abundance : Float\lmin_abundance : Float\lmean_abundance : Float\lprevalence : Float\lfunctional_annotations : JSON\lmetadata : JSON\lcreated_at : DateTime\lupdated_at : DateTime\l}"];
+
+  bracken_results [label="{bracken_results|id : PK\ldataset_id : FK -> datasets.id\lpatient_id : String(50)\ltaxonomy_id : String(100)\labundance_pre : Float\labundance_during : Float\labundance_post : Float\ldelta_during_pre : Float\ldelta_post_during : Float\ldelta_post_pre : Float\lquality_score : Float\lconfidence : Float\lcreated_at : DateTime\lupdated_at : DateTime\l}"];
+
+  analyses [label="{analyses|id : PK\ldataset_id : FK -> datasets.id\lname : String(200)\ldescription : Text\lanalysis_type : Enum\lstatus : Enum\lconfiguration : JSON\lgrouping_strategy : String(100)\lgrouping_parameters : JSON\lpatient_selection : JSON\ltaxonomy_selection : JSON\lvariable_selection : JSON\lresults : JSON\lvisualization_data : JSON\lreport_data : JSON\lexecution_time : Float\lerror_message : Text\lwarnings : JSON\lcreated_at : DateTime\lupdated_at : DateTime\lcompleted_at : DateTime\lis_public : Boolean\lpublication_ready : Boolean\ltags : JSON\l}"];
+
+  saved_views [label="{saved_views|id : PK\ldataset_id : FK -> datasets.id\lname : String(200)\ldescription : Text\lview_type : String(50)\lconfiguration : JSON\lpatient_filters : JSON\ltaxonomy_filters : JSON\lvariable_filters : JSON\lis_public : Boolean\lshared_with : JSON\lcreated_at : DateTime\lupdated_at : DateTime\llast_accessed : DateTime\laccess_count : Integer\l}"];
+
+  /* relationships (FKs and logical links) */
+  users -> datasets [label="1..*", arrowhead=none];
+  datasets -> patients [label="1..*", arrowhead=none];
+  datasets -> taxonomies [label="1..*", arrowhead=none];
+  datasets -> bracken_results [label="1..*", arrowhead=none];
+  datasets -> analyses [label="1..*", arrowhead=none];
+  datasets -> saved_views [label="1..*", arrowhead=none];
+
+  /* logical links (not enforced by FK) */
+  bracken_results -> taxonomies [label="taxonomy_id => taxonomy_id", style=dashed];
+  bracken_results -> patients [label="patient_id => patient_id", style=dashed];
+
+}

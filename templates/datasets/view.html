@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}{{ dataset.name }} - Microbiome Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>{{ dataset.name }}</h2>
+        <p class="text-muted mb-0">
+            <i class="fas fa-calendar me-1"></i>
+            Created {{ dataset.created_at.strftime('%B %d, %Y') }}
+            {% if dataset.updated_at != dataset.created_at %}
+            • Updated {{ dataset.updated_at.strftime('%B %d, %Y') }}
+            {% endif %}
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{{ url_for('datasets.edit_dataset', dataset_id=dataset.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-edit me-2"></i>Edit
+        </a>
+        {% if dataset.file_path %}
+        <a href="{{ url_for('datasets.download_dataset', dataset_id=dataset.id) }}" class="btn btn-outline-primary">
+            <i class="fas fa-download me-2"></i>Download
+        </a>
+        {% endif %}
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="fas fa-trash me-2"></i>Delete
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Dataset Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Dataset Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Status:</strong>
+                        <span class="badge 
+                            {% if dataset.status == 'ready' %}bg-success
+                            {% elif dataset.status == 'processing' %}bg-warning
+                            {% elif dataset.status == 'error' %}bg-danger
+                            {% else %}bg-secondary{% endif %} ms-2">
+                            {{ dataset.status.title() }}
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>UUID:</strong> <code class="small">{{ dataset.uuid }}</code>
+                    </div>
+                </div>
+                
+                {% if dataset.description %}
+                <div class="mt-3">
+                    <strong>Description:</strong>
+                    <p class="mt-2">{{ dataset.description }}</p>
+                </div>
+                {% endif %}
+                
+                {% if dataset.file_path %}
+                <div class="mt-3">
+                    <strong>File:</strong>
+                    <div class="mt-2">
+                        <i class="fas fa-file me-2"></i>
+                        {{ dataset.file_path.split('/')[-1] }}
+                        {% if dataset.file_size %}
+                        <span class="text-muted">
+                            ({{ "%.1f"|format(dataset.file_size / 1024 / 1024) }}MB)
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if dataset.metadata_info %}
+                <div class="mt-3">
+                    <strong>Dataset Summary:</strong>
+                    <div class="row mt-2">
+                        {% if dataset.metadata_info.rows is defined %}
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ dataset.metadata_info.rows }}</h4>
+                                <small class="text-muted">Rows</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if dataset.metadata_info.columns is defined %}
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-info">{{ dataset.metadata_info.columns }}</h4>
+                                <small class="text-muted">Columns</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if dataset.metadata_info.summary and dataset.metadata_info.summary.numeric_columns is defined %}
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">{{ dataset.metadata_info.summary.numeric_columns }}</h4>
+                                <small class="text-muted">Numeric</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if dataset.metadata_info.summary and dataset.metadata_info.summary.text_columns is defined %}
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-warning">{{ dataset.metadata_info.summary.text_columns }}</h4>
+                                <small class="text-muted">Text</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Upload File Section -->
+        {% if not dataset.file_path or dataset.status == 'error' %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>Upload Data File
+                </h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('datasets.upload_file', dataset_id=dataset.id) }}" class="btn btn-primary">
+                    <i class="fas fa-upload me-2"></i>Upload File
+                </a>
+                <p class="mt-2 text-muted small">
+                    Supported formats: CSV, TSV, XLSX, JSON (max 100MB)
+                </p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Analysis Jobs -->
+        {% if analysis_jobs %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Recent Analysis Jobs
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                                <th>Completed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in analysis_jobs %}
+                            <tr>
+                                <td>{{ job.job_type.replace('_', ' ').title() }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if job.status == 'completed' %}bg-success
+                                        {% elif job.status == 'running' %}bg-warning
+                                        {% elif job.status == 'failed' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ job.status.title() }}
+                                    </span>
+                                </td>
+                                <td>{{ job.started_at.strftime('%m/%d %H:%M') if job.started_at else '-' }}</td>
+                                <td>{{ job.completed_at.strftime('%m/%d %H:%M') if job.completed_at else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if dataset.status == 'ready' %}
+                    <button class="btn btn-success" disabled>
+                        <i class="fas fa-play me-2"></i>Start Analysis
+                        <small class="d-block">Coming Soon</small>
+                    </button>
+                    {% endif %}
+                    
+                    {% if not dataset.file_path %}
+                    <a href="{{ url_for('datasets.upload_file', dataset_id=dataset.id) }}" class="btn btn-primary">
+                        <i class="fas fa-upload me-2"></i>Upload File
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('datasets.edit_dataset', dataset_id=dataset.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-edit me-2"></i>Edit Details
+                    </a>
+                    
+                    <a href="{{ url_for('datasets.dashboard') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Column Information -->
+        {% if dataset.metadata_info and dataset.metadata_info.column_names %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-columns me-2"></i>Columns ({{ dataset.metadata_info.columns }})
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for col in dataset.metadata_info.column_names[:10] %}
+                    <div class="list-group-item px-0 py-1">
+                        <small>
+                            <code>{{ col }}</code>
+                            {% if dataset.metadata_info.dtypes and dataset.metadata_info.dtypes[col] %}
+                            <span class="text-muted">({{ dataset.metadata_info.dtypes[col] }})</span>
+                            {% endif %}
+                        </small>
+                    </div>
+                    {% endfor %}
+                    {% if dataset.metadata_info.column_names|length > 10 %}
+                    <div class="list-group-item px-0 py-1 text-muted">
+                        <small>... and {{ dataset.metadata_info.column_names|length - 10 }} more</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Dataset</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the dataset <strong>"{{ dataset.name }}"</strong>?</p>
+                <p class="text-danger small">This action cannot be undone and will delete all associated files and analysis results.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('datasets.delete_dataset', dataset_id=dataset.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

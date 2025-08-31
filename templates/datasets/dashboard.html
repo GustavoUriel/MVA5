@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Microbiome Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+    </h2>
+    <a href="{{ url_for('datasets.create_dataset') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New Dataset
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ datasets.total }}</h4>
+                        <p class="mb-0">Total Datasets</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-database fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ current_user.datasets.filter_by(status='ready').count() }}</h4>
+                        <p class="mb-0">Ready</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ current_user.datasets.filter_by(status='processing').count() }}</h4>
+                        <p class="mb-0">Processing</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-cog fa-2x fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ current_user.datasets.filter_by(status='error').count() }}</h4>
+                        <p class="mb-0">Errors</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Datasets List -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>Your Datasets
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if datasets.items %}
+        <div class="row">
+            {% for dataset in datasets.items %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card dataset-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">
+                                <a href="{{ url_for('datasets.view_dataset', dataset_id=dataset.id) }}" class="text-decoration-none">
+                                    {{ dataset.name }}
+                                </a>
+                            </h6>
+                            <span class="badge 
+                                {% if dataset.status == 'ready' %}bg-success
+                                {% elif dataset.status == 'processing' %}bg-warning
+                                {% elif dataset.status == 'error' %}bg-danger
+                                {% else %}bg-secondary{% endif %} status-badge">
+                                {{ dataset.status.title() }}
+                            </span>
+                        </div>
+                        
+                        {% if dataset.description %}
+                        <p class="card-text text-muted small">{{ dataset.description[:100] }}{% if dataset.description|length > 100 %}...{% endif %}</p>
+                        {% endif %}
+                        
+                        <div class="row text-center small text-muted">
+                            <div class="col-6">
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ dataset.created_at.strftime('%m/%d/%Y') }}
+                            </div>
+                            {% if dataset.file_size %}
+                            <div class="col-6">
+                                <i class="fas fa-file me-1"></i>
+                                {{ "%.1f"|format(dataset.file_size / 1024 / 1024) }}MB
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{{ url_for('datasets.view_dataset', dataset_id=dataset.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye me-1"></i>View
+                            </a>
+                            <div class="btn-group">
+                                <a href="{{ url_for('datasets.edit_dataset', dataset_id=dataset.id) }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ dataset.id }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Modal for each dataset -->
+            <div class="modal fade" id="deleteModal{{ dataset.id }}" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Delete Dataset</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to delete the dataset <strong>"{{ dataset.name }}"</strong>?</p>
+                            <p class="text-danger small">This action cannot be undone.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <form method="POST" action="{{ url_for('datasets.delete_dataset', dataset_id=dataset.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if datasets.pages > 1 %}
+        <nav aria-label="Dataset pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if datasets.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('datasets.dashboard', page=datasets.prev_num) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in datasets.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != datasets.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('datasets.dashboard', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">…</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if datasets.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('datasets.dashboard', page=datasets.next_num) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-database fa-4x text-muted mb-3"></i>
+            <h4>No datasets yet</h4>
+            <p class="text-muted">Create your first dataset to get started with microbiome analysis.</p>
+            <a href="{{ url_for('datasets.create_dataset') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create First Dataset
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

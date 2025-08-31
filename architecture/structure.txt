@@ -1,0 +1,440 @@
+Project structure and data model summary
+======================================
+
+This file summarizes the high-level processes the project intends to implement (from `prompts.txt`) and an inventory of the database tables and fields implemented in `app/models`.
+
+PART A — General processes / pipelines (high-level)
+--------------------------------------------------
+These are the main processes described in `prompts.txt` and implied by the codebase. They are written as discrete steps you can simplify or implement incrementally.
+
+1) User management and storage isolation
+   - Google OAuth login and local accounts, roles (admin/researcher/viewer).
+   - Per-user instance folder under `instance/users/<email_safe>/` for uploaded files, saved views, reports, and logs.
+   - Saved views, datasets, and results tracked in the `users` table as JSON metadata and files in the user folder.
+
+2) Data ingestion
+   - Ingest patients, taxonomy, and Bracken (microbiome) data from CSV/Excel or pasted CSV text.
+   - Mapping of source columns to canonical columns using definitions in `config.py` (# column_names_mapping, # identification_fields) with fuzzy matching fallback.
+   - Validation of uploaded files and virus/extension checks (intended).
+
+3) Data transformation and auxiliary tables generation
+   - From Bracken: create derived tables for each timepoint and deltas (pre, during, post, delta_01, delta_02, delta_03).
+   - Create grouped tables matching sets in `config.py` (antibiotics, demographics, FISH indicators, comorbidities, etc.).
+   - Merge selected groups with the `patients` table keyed by patient id.
+
+4) Preprocessing UI and saved views
+   - UI to edit/filter/transform the dataset (remove rows, edit cells, filter, reorder columns).
+   - Controls for selecting variable groups, grouping strategy, prevalence/abundance thresholds for microbiome processing, and clustering parameters.
+   - Save/load views (configuration + filtered/edited CSV and generated results) per user.
+
+5) Dimensionality reduction & clustering
+   - Variable clustering to reduce dimensionality before multivariate analysis.
+   - Options to select cluster representative using criteria (variance, missingness, clinical priority).
+   - Generate cluster maps and downloadable cluster trees.
+
+6) Statistical analysis pipeline
+   - Methods: Cox regression, Kaplan–Meier, RMST, competing risks, PCA, PERMANOVA, differential abundance (DESeq2/ANCOM), diversity metrics.
+   - Grouping-aware analysis: run analyses within groups and combine results (hierarchical analyses, cross-group comparisons).
+   - Missing data handling: MICE, FIML, sensitivity analyses.
+
+7) Microbiome-specific analyses
+   - Alpha & beta diversity, differential abundance, CLR/TSS normalization, batch effect correction, longitidunal analyses.
+   - Bridge Bracken results with taxonomy table for labels & lineage.
+
+8) Analysis execution and background jobs
+   - Long-running analyses queued to Celery workers (intended); results stored in `analyses` table with execution metadata.
+   - Progress monitoring, cancel, retry, and reporting on completion.
+
+9) Reporting and export
+   - Publication-ready reports (PDF), executive summaries, technical appendices, and figure exports (high DPI).
+   - Export raw and processed datasets (CSV/Excel/JSON).
+
+10) Security, auditing and operational
+   - CSP and secure headers, CSRF protection, RBAC, logging/audit trails for data operations, encryption for sensitive handling (intended).
+
+
+PART B — Database tables and fields (from `app/models`)
+------------------------------------------------------
+Notes: this section lists models found in `app/models` and their fields. Nullable/typed information is copied from the model definitions.
+
+1) users (model: User) — table name: `users`
+   - id (Integer, PK)
+   - email (String(120), unique, indexed)
+   - username (String(80), unique)
+   - first_name (String(50))
+   - last_name (String(50))
+   - profile_picture_url (String(255))
+   - institution (String(100))
+   - department (String(100))
+   - password_hash (String(255))
+   - google_id (String(100), unique)
+   - is_active (Boolean)
+   - is_verified (Boolean)
+   - role (String(20))
+   - permissions (Text JSON string)
+   - failed_login_attempts (Integer)
+   - account_locked_until (DateTime)
+   - last_login (DateTime)
+   - last_activity (DateTime)
+   - session_timeout (Integer minutes)
+   - created_at (DateTime)
+   - updated_at (DateTime)
+   - preferences (Text JSON string)
+   - timezone (String(50))
+   - language (String(10))
+   - saved_views (Text JSON string)
+   - saved_datasets (Text JSON string)
+   - saved_results (Text JSON string)
+   - total_analyses (Integer)
+   - last_analysis_date (DateTime)
+   - storage_used_mb (Float)
+
+   Relationships: `analyses` (Analysis backref), `patients` (Patient backref)
+
+
+2) datasets (model: Dataset) — table name: `datasets`
+   - id (UUID / Integer, PK)
+   - user_id (Integer, FK -> users.id) : owner
+   - name (String) : friendly name
+   - slug (String, unique per user) : url-friendly identifier
+   - description (Text) : optional longer description
+   - type (String) : e.g., 'clinical', 'metagenomics', 'custom'
+   - version (Integer) : dataset versioning counter
+   - storage_path (String) : path to object storage or instance folder where large files are kept
+   - metadata (JSON) : arbitrary metadata about import options, source system IDs
+   - created_at, updated_at (DateTime)
+
+   Behaviour notes / migration guidance:
+   - When introducing datasets to an existing DB, create a default dataset per user and backfill existing rows with that dataset's id before making dataset_id non-nullable.
+   - Use (user_id, dataset_id) scoping everywhere to ensure users cannot access other users' datasets. Consider DB constraints or row-level security in Postgres for enforcement.
+   - Store large files (raw uploads, saved_results blobs) in object storage and keep only paths/metadata in the DB for each dataset via storage_path.
+
+Dataset scoping (dataset_id on other tables):
+   - patients.dataset_id : FK -> datasets.id (nullable during migration; later non-null)
+   - taxonomies.dataset_id : FK -> datasets.id
+   - bracken_results.dataset_id : FK -> datasets.id
+   - analyses.dataset_id : FK -> datasets.id
+   - saved_views.dataset_id : FK -> datasets.id
+2) patients (model: Patient) — table name: `patients`
+   - id (Integer, PK)
+   - patient_id (String(50), indexed)  # canonical patient identifier
+   - dataset_id (Integer, FK -> datasets.id)
+
+   Demographics & basics:
+   - age (Float)
+   - gender (String(20))
+   - race (String(50))
+   - ethnicity (String(50))
+   - weight_kg (Float)
+   - height_m (Float)
+   - bmi (Float)
+   - smoking (String(20))
+   - smoking_status (String(50))
+
+   Disease characteristics & markers:
+   - igg, iga (Float)
+   - biclonal (String(10))
+   - lightchain (String(20))
+   - igh_rearrangement (String(50))
+   - hr_mutations, ultrahr_mutations (String(100))
+   - imwg_hr, functional_hr (String(20))
+
+   Staging & labs:
+   - iss, riss (String(10))
+   - beta2microglobulin (Float)
+   - creatinine (Float)
+   - albumin (Float)
+   - ldh, hemoglobin, platelet_count, neutrophil_count, lymphocyte_count (Float)
+
+   FISH indicators (Boolean flags):
+   - monosomy_3, gain_3, gain_5, gain_7, monosomy_9, gain_9,
+     monosomy_11, gain_11, monosomy_13, gain_15, monosomy_17, gain_19, gain_21,
+     del_13q, t_11_14, t_4_14, t_14_16, t_14_20, gain_1q, del_1p32, del_17p,
+     abnorm_6q21, t_12_22
+
+   Genomic markers (Booleans / floats):
+   - tp53_mutation (Boolean), rb1_deletion (Boolean), myc_rearrangement (Boolean)
+   - cyclin_d1, cyclin_d2, cyclin_d3 (Float), maf_rearrangement (Boolean)
+
+   Treatment & transplant:
+   - induction_therapy (String(100))
+   - melphalan_mg_per_m2 (Float)
+   - first_transplant_date, second_transplant_date (Date)
+   - date_engraftment (Date), months_first_transplant (Float), months_second_transplant (Float)
+
+   Outcomes & survival:
+   - duration_pfs (Float), duration_survival (Float)
+   - pfs_status (Boolean), death_status (Boolean)
+   - relapse_date (Date), relapse_months_first_transplant (Float), relapse_months_second_transplant (Float)
+   - death_date (Date), death_months_first_transplant (Float), death_months_second_transplant (Float)
+
+   Comorbidities & events (Booleans):
+   - es, es_noninfectious_fever, es_noninfectious_diarrhea, es_rash
+
+   Medications (many Boolean flags with corresponding _engraftment variants):
+   - ciprofloxacin, ciprofloxacin_engraftment, levofloxacin, levofloxacin_engraftment,
+     moxifloxacin, moxifloxacin_engraftment, amoxicillin, amoxicillin_engraftment, ampicillin, ampicillin_engraftment,
+     cefepime, cefepime_engraftment, cefazolin, cefazolin_engraftment,
+     azithromycin, azithromycin_engraftment, trimethoprim_sulfamethoxazole, trimethoprim_sulfamethoxazole_engraftment,
+     clindamycin, clindamycin_engraftment, metronidazole, metronidazole_engraftment,
+     piperacillin_tazobactam, piperacillin_tazobactam_engraftment,
+     vancomycin_iv, vancomycin_iv_engraftment, vancomycin_po, vancomycin_po_engraftment,
+     fluconazole, fluconazole_engraftment, acyclovir, valacyclovir
+
+   Dates & metadata:
+   - last_contact_date, start_date, end_date, start_date_engraftment, end_date_engraftment (Date)
+   - created_at (DateTime), updated_at (DateTime)
+   - additional_data (JSON)
+
+3) taxonomies (model: Taxonomy) — table name: `taxonomies`
+   - id (Integer, PK)
+   - taxonomy_id (String(100), indexed)
+   - dataset_id (Integer, FK -> datasets.id)
+   - asv (String(100))
+   - domain, phylum, class (stored as class_name), order, family, genus, species (String(100))
+   - full_taxonomy (Text)
+   - classification_confidence (Float), quality_score (Float)
+   - total_abundance, max_abundance, min_abundance, mean_abundance (Float)
+   - prevalence (Float)
+   - functional_annotations (JSON)
+   - metadata (JSON)  # column named 'metadata' mapped to metadata_json in model
+   - created_at (DateTime), updated_at (DateTime)
+
+4) bracken_results (model: BrackenResult) — table name: `bracken_results`
+   - id (Integer, PK)
+   - dataset_id (Integer, FK -> datasets.id)
+   - patient_id (String(50), indexed)
+   - taxonomy_id (String(100), indexed)
+   - abundance_pre (Float)    # corresponds to '.P' suffix
+   - abundance_during (Float) # corresponds to '.E' suffix
+   - abundance_post (Float)   # corresponds to '.2.4M' suffix
+   - delta_during_pre (Float)
+   - delta_post_during (Float)
+   - delta_post_pre (Float)
+   - quality_score (Float), confidence (Float)
+   - created_at (DateTime), updated_at (DateTime)
+
+5) analyses (model: Analysis) — table name: `analyses`
+   - id (Integer, PK)
+   - dataset_id (Integer, FK -> datasets.id)
+   - name (String(200))
+   - description (Text)
+   - analysis_type (Enum)
+   - status (Enum)
+   - configuration (JSON)
+   - grouping_strategy (String(100))
+   - grouping_parameters (JSON)
+   - patient_selection (JSON)
+   - taxonomy_selection (JSON)
+   - variable_selection (JSON)
+   - results (JSON)
+   - visualization_data (JSON)
+   - report_data (JSON)
+   - execution_time (Float)
+   - error_message (Text), warnings (JSON)
+   - created_at (DateTime), updated_at (DateTime), completed_at (DateTime)
+   - is_public (Boolean), publication_ready (Boolean), tags (JSON)
+
+6) saved_views (model: SavedView) — table name: `saved_views`
+   - id (Integer, PK)
+   - dataset_id (Integer, FK -> datasets.id)
+   - name (String(200))
+   - description (Text)
+   - view_type (String(50))
+   - configuration (JSON)
+   - patient_filters (JSON), taxonomy_filters (JSON), variable_filters (JSON)
+   - is_public (Boolean), shared_with (JSON)
+   - created_at (DateTime), updated_at (DateTime), last_accessed (DateTime), access_count (Integer)
+
+
+PART C — Short recommendations to simplify the project (if you want minimal working subset)
+------------------------------------------------------------------------------------
+If your goal is to simplify and get a minimal working app quickly, consider these reductions:
+
+- Minimal user/auth: support just local accounts (email/password) and skip OAuth and MFA initially.
+- Minimal data flow: implement CSV import for `patients`, `taxonomies`, and a simplified `bracken_results` importer that writes rows (patient_id, taxonomy_id, abundance_pre/during/post).
+- Simplify models: keep `patients`, `taxonomies`, `bracken_results`, `users`, and an `analyses` table for saved analysis configs/results.
+- UI: focus on a single working page (Patients) with DataTables and CSV upload; postpone the complex preprocessing UI and clustering visualizations.
+- Analysis: implement a single analysis method (Cox regression via lifelines) and export results; add other methods later.
+
+
+END
+
+PART D — Field types, nullable/defaults and example rows
+--------------------------------------------------------
+Below each model/table there is a compact table of field name, SQLAlchemy type, nullable (True/False), primary key/foreign key, default value (if any) and a short example row showing plausible data for a single record.
+
+1) users (example row)
+    - id: Integer, PK, nullable=False, default=autoincrement
+    - email: String(120), nullable=False, unique
+    - username: String(80), nullable=True
+    - first_name: String(50), nullable=True
+    - last_name: String(50), nullable=True
+    - profile_picture_url: String(255), nullable=True
+    - institution: String(100), nullable=True
+    - department: String(100), nullable=True
+    - password_hash: String(255), nullable=True
+    - google_id: String(100), nullable=True, unique
+    - is_active: Boolean, nullable=False, default=True
+    - is_verified: Boolean, nullable=False, default=False
+    - role: String(20), nullable=False, default='viewer'
+    - permissions: Text (JSON string), nullable=True
+    - failed_login_attempts: Integer, nullable=True, default=0
+    - account_locked_until: DateTime, nullable=True
+    - last_login: DateTime, nullable=True
+    - last_activity: DateTime, nullable=True, default=datetime.utcnow
+    - session_timeout: Integer, nullable=True, default=1440
+    - created_at: DateTime, nullable=False, default=datetime.utcnow
+    - updated_at: DateTime, nullable=True, default onupdate
+    - preferences, saved_views, saved_datasets, saved_results: Text (JSON strings), nullable=True
+    - total_analyses: Integer, default=0
+    - last_analysis_date: DateTime, nullable=True
+    - storage_used_mb: Float, default=0.0
+
+    Example row (JSON-like):
+    {
+       "id": 1,
+       "email": "alice@example.com",
+       "username": "alice",
+       "first_name": "Alice",
+       "last_name": "Lopez",
+       "role": "researcher",
+       "is_verified": true,
+       "created_at": "2025-08-01T12:00:00Z",
+       "saved_views": "[{\"name\":\"default\",\"file_path\":\"instance/users/alice_example/view_default.json\"}]"
+    }
+
+2) patients (example row)
+    - id: Integer, PK, nullable=False
+    - patient_id: String(50), nullable=False, index=True
+    - user_id: Integer, FK -> users.id, nullable=False
+    - age: Float, nullable=True
+    - gender: String(20), nullable=True
+    - race, ethnicity: String(50), nullable=True
+    - weight_kg, height_m, bmi: Float, nullable=True
+    - igg, iga: Float, nullable=True
+    - biclonal: String(10), nullable=True
+    - ... (many clinical fields, booleans for FISH indicators)
+    - duration_pfs: Float, nullable=True
+    - pfs_status: Boolean, nullable=True
+    - created_at: DateTime, default=datetime.utcnow
+    - additional_data: JSON, nullable=True
+
+    Example row (JSON-like):
+    {
+       "id": 101,
+       "patient_id": "P-000101",
+       "user_id": 1,
+       "age": 64,
+       "gender": "M",
+       "igg": 3.2,
+       "duration_pfs": 24.5,
+       "pfs_status": true,
+       "created_at": "2025-07-15T10:12:00Z"
+    }
+
+3) taxonomies (example row)
+    - id: Integer, PK
+    - taxonomy_id: String(100), nullable=False, index=True
+    - user_id: Integer, FK -> users.id, nullable=False
+    - asv, domain, phylum, class_name, order, family, genus, species: String(100)
+    - full_taxonomy: Text, nullable=True
+    - classification_confidence, quality_score: Float, default None
+    - total_abundance, max_abundance, min_abundance, mean_abundance: Float, default 0.0
+    - prevalence: Float, default 0.0
+    - functional_annotations: JSON, nullable=True
+    - metadata (metadata_json in model): JSON, nullable=True
+
+    Example row (JSON-like):
+    {
+       "id": 5001,
+       "taxonomy_id": "tx_ASV_001",
+       "asv": "ASV_001",
+       "genus": "Bacteroides",
+       "species": "Bacteroides fragilis",
+       "mean_abundance": 0.0023,
+       "prevalence": 0.12
+    }
+
+4) bracken_results (example row)
+    - id: Integer, PK
+    - user_id: Integer, FK -> users.id
+    - patient_id: String(50), nullable=False, index=True
+    - taxonomy_id: String(100), nullable=False, index=True
+    - abundance_pre, abundance_during, abundance_post: Float, nullable=True
+    - delta_during_pre, delta_post_during, delta_post_pre: Float, nullable=True
+    - quality_score, confidence: Float, nullable=True
+    - created_at, updated_at: DateTime
+
+    Example row (JSON-like):
+    {
+       "id": 9001,
+       "user_id": 1,
+       "patient_id": "P-000101",
+       "taxonomy_id": "tx_ASV_001",
+       "abundance_pre": 0.0005,
+       "abundance_during": 0.0012,
+       "abundance_post": 0.0008,
+       "delta_during_pre": 0.0007
+    }
+
+5) analyses (example row)
+    - id: Integer, PK
+    - user_id: Integer, FK -> users.id
+    - name: String(200), nullable=False
+    - analysis_type: Enum, nullable=False
+    - status: Enum, default PENDING
+    - configuration, grouping_parameters: JSON
+    - patient_selection, taxonomy_selection, variable_selection: JSON
+    - results, visualization_data, report_data: JSON
+    - execution_time: Float (seconds)
+    - created_at, updated_at, completed_at: DateTime
+
+    Example row (JSON-like):
+    {
+       "id": 77,
+       "user_id": 1,
+       "name": "Cox - top clusters",
+       "analysis_type": "cox_regression",
+       "status": "completed",
+       "configuration": {"alpha": 0.05, "penalizer": 0.01},
+       "execution_time": 38.4,
+       "results": {"summary": {"hazard_ratios": {"age": 1.02}}}
+    }
+
+6) saved_views (example row)
+    - id: Integer, PK
+    - user_id: Integer, FK -> users.id
+    - name: String(200), nullable=False
+    - view_type: String(50), configuration: JSON
+    - patient_filters, taxonomy_filters, variable_filters: JSON
+    - is_public: Boolean, default False
+    - shared_with: JSON (list of user ids), nullable=True
+
+    Example row (JSON-like):
+    {
+       "id": 12,
+       "user_id": 1,
+       "name": "Edge-analysis-view",
+       "view_type": "table",
+       "configuration": {"columns": ["patient_id","age","duration_pfs"], "filters": []}
+    }
+
+PART E — Machine-readable schema export
+--------------------------------------
+I created two machine-readable artifacts in the repository root so you can reuse them:
+
+- `schema.csv` — CSV listing table, field, type, nullable, pk, fk, default, notes.
+- `schema.dot` — Graphviz DOT file describing tables (as record nodes) and relationships; you can render it with Graphviz (dot) to get an ER diagram.
+
+How to render the ER diagram (optional)
+--------------------------------------
+If you have Graphviz installed, render `schema.dot` to PNG with:
+
+dot -Tpng schema.dot -o schema.png
+
+Or render to SVG:
+
+dot -Tsvg schema.dot -o schema.svg
+
+END OF STRUCTURE EXPANSION

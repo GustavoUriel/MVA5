@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Microbiome Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-user me-2"></i>User Profile
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture }}" alt="Profile" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 120px; height: 120px;">
+                            <i class="fas fa-user fa-3x text-white"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-9">
+                        <h5>{{ user.name }}</h5>
+                        <p class="text-muted">{{ user.email }}</p>
+                        
+                        <dl class="row">
+                            <dt class="col-sm-4">Member since:</dt>
+                            <dd class="col-sm-8">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'Unknown' }}</dd>
+                            
+                            <dt class="col-sm-4">Last login:</dt>
+                            <dd class="col-sm-8">{{ user.last_login.strftime('%B %d, %Y at %I:%M %p') if user.last_login else 'Never' }}</dd>
+                            
+                            <dt class="col-sm-4">Total datasets:</dt>
+                            <dd class="col-sm-8">{{ user.datasets.count() }}</dd>
+                            
+                            <dt class="col-sm-4">Google ID:</dt>
+                            <dd class="col-sm-8">
+                                <code class="small">{{ user.google_id[:20] + '...' if user.google_id and user.google_id|length > 20 else user.google_id or 'Not linked' }}</code>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>Account Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('datasets.dashboard') }}" class="btn btn-primary">
+                        <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                    </a>
+                    
+                    <a href="{{ url_for('datasets.create_dataset') }}" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>Create New Dataset
+                    </a>
+                    
+                    <hr>
+                    
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                        <i class="fas fa-trash me-2"></i>Delete Account
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Quick Stats
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-primary">{{ user.datasets.count() }}</h4>
+                            <small class="text-muted">Datasets</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">{{ user.datasets.filter_by(status='ready').count() }}</h4>
+                        <small class="text-muted">Ready</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Account
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Warning:</strong> This action cannot be undone.</p>
+                <p>Deleting your account will:</p>
+                <ul>
+                    <li>Permanently delete all your datasets</li>
+                    <li>Remove all uploaded files</li>
+                    <li>Delete all analysis results</li>
+                    <li>Clear all activity logs</li>
+                </ul>
+                <p>Are you sure you want to continue?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('auth.delete_account') }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Yes, Delete My Account
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
