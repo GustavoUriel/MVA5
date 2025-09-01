@@ -1,1 +1,1 @@
-# Tasks module
+# Celery tasks package

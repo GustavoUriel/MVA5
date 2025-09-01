@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}{{ dataset.name }} - Microbiome Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header -->
+    <div class="mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                    </a>
+                </li>
+                <li class="breadcrumb-item active">{{ dataset.name }}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <h1 class="h2 mb-2">
+                    <i class="fas fa-folder-open me-2 text-primary"></i>
+                    {{ dataset.name }}
+                </h1>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="badge bg-{{ 'success' if dataset.status == 'ready' else 'secondary' if dataset.status == 'draft' else 'warning' if dataset.status == 'processing' else 'danger' }} fs-6">
+                        {{ dataset.status.title() }}
+                    </span>
+                    <small class="text-muted">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Created {{ dataset.created_at.strftime('%B %d, %Y') }}
+                    </small>
+                    <small class="text-muted">
+                        <i class="fas fa-edit me-1"></i>
+                        Updated {{ dataset.updated_at.strftime('%B %d, %Y') }}
+                    </small>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary">
+                    <i class="fas fa-upload me-1"></i>
+                    Upload Files
+                </button>
+                <button type="button" class="btn btn-outline-success">
+                    <i class="fas fa-play me-1"></i>
+                    Run Analysis
+                </button>
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit Dataset</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Export Data</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i>Delete Dataset</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if dataset.description %}
+            <p class="text-muted mt-2">{{ dataset.description }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <i class="fas fa-file fa-2x text-primary mb-2"></i>
+                    <h5 class="card-title">{{ dataset.file_count }}</h5>
+                    <p class="card-text text-muted mb-0">Files</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <i class="fas fa-hdd fa-2x text-info mb-2"></i>
+                    <h5 class="card-title">
+                        {% if dataset.total_size %}
+                            {{ "%.1f"|format(dataset.total_size / 1024 / 1024) }} MB
+                        {% else %}
+                            0 MB
+                        {% endif %}
+                    </h5>
+                    <p class="card-text text-muted mb-0">Total Size</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+                    <h5 class="card-title">0</h5>
+                    <p class="card-text text-muted mb-0">Analyses</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                    <h5 class="card-title">
+                        {{ ((dataset.updated_at - dataset.created_at).days) }}d
+                    </h5>
+                    <p class="card-text text-muted mb-0">Age</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Tabs -->
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="datasetTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button" role="tab">
+                        <i class="fas fa-folder me-2"></i>Files
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">
+                        <i class="fas fa-chart-line me-2"></i>Analysis
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                        <i class="fas fa-cog me-2"></i>Settings
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="datasetTabsContent">
+                <!-- Files Tab -->
+                <div class="tab-pane fade show active" id="files" role="tabpanel">
+                    {% if dataset.file_count > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Size</th>
+                                        <th>Uploaded</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- File list will be populated here -->
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            File listing functionality will be implemented next.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-cloud-upload-alt fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted mb-3">No files uploaded yet</h5>
+                            <p class="text-muted mb-4">
+                                Upload your microbiome data files to get started with analysis.
+                            </p>
+                            <button type="button" class="btn btn-primary">
+                                <i class="fas fa-upload me-2"></i>
+                                Upload Files
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Analysis Tab -->
+                <div class="tab-pane fade" id="analysis" role="tabpanel">
+                    <div class="text-center py-5">
+                        <i class="fas fa-flask fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted mb-3">Analysis Tools Coming Soon</h5>
+                        <p class="text-muted mb-4">
+                            Advanced statistical analysis tools will be available here.
+                        </p>
+                        <button type="button" class="btn btn-outline-primary" disabled>
+                            <i class="fas fa-play me-2"></i>
+                            Run Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="settings" role="tabpanel">
+                    <form>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="datasetName" class="form-label">Dataset Name</label>
+                                    <input type="text" class="form-control" id="datasetName" value="{{ dataset.name }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="datasetDescription" class="form-label">Description</label>
+                                    <textarea class="form-control" id="datasetDescription" rows="4">{{ dataset.description or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Dataset Status</label>
+                                    <select class="form-select">
+                                        <option value="draft" {{ 'selected' if dataset.status == 'draft' else '' }}>Draft</option>
+                                        <option value="ready" {{ 'selected' if dataset.status == 'ready' else '' }}>Ready</option>
+                                        <option value="processing" {{ 'selected' if dataset.status == 'processing' else '' }}>Processing</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Privacy Settings</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="privacy" id="private" checked>
+                                        <label class="form-check-label" for="private">
+                                            <i class="fas fa-lock me-1"></i>Private (only you)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="privacy" id="shared" disabled>
+                                        <label class="form-check-label text-muted" for="shared">
+                                            <i class="fas fa-users me-1"></i>Shared (coming soon)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border-top pt-3">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-save me-1"></i>Save Changes
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab functionality is handled by Bootstrap
+    
+    // Add any custom JavaScript for this page
+    console.log('Dataset view loaded for: {{ dataset.name }}');
+});
+</script>
+{% endblock %}

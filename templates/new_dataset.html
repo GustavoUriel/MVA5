@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}New Dataset - Microbiome Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="mb-4">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="breadcrumb-item active">New Dataset</li>
+                    </ol>
+                </nav>
+                <h1 class="h2 mb-2">
+                    <i class="fas fa-plus-circle me-2 text-primary"></i>
+                    Create New Dataset
+                </h1>
+                <p class="text-muted">
+                    Create a new dataset to organize and analyze your microbiome data files.
+                </p>
+            </div>
+
+            <!-- Dataset Creation Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-folder-plus me-2"></i>
+                        Dataset Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('new_dataset') }}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">
+                                Dataset Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   placeholder="Enter a descriptive name for your dataset" 
+                                   required maxlength="200">
+                            <div class="form-text">
+                                Choose a unique, descriptive name for easy identification.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="description" class="form-label">
+                                Description <span class="text-muted">(Optional)</span>
+                            </label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      rows="4" placeholder="Describe your dataset, study design, or objectives..."></textarea>
+                            <div class="form-text">
+                                Provide additional context about your dataset, research objectives, or methodology.
+                            </div>
+                        </div>
+
+                        <!-- Dataset Types Info -->
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle me-2"></i>
+                                What comes next?
+                            </h6>
+                            <p class="mb-2">After creating your dataset, you'll be able to:</p>
+                            <ul class="mb-0 ps-3">
+                                <li>Upload patient clinical data files</li>
+                                <li>Upload taxonomy classification files</li>
+                                <li>Upload Bracken abundance data</li>
+                                <li>Configure analysis parameters</li>
+                                <li>Run statistical analyses</li>
+                            </ul>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                Create Dataset
+                            </button>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-question-circle me-2"></i>
+                        Getting Started Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                Naming Best Practices
+                            </h6>
+                            <ul class="small mb-3">
+                                <li>Use descriptive names (e.g., "Cancer_Study_2024")</li>
+                                <li>Include date or version if relevant</li>
+                                <li>Avoid special characters</li>
+                                <li>Keep it concise but informative</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary">
+                                <i class="fas fa-file-alt me-1"></i>
+                                Supported File Types
+                            </h6>
+                            <ul class="small mb-3">
+                                <li>CSV files (.csv)</li>
+                                <li>Excel files (.xlsx, .xls)</li>
+                                <li>JSON files (.json)</li>
+                                <li>Bracken output files</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    const form = document.querySelector('form');
+    
+    // Auto-focus on name input
+    nameInput.focus();
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const name = nameInput.value.trim();
+        
+        if (!name) {
+            e.preventDefault();
+            nameInput.classList.add('is-invalid');
+            nameInput.focus();
+            return false;
+        }
+        
+        // Remove any existing validation classes
+        nameInput.classList.remove('is-invalid');
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating...';
+    });
+    
+    // Remove validation error on input
+    nameInput.addEventListener('input', function() {
+        this.classList.remove('is-invalid');
+    });
+});
+</script>
+{% endblock %}

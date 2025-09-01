@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Microbiome Analysis Platform{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1 class="h2 mb-2">
+                        <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+                        Welcome back, {{ user.name }}!
+                    </h1>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Last login: {{ user.last_login.strftime('%B %d, %Y at %I:%M %p') if user.last_login else 'First time login' }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('new_dataset') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>
+                        New Dataset
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">Total Datasets</h5>
+                            <h2 class="mb-0">{{ datasets|length }}</h2>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-database fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">Ready Datasets</h5>
+                            <h2 class="mb-0">{{ datasets|selectattr('status', 'equalto', 'ready')|list|length }}</h2>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">Processing</h5>
+                            <h2 class="mb-0">{{ datasets|selectattr('status', 'equalto', 'processing')|list|length }}</h2>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-spinner fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Datasets Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0">
+                            <i class="fas fa-folder me-2"></i>
+                            Your Datasets
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm active" id="gridView">
+                                <i class="fas fa-th"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="listView">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if datasets %}
+                        <!-- Grid View -->
+                        <div id="grid-container" class="row g-3">
+                            {% for dataset in datasets %}
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card h-100 dataset-card">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-start justify-content-between mb-2">
+                                                <h6 class="card-title mb-0">
+                                                    <i class="fas fa-folder-open me-2 text-primary"></i>
+                                                    {{ dataset.name }}
+                                                </h6>
+                                                <span class="badge bg-{{ 'success' if dataset.status == 'ready' else 'secondary' if dataset.status == 'draft' else 'warning' if dataset.status == 'processing' else 'danger' }}">
+                                                    {{ dataset.status.title() }}
+                                                </span>
+                                            </div>
+                                            
+                                            {% if dataset.description %}
+                                                <p class="card-text text-muted small mb-2">
+                                                    {{ dataset.description[:100] }}{% if dataset.description|length > 100 %}...{% endif %}
+                                                </p>
+                                            {% endif %}
+                                            
+                                            <div class="small text-muted mb-3">
+                                                <div class="d-flex justify-content-between">
+                                                    <span>
+                                                        <i class="fas fa-file me-1"></i>
+                                                        {{ dataset.file_count }} files
+                                                    </span>
+                                                    <span>
+                                                        <i class="fas fa-clock me-1"></i>
+                                                        {{ dataset.updated_at.strftime('%m/%d/%Y') }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="d-grid">
+                                                <a href="{{ url_for('view_dataset', dataset_id=dataset.id) }}" class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-eye me-1"></i>
+                                                    View Dataset
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- List View (Initially Hidden) -->
+                        <div id="list-container" class="d-none">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Status</th>
+                                            <th>Files</th>
+                                            <th>Created</th>
+                                            <th>Updated</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for dataset in datasets %}
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-folder-open me-2 text-primary"></i>
+                                                        <div>
+                                                            <div class="fw-semibold">{{ dataset.name }}</div>
+                                                            {% if dataset.description %}
+                                                                <small class="text-muted">{{ dataset.description[:50] }}{% if dataset.description|length > 50 %}...{% endif %}</small>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-{{ 'success' if dataset.status == 'ready' else 'secondary' if dataset.status == 'draft' else 'warning' if dataset.status == 'processing' else 'danger' }}">
+                                                        {{ dataset.status.title() }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ dataset.file_count }}</td>
+                                                <td>{{ dataset.created_at.strftime('%m/%d/%Y') }}</td>
+                                                <td>{{ dataset.updated_at.strftime('%m/%d/%Y') }}</td>
+                                                <td>
+                                                    <a href="{{ url_for('view_dataset', dataset_id=dataset.id) }}" class="btn btn-outline-primary btn-sm">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- Empty State -->
+                        <div class="text-center py-5">
+                            <div class="mb-3">
+                                <i class="fas fa-folder-open fa-4x text-muted"></i>
+                            </div>
+                            <h5 class="text-muted mb-3">No datasets yet</h5>
+                            <p class="text-muted mb-4">
+                                Create your first dataset to start analyzing microbiome data.
+                            </p>
+                            <a href="{{ url_for('new_dataset') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>
+                                Create Your First Dataset
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const gridView = document.getElementById('gridView');
+    const listView = document.getElementById('listView');
+    const gridContainer = document.getElementById('grid-container');
+    const listContainer = document.getElementById('list-container');
+    
+    gridView.addEventListener('click', function() {
+        gridView.classList.add('active');
+        listView.classList.remove('active');
+        gridContainer.classList.remove('d-none');
+        listContainer.classList.add('d-none');
+    });
+    
+    listView.addEventListener('click', function() {
+        listView.classList.add('active');
+        gridView.classList.remove('active');
+        listContainer.classList.remove('d-none');
+        gridContainer.classList.add('d-none');
+    });
+});
+</script>
+{% endblock %}
