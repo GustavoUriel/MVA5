@@ -223,7 +223,11 @@ def index():
 def dashboard():
     """User dashboard showing datasets"""
     datasets = Dataset.query.filter_by(user_id=current_user.id).order_by(Dataset.updated_at.desc()).all()
-    return render_template('dashboard.html', datasets=datasets, user=current_user)
+    
+    # Calculate total size of all datasets
+    total_size = sum(dataset.total_size or 0 for dataset in datasets)
+    
+    return render_template('dashboard.html', datasets=datasets, user=current_user, total_size=total_size)
 
 @app.route('/dataset/new', methods=['GET', 'POST'])
 @login_required
@@ -312,7 +316,8 @@ def upload_dataset_file(dataset_id):
                 raise ValueError(f"Invalid file type. Allowed: {', '.join(allowed_extensions)}")
             
             # Save file
-            filename = f"{dataset.id}_{file_type}_{int(datetime.utcnow().timestamp())}{file_ext}"
+            timestamp = datetime.utcnow().strftime('%y%m%d-%H%M%S')
+            filename = f"{dataset.id}_{file_type}_{timestamp}{file_ext}"
             file_path = os.path.join(get_user_upload_folder(current_user.id), filename)
             file.save(file_path)
             
@@ -336,7 +341,8 @@ def upload_dataset_file(dataset_id):
                 raise ValueError("No CSV content provided")
             
             # Save CSV content to file
-            filename = f"{dataset.id}_{file_type}_{int(datetime.utcnow().timestamp())}.csv"
+            timestamp = datetime.utcnow().strftime('%y%m%d-%H%M%S')
+            filename = f"{dataset.id}_{file_type}_{timestamp}.csv"
             file_path = os.path.join(get_user_upload_folder(current_user.id), filename)
             
             with open(file_path, 'w', encoding='utf-8') as f:
@@ -377,15 +383,21 @@ def upload_dataset_file(dataset_id):
                 dataset_file.processing_status = 'completed'
                 dataset_file.processing_completed_at = datetime.utcnow()
                 dataset_file.processed_file_path = processing_result['processed_file_path']
+                # Combine summary and validation warnings
+                processing_summary = {
+                    'summary': processing_result['summary'],
+                    'validation_warnings': processing_result.get('validation_warnings', [])
+                }
+                
                 try:
-                    dataset_file.processing_summary = json.dumps(processing_result['summary'])
+                    dataset_file.processing_summary = json.dumps(processing_summary)
                 except TypeError as e:
                     # Log the problematic summary for debugging
                     ErrorLogger.log_exception(
                         e,
                         context="JSON serialization of processing summary",
                         user_action=f"Serializing summary for {file_type} file",
-                        extra_data={'summary': str(processing_result['summary'])}
+                        extra_data={'summary': str(processing_summary)}
                     )
                     # Convert any remaining pandas objects to strings recursively
                     def convert_pandas_objects(obj):
@@ -398,7 +410,7 @@ def upload_dataset_file(dataset_id):
                         else:
                             return obj
                     
-                    summary_copy = convert_pandas_objects(processing_result['summary'])
+                    summary_copy = convert_pandas_objects(processing_summary)
                     dataset_file.processing_summary = json.dumps(summary_copy)
                 
                 # Update dataset status
@@ -424,6 +436,15 @@ def upload_dataset_file(dataset_id):
                 dataset.file_count = len(dataset.files)
                 dataset.total_size = sum(f.file_size for f in dataset.files)
                 db.session.commit()
+                
+                # Show flash notifications for validation warnings
+                validation_warnings = processing_result.get('validation_warnings', [])
+                if validation_warnings:
+                    for warning in validation_warnings:
+                        flash(f'⚠️ {warning}', 'warning')
+                
+                # Also show success message
+                flash(f'✅ {file_type.title()} file uploaded and processed successfully!', 'success')
                 
                 log_user_action(
                     f"file_uploaded_and_processed", 
@@ -651,6 +672,308 @@ def get_dataset_files(dataset_id):
             'total_size': dataset.total_size
         }
     })
+
+@app.route('/dataset/<int:dataset_id>/data-stats')
+@login_required
+def get_dataset_data_stats(dataset_id):
+    """Get data statistics and analysis for a dataset"""
+    dataset = Dataset.query.filter_by(id=dataset_id, user_id=current_user.id).first_or_404()
+    
+    try:
+        stats = {
+            'patients': {},
+            'taxonomy': {},
+            'bracken': {},
+            'cross_references': {},
+            'sanitization_needed': []
+        }
+        
+        # Analyze patients data
+        if dataset.patients_file_uploaded:
+            patients_file = next((f for f in dataset.files if f.file_type == 'patients'), None)
+            if patients_file and patients_file.processed_file_path and os.path.exists(patients_file.processed_file_path):
+                try:
+                    import pandas as pd
+                    df = pd.read_csv(patients_file.processed_file_path)
+                    
+                    stats['patients'] = {
+                        'total_rows': int(len(df)),
+                        'total_columns': int(len(df.columns)),
+                        'patient_id_column': 'patient_id' if 'patient_id' in df.columns else None,
+                        'unique_patients': int(df['patient_id'].nunique()) if 'patient_id' in df.columns else 0,
+                        'missing_patient_ids': int(df['patient_id'].isna().sum()) if 'patient_id' in df.columns else 0,
+                        'duplicate_patient_ids': int(df['patient_id'].duplicated().sum()) if 'patient_id' in df.columns else 0,
+                        'columns': list(df.columns)
+                    }
+                    
+                    if stats['patients']['duplicate_patient_ids'] > 0:
+                        stats['sanitization_needed'].append('remove_duplicates')
+                    if stats['patients']['missing_patient_ids'] > 0:
+                        stats['sanitization_needed'].append('remove_missing_ids')
+                        
+                except Exception as e:
+                    stats['patients']['error'] = str(e)
+        
+        # Analyze taxonomy data
+        if dataset.taxonomy_file_uploaded:
+            taxonomy_file = next((f for f in dataset.files if f.file_type == 'taxonomy'), None)
+            if taxonomy_file and taxonomy_file.processed_file_path and os.path.exists(taxonomy_file.processed_file_path):
+                try:
+                    import pandas as pd
+                    df = pd.read_csv(taxonomy_file.processed_file_path)
+                    
+                    stats['taxonomy'] = {
+                        'total_rows': int(len(df)),
+                        'total_columns': int(len(df.columns)),
+                        'taxonomy_id_column': 'taxonomy_id' if 'taxonomy_id' in df.columns else None,
+                        'unique_taxonomies': int(df['taxonomy_id'].nunique()) if 'taxonomy_id' in df.columns else 0,
+                        'missing_taxonomy_ids': int(df['taxonomy_id'].isna().sum()) if 'taxonomy_id' in df.columns else 0,
+                        'duplicate_taxonomy_ids': int(df['taxonomy_id'].duplicated().sum()) if 'taxonomy_id' in df.columns else 0,
+                        'columns': list(df.columns)
+                    }
+                    
+                    if stats['taxonomy']['duplicate_taxonomy_ids'] > 0:
+                        stats['sanitization_needed'].append('remove_duplicates')
+                    if stats['taxonomy']['missing_taxonomy_ids'] > 0:
+                        stats['sanitization_needed'].append('remove_missing_ids')
+                        
+                except Exception as e:
+                    stats['taxonomy']['error'] = str(e)
+        
+        # Analyze bracken results
+        if dataset.bracken_file_uploaded:
+            bracken_file = next((f for f in dataset.files if f.file_type == 'bracken'), None)
+            if bracken_file and bracken_file.processed_file_path and os.path.exists(bracken_file.processed_file_path):
+                try:
+                    import pandas as pd
+                    df = pd.read_csv(bracken_file.processed_file_path)
+                    
+                    # Identify patient_id columns (columns ending with time suffixes)
+                    patient_columns = [col for col in df.columns if col != 'taxonomy_id' and col != 'taxonomy']
+                    time_suffixes = []
+                    for col in patient_columns:
+                        # Extract time suffix (e.g., "_T1", "_T2", "_baseline", etc.)
+                        if '_' in col:
+                            suffix = col.split('_', 1)[1]
+                            if suffix not in time_suffixes:
+                                time_suffixes.append(suffix)
+                    
+                    stats['bracken'] = {
+                        'total_rows': int(len(df)),
+                        'total_columns': int(len(df.columns)),
+                        'taxonomy_id_column': 'taxonomy_id' if 'taxonomy_id' in df.columns else None,
+                        'patient_columns': patient_columns,
+                        'time_suffixes': time_suffixes,
+                        'unique_taxonomies': int(df['taxonomy_id'].nunique()) if 'taxonomy_id' in df.columns else 0,
+                        'missing_taxonomy_ids': int(df['taxonomy_id'].isna().sum()) if 'taxonomy_id' in df.columns else 0,
+                        'duplicate_taxonomy_ids': int(df['taxonomy_id'].duplicated().sum()) if 'taxonomy_id' in df.columns else 0,
+                        'columns': list(df.columns)
+                    }
+                    
+                    if stats['bracken']['missing_taxonomy_ids'] > 0:
+                        stats['sanitization_needed'].append('remove_missing_ids')
+                    if stats['bracken']['duplicate_taxonomy_ids'] > 0:
+                        stats['sanitization_needed'].append('remove_duplicates')
+                        
+                except Exception as e:
+                    stats['bracken']['error'] = str(e)
+        
+        # Cross-reference analysis
+        if stats['patients'] and stats['taxonomy'] and stats['bracken']:
+            try:
+                # Check if patient IDs in bracken match patients table
+                if 'patient_id' in stats['patients'] and stats['patients']['unique_patients'] > 0:
+                    stats['cross_references'] = {
+                        'patients_in_bracken': len(stats['bracken']['patient_columns']),
+                        'potential_mismatch': len(stats['bracken']['patient_columns']) != stats['patients']['unique_patients']
+                    }
+                    
+                    if stats['cross_references']['potential_mismatch']:
+                        stats['sanitization_needed'].append('patient_id_mismatch')
+                        
+            except Exception as e:
+                stats['cross_references']['error'] = str(e)
+        
+        # Add validation warnings from processing summary
+        stats['validation_warnings'] = []
+        for file_obj in dataset.files:
+            if file_obj.processing_summary:
+                try:
+                    summary_data = json.loads(file_obj.processing_summary)
+                    if 'validation_warnings' in summary_data and summary_data['validation_warnings']:
+                        stats['validation_warnings'].extend(summary_data['validation_warnings'])
+                except (json.JSONDecodeError, KeyError):
+                    continue
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        ErrorLogger.log_exception(
+            e,
+            context=f"Getting data stats for dataset {dataset_id}",
+            user_action=f"User requesting data statistics",
+            extra_data={'dataset_id': dataset_id}
+        )
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/dataset/<int:dataset_id>/sanitize', methods=['POST'])
+@login_required
+def sanitize_dataset_data(dataset_id):
+    """Sanitize dataset data based on identified issues"""
+    dataset = Dataset.query.filter_by(id=dataset_id, user_id=current_user.id).first_or_404()
+    
+    try:
+        sanitization_type = request.json.get('type')
+        file_type = request.json.get('file_type')
+        
+        if not sanitization_type or not file_type:
+            return jsonify({
+                'success': False,
+                'error': 'Missing sanitization type or file type'
+            }), 400
+        
+        # Find the file to sanitize
+        file_to_sanitize = next((f for f in dataset.files if f.file_type == file_type), None)
+        if not file_to_sanitize or not file_to_sanitize.processed_file_path:
+            return jsonify({
+                'success': False,
+                'error': f'No processed {file_type} file found'
+            }), 404
+        
+        if not os.path.exists(file_to_sanitize.processed_file_path):
+            return jsonify({
+                'success': False,
+                'error': f'Processed {file_type} file not found on disk'
+            }), 404
+        
+        import pandas as pd
+        df = pd.read_csv(file_to_sanitize.processed_file_path)
+        original_rows = len(df)
+        
+        # Apply sanitization based on type
+        if sanitization_type == 'remove_duplicates':
+            if file_type == 'patients' and 'patient_id' in df.columns:
+                df = df.drop_duplicates(subset=['patient_id'])
+            elif file_type == 'taxonomy' and 'taxonomy_id' in df.columns:
+                df = df.drop_duplicates(subset=['taxonomy_id'])
+            elif file_type == 'bracken' and 'taxonomy_id' in df.columns:
+                df = df.drop_duplicates(subset=['taxonomy_id'])
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Cannot remove duplicates for {file_type} file'
+                }), 400
+                
+        elif sanitization_type == 'remove_missing_ids':
+            if file_type == 'patients' and 'patient_id' in df.columns:
+                df = df.dropna(subset=['patient_id'])
+            elif file_type == 'taxonomy' and 'taxonomy_id' in df.columns:
+                df = df.dropna(subset=['taxonomy_id'])
+            elif file_type == 'bracken' and 'taxonomy_id' in df.columns:
+                df = df.dropna(subset=['taxonomy_id'])
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Cannot remove missing IDs for {file_type} file'
+                }), 400
+                
+        elif sanitization_type == 'fill_missing_ids':
+            if file_type == 'patients' and 'patient_id' in df.columns:
+                # Generate unique IDs for missing values
+                missing_mask = df['patient_id'].isna()
+                if missing_mask.any():
+                    max_id = df['patient_id'].dropna().max()
+                    if pd.isna(max_id):
+                        max_id = 0
+                    for idx in df[missing_mask].index:
+                        max_id += 1
+                        df.loc[idx, 'patient_id'] = f"P{max_id:06d}"
+            elif file_type == 'taxonomy' and 'taxonomy_id' in df.columns:
+                # Generate unique taxonomy IDs for missing values
+                missing_mask = df['taxonomy_id'].isna()
+                if missing_mask.any():
+                    max_id = df['taxonomy_id'].dropna().max()
+                    if pd.isna(max_id):
+                        max_id = 0
+                    for idx in df[missing_mask].index:
+                        max_id += 1
+                        df.loc[idx, 'taxonomy_id'] = f"T{max_id:06d}"
+            elif file_type == 'bracken' and 'taxonomy_id' in df.columns:
+                # Generate unique taxonomy IDs for missing values
+                missing_mask = df['taxonomy_id'].isna()
+                if missing_mask.any():
+                    max_id = df['taxonomy_id'].dropna().max()
+                    if pd.isna(max_id):
+                        max_id = 0
+                    for idx in df[missing_mask].index:
+                        max_id += 1
+                        df.loc[idx, 'taxonomy_id'] = f"T{max_id:06d}"
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Cannot fill missing IDs for {file_type} file'
+                }), 400
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Unknown sanitization type: {sanitization_type}'
+            }), 400
+        
+        # Save sanitized data
+        sanitized_path = file_to_sanitize.processed_file_path.replace('.csv', '_sanitized.csv')
+        df.to_csv(sanitized_path, index=False)
+        
+        # Update the file record
+        file_to_sanitize.processed_file_path = sanitized_path
+        file_to_sanitize.processing_summary = json.dumps({
+            'sanitization_applied': sanitization_type,
+            'original_rows': original_rows,
+            'final_rows': len(df),
+            'rows_removed': original_rows - len(df),
+            'sanitized_at': datetime.utcnow().isoformat()
+        })
+        
+        db.session.commit()
+        
+        log_user_action(
+            "data_sanitized",
+            f"Dataset: {dataset.name}, File: {file_type}, Type: {sanitization_type}",
+            success=True
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'{file_type.title()} data sanitized successfully',
+            'details': {
+                'original_rows': original_rows,
+                'final_rows': len(df),
+                'rows_removed': original_rows - len(df),
+                'sanitization_type': sanitization_type
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        ErrorLogger.log_exception(
+            e,
+            context=f"Sanitizing {file_type} data for dataset {dataset_id}",
+            user_action=f"User sanitizing data in dataset '{dataset.name}'",
+            extra_data={
+                'dataset_id': dataset_id,
+                'file_type': file_type,
+                'sanitization_type': sanitization_type
+            }
+        )
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/dataset/<int:dataset_id>/file/<int:file_id>/delete', methods=['POST'])
 @login_required

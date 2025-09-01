@@ -105,7 +105,16 @@
                 <div class="card-body text-center">
                     <i class="fas fa-clock fa-2x text-warning mb-2"></i>
                     <h5 class="card-title">
-                        {{ ((dataset.updated_at - dataset.created_at).days) }}d
+                        {% set age_delta = dataset.updated_at - dataset.created_at %}
+                        {% if age_delta.days < 7 %}
+                            {% if age_delta.days > 0 %}
+                                {{ age_delta.days }}d {{ (age_delta.seconds // 3600) }}h
+                            {% else %}
+                                {{ (age_delta.seconds // 3600) }}h {{ ((age_delta.seconds % 3600) // 60) }}m
+                            {% endif %}
+                        {% else %}
+                            {{ age_delta.days }}d
+                        {% endif %}
                     </h5>
                     <p class="card-text text-muted mb-0">Age</p>
                 </div>
@@ -184,14 +193,14 @@
                     <div class="row mb-4">
                         <!-- Patients Data Upload -->
                         <div class="col-md-4">
-                            <div class="card h-100">
+                            <div class="card h-100" id="patients-upload-card">
                                 <div class="card-header">
                                     <h6 class="mb-0">
                                         <i class="fas fa-user-injured me-2 text-primary"></i>
                                         Patients Data
                                     </h6>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body" id="patients-upload-body">
                                     {% if dataset.patients_file_uploaded %}
                                         <div class="text-center text-success mb-3">
                                             <i class="fas fa-check-circle fa-2x"></i>
@@ -232,14 +241,14 @@
 
                         <!-- Taxonomy Data Upload -->
                         <div class="col-md-4">
-                            <div class="card h-100">
+                            <div class="card h-100" id="taxonomy-upload-card">
                                 <div class="card-header">
                                     <h6 class="mb-0">
                                         <i class="fas fa-sitemap me-2 text-info"></i>
                                         Taxonomy Data
                                     </h6>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body" id="taxonomy-upload-body">
                                     {% if dataset.taxonomy_file_uploaded %}
                                         <div class="text-center text-success mb-3">
                                             <i class="fas fa-check-circle fa-2x"></i>
@@ -280,14 +289,14 @@
 
                         <!-- Bracken Results Upload -->
                         <div class="col-md-4">
-                            <div class="card h-100">
+                            <div class="card h-100" id="bracken-upload-card">
                                 <div class="card-header">
                                     <h6 class="mb-0">
                                         <i class="fas fa-chart-bar me-2 text-success"></i>
                                         Bracken Results
                                     </h6>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body" id="bracken-upload-body">
                                     {% if dataset.bracken_file_uploaded %}
                                         <div class="text-center text-success mb-3">
                                             <i class="fas fa-check-circle fa-2x"></i>
@@ -322,6 +331,24 @@
                                             </button>
                                         </div>
                                     {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Statistics and Sanitization Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-chart-bar me-2 text-info"></i>
+                                Data Statistics & Sanitization
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="dataStatsSection">
+                                <div class="text-center py-4">
+                                    <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                                    <p class="mt-2 text-muted">Analyzing data...</p>
                                 </div>
                             </div>
                         </div>
@@ -467,11 +494,272 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const datasetId = {{ dataset.id }};
+// Global variables and functions
+const datasetId = {{ dataset.id }};
+
+// Data Statistics and Sanitization Functions
+window.loadDataStats = function() {
+    const statsSection = document.getElementById('dataStatsSection');
+    if (!statsSection) {
+        console.error('Data stats section not found');
+        return;
+    }
     
-    // Load files on page load
+    fetch(`/dataset/${datasetId}/data-stats`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayDataStats(data.stats);
+            } else {
+                showDataStatsError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading data stats:', error);
+            showDataStatsError('Failed to load data statistics');
+        });
+}
+
+window.displayDataStats = function(stats) {
+    // IMPORTANT: This function only modifies the dataStatsSection
+    // It should NEVER interfere with the upload cards which have specific IDs
+    const statsSection = document.getElementById('dataStatsSection');
+    
+    let html = '<div class="row">';
+    
+    // Patients Data Stats
+    if (stats.patients && Object.keys(stats.patients).length > 0) {
+        html += `
+            <div class="col-md-4">
+                <div class="card border-primary h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="fas fa-user-injured me-2"></i>Patients Data</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-3">
+                            <div class="col-6">
+                                <div class="h4 text-primary">${stats.patients.total_rows || 0}</div>
+                                <small class="text-muted">Total Rows</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="h4 text-primary">${stats.patients.unique_patients || 0}</div>
+                                <small class="text-muted">Unique Patients</small>
+                            </div>
+                        </div>
+                        <div class="small text-muted mb-3">
+                            <div>Columns: ${stats.patients.total_columns || 0}</div>
+                            ${stats.patients.missing_patient_ids > 0 ? `<div class="text-warning">Missing IDs: ${stats.patients.missing_patient_ids}</div>` : ''}
+                            ${stats.patients.duplicate_patient_ids > 0 ? `<div class="text-danger">Duplicate IDs: ${stats.patients.duplicate_patient_ids}</div>` : ''}
+                        </div>
+                        ${getSanitizationButtons('patients', stats.patients, stats.sanitization_needed)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Taxonomy Data Stats
+    if (stats.taxonomy && Object.keys(stats.taxonomy).length > 0) {
+        html += `
+            <div class="col-md-4">
+                <div class="card border-info h-100">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>Taxonomy Data</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-3">
+                            <div class="col-6">
+                                <div class="h4 text-info">${stats.taxonomy.total_rows || 0}</div>
+                                <small class="text-muted">Total Rows</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="h4 text-info">${stats.taxonomy.unique_taxonomies || 0}</div>
+                                <small class="text-muted">Unique Taxonomies</small>
+                            </div>
+                        </div>
+                        <div class="small text-muted mb-3">
+                            <div>Columns: ${stats.taxonomy.total_columns || 0}</div>
+                            ${stats.taxonomy.missing_taxonomy_ids > 0 ? `<div class="text-warning">Missing IDs: ${stats.taxonomy.missing_taxonomy_ids}</div>` : ''}
+                            ${stats.taxonomy.duplicate_taxonomy_ids > 0 ? `<div class="text-danger">Duplicate IDs: ${stats.taxonomy.duplicate_taxonomy_ids}</div>` : ''}
+                        </div>
+                        ${getSanitizationButtons('taxonomy', stats.taxonomy, stats.sanitization_needed)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Bracken Results Stats
+    if (stats.bracken && Object.keys(stats.bracken).length > 0) {
+        html += `
+            <div class="col-md-4">
+                <div class="card border-success h-100">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="fas fa-dna me-2"></i>Bracken Results</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-3">
+                            <div class="col-6">
+                                <div class="h4 text-success">${stats.bracken.total_rows || 0}</div>
+                                <small class="text-muted">Total Rows</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="h4 text-success">${stats.bracken.unique_taxonomies || 0}</div>
+                                <small class="text-muted">Unique Taxonomies</small>
+                            </div>
+                        </div>
+                        <div class="small text-muted mb-3">
+                            <div>Columns: ${stats.bracken.total_columns || 0}</div>
+                            <div>Patient Samples: ${stats.bracken.patient_columns ? stats.bracken.patient_columns.length : 0}</div>
+                            ${stats.bracken.missing_taxonomy_ids > 0 ? `<div class="text-warning">Missing IDs: ${stats.bracken.missing_taxonomy_ids}</div>` : ''}
+                            ${stats.bracken.duplicate_taxonomy_ids > 0 ? `<div class="text-danger">Duplicate IDs: ${stats.bracken.duplicate_taxonomy_ids}</div>` : ''}
+                        </div>
+                        ${getSanitizationButtons('bracken', stats.bracken, stats.sanitization_needed)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    
+    // Cross-reference analysis
+    if (stats.cross_references && Object.keys(stats.cross_references).length > 0) {
+        html += `
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="fas fa-link me-2"></i>Cross-Reference Analysis</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Patient ID Coverage</h6>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: ${stats.cross_references.patient_coverage_percentage}%" 
+                                             aria-valuenow="${stats.cross_references.patient_coverage_percentage}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            ${stats.cross_references.patient_coverage_percentage}%
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        ${stats.cross_references.patients_in_bracken} of ${stats.cross_references.total_patients} patients found in bracken results
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Taxonomy ID Coverage</h6>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: ${stats.cross_references.taxonomy_coverage_percentage}%" 
+                                             aria-valuenow="${stats.cross_references.taxonomy_coverage_percentage}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            ${stats.cross_references.taxonomy_coverage_percentage}%
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        ${stats.cross_references.taxonomies_in_bracken} of ${stats.cross_references.total_taxonomies} taxonomies found in bracken results
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Validation warnings from file processing
+    if (stats.validation_warnings && stats.validation_warnings.length > 0) {
+        html += `
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="alert alert-warning">
+                        <h6 class="mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Validation Warnings</h6>
+                        <ul class="mb-0">
+                            ${stats.validation_warnings.map(warning => `<li>${warning}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Overall data quality summary
+    if (stats.sanitization_needed && stats.sanitization_needed.length > 0) {
+        html += `
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <h6 class="mb-2"><i class="fas fa-info-circle me-2"></i>Data Quality Issues Detected</h6>
+                        <ul class="mb-0">
+                            ${stats.sanitization_needed.map(issue => `<li>${issue}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    statsSection.innerHTML = html;
+}
+
+window.getSanitizationButtons = function(fileType, fileStats, sanitizationNeeded) {
+    if (!sanitizationNeeded || sanitizationNeeded.length === 0) {
+        return '<div class="text-success"><i class="fas fa-check-circle me-2"></i>No sanitization needed</div>';
+    }
+    
+    let buttons = '<div class="mt-3"><h6>Data Sanitization:</h6>';
+    
+    if (sanitizationNeeded.includes('remove_duplicates')) {
+        buttons += `
+            <button class="btn btn-warning btn-sm me-2 mb-2" 
+                    onclick="sanitizeData('${fileType}', 'remove_duplicates')">
+                <i class="fas fa-copy me-1"></i>Remove Duplicates
+            </button>
+        `;
+    }
+    
+    if (sanitizationNeeded.includes('remove_missing_ids')) {
+        buttons += `
+            <button class="btn btn-info btn-sm me-2 mb-2" 
+                    onclick="sanitizeData('${fileType}', 'remove_missing_ids')">
+                <i class="fas fa-minus-circle me-1"></i>Remove Missing IDs
+            </button>
+        `;
+    }
+    
+    if (sanitizationNeeded.includes('fill_missing_ids')) {
+        buttons += `
+            <button class="btn btn-primary btn-sm me-2 mb-2" 
+                    onclick="sanitizeData('${fileType}', 'fill_missing_ids')">
+                <i class="fas fa-plus-circle me-1"></i>Generate Missing IDs
+            </button>
+        `;
+    }
+    
+    return buttons + '</div>';
+}
+
+window.showDataStatsError = function(error) {
+    const statsSection = document.getElementById('dataStatsSection');
+    statsSection.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Error:</strong> ${error}
+            <button class="btn btn-outline-danger btn-sm ms-3" onclick="loadDataStats()">
+                <i class="fas fa-redo me-1"></i>Try Again
+            </button>
+        </div>
+    `;
+}
+
+// Main initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Load files and data stats on page load
     loadFiles();
+    loadDataStats();
     
     // Handle file uploads
     document.querySelectorAll('.upload-btn').forEach(btn => {
@@ -899,6 +1187,57 @@ document.addEventListener('DOMContentLoaded', function() {
          showAlert('Download functionality will be implemented soon', 'info');
      };
      
+     // Global function for data sanitization
+     window.sanitizeData = function(fileType, sanitizationType) {
+         if (!confirm(`Are you sure you want to ${sanitizationType.replace(/_/g, ' ')} for ${fileType} data? This action cannot be undone.`)) {
+             return;
+         }
+         
+         // Show loading state
+         const button = event.target;
+         const originalText = button.innerHTML;
+         button.disabled = true;
+         button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+         
+         fetch(`/dataset/${datasetId}/sanitize`, {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({
+                 type: sanitizationType,
+                 file_type: fileType
+             })
+         })
+         .then(response => response.json())
+         .then(data => {
+             if (data.success) {
+                 showAlert(data.message, 'success');
+                 
+                 // Reload data stats to show updated information
+                 setTimeout(() => {
+                     loadDataStats();
+                 }, 1000);
+                 
+                 // Reload files to show any updated file information
+                 setTimeout(() => {
+                     loadFiles();
+                 }, 1500);
+             } else {
+                 showAlert(data.message, 'danger');
+             }
+         })
+         .catch(error => {
+             console.error('Sanitization error:', error);
+             showAlert('Error during sanitization. Please try again.', 'danger');
+         })
+         .finally(() => {
+             // Restore button state
+             button.disabled = false;
+             button.innerHTML = originalText;
+         });
+     };
+     
      window.deleteFile = function(fileId) {
          // Show confirmation dialog with more details
          if (confirm('Are you sure you want to delete this file? This action cannot be undone and will remove the file from your dataset.')) {
@@ -1034,34 +1373,17 @@ document.addEventListener('DOMContentLoaded', function() {
          
          fileTypes.forEach(fileType => {
              if (!uploadedFlags[fileType]) {
-                 // Find the card by looking for the specific file type in the card structure
-                 // Use a more robust selector that finds the card based on position and content
-                 let card = null;
+                 // Use the specific ID to find the correct card body
+                 const cardBodyId = `${fileType}-upload-body`;
+                 const cardBody = document.getElementById(cardBodyId);
                  
-                 // First try to find by data attribute if it exists
-                 const existingSection = document.querySelector(`[data-file-type="${fileType}"]`);
-                 if (existingSection) {
-                     card = existingSection.closest('.card-body');
-                 }
-                 
-                 // If not found, try to find by card position and header content
-                 if (!card) {
-                     const cards = document.querySelectorAll('.col-md-4 .card-body');
-                     cards.forEach(c => {
-                         const header = c.closest('.card').querySelector('.card-header h6');
-                         if (header && header.textContent.toLowerCase().includes(fileType)) {
-                             card = c;
-                         }
-                     });
-                 }
-                 
-                 if (card) {
+                 if (cardBody) {
                      // Restore the upload interface
                      const capitalizedType = fileType.charAt(0).toUpperCase() + fileType.slice(1);
                      const colors = {'patients': 'primary', 'taxonomy': 'info', 'bracken': 'success'};
                      const color = colors[fileType];
                      
-                     card.innerHTML = `
+                     cardBody.innerHTML = `
                          <div class="upload-section" data-file-type="${fileType}">
                              <!-- File Upload -->
                              <div class="mb-3">
@@ -1092,9 +1414,9 @@ document.addEventListener('DOMContentLoaded', function() {
                      `;
                      
                      // Re-attach event listeners for the new elements
-                     const newUploadBtn = card.querySelector('.upload-btn');
-                     const newFileInput = card.querySelector('input[type="file"]');
-                     const newTextarea = card.querySelector('textarea');
+                     const newUploadBtn = cardBody.querySelector('.upload-btn');
+                     const newFileInput = cardBody.querySelector('input[type="file"]');
+                     const newTextarea = cardBody.querySelector('textarea');
                      
                      if (newUploadBtn) {
                          newUploadBtn.addEventListener('click', handleUpload);
@@ -1114,13 +1436,15 @@ document.addEventListener('DOMContentLoaded', function() {
                          });
                      }
                      
-                     console.log(`Restored upload section for ${fileType}`);
+                     console.log(`Restored upload section for ${fileType} to correct location`);
                  } else {
-                     console.warn(`Could not find card for ${fileType}`);
+                     console.error(`Could not find card body with ID: ${cardBodyId}`);
                  }
              }
          });
      }
 });
+
 </script>
 {% endblock %}
+

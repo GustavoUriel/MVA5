@@ -255,6 +255,17 @@ class FileValidator:
         if df.empty:
             return {'valid': False, 'error': 'File is empty'}
         
+        # Check 2: Required columns are present (case-insensitive)
+        required_columns = ['patient_id']
+        df_columns_lower = [col.lower().strip() for col in df.columns]
+        
+        missing_columns = []
+        for req_col in required_columns:
+            if req_col not in df_columns_lower:
+                missing_columns.append(req_col)
+        
+        if missing_columns:
+            errors.append(f"Missing required columns: {', '.join(missing_columns)}")
         
         # Check 3: Duplicate patient IDs (warning, not error)
         patient_id_col = self._find_column_by_name(df.columns, 'patient_id')
@@ -315,7 +326,17 @@ class FileValidator:
         if df.empty:
             return {'valid': False, 'error': 'File is empty'}
         
-
+        # Check 2: Required columns are present
+        required_columns = ['taxonomy_id', 'taxonomy']
+        df_columns_lower = [col.lower().strip() for col in df.columns]
+        
+        missing_columns = []
+        for req_col in required_columns:
+            if req_col not in df_columns_lower:
+                missing_columns.append(req_col)
+        
+        if missing_columns:
+            errors.append(f"Missing required columns: {', '.join(missing_columns)}")
         
         # Check 3: Duplicate taxonomy IDs (error - should be unique)
         self.log_user_action('taxonomy_debug', f"Columns after mapping: {list(df.columns)}", success=True)
@@ -342,7 +363,13 @@ class FileValidator:
                 # Show some example duplicates
                 duplicate_values = df[taxonomy_id_col][duplicates].head(5).tolist()
                 self.log_user_action('taxonomy_debug', f"Example duplicate values: {duplicate_values}", success=False)
+                errors.append(f"Found {duplicate_count} duplicate taxonomy IDs")
         
+        # Check 4: Missing values in critical columns
+        if taxonomy_id_col:
+            missing_taxonomy_ids = df[taxonomy_id_col].isna().sum()
+            if missing_taxonomy_ids > 0:
+                errors.append(f"Found {missing_taxonomy_ids} missing taxonomy IDs")
         
         # Convert all pandas objects to native Python types for JSON serialization
         missing_values_dict = df.isna().sum().to_dict()
@@ -380,6 +407,17 @@ class FileValidator:
         if df.empty:
             return {'valid': False, 'error': 'File is empty'}
         
+        # Check 2: Required columns are present
+        required_columns = ['taxonomy_id']
+        df_columns_lower = [col.lower().strip() for col in df.columns]
+        
+        missing_columns = []
+        for req_col in required_columns:
+            if req_col not in df_columns_lower:
+                missing_columns.append(req_col)
+        
+        if missing_columns:
+            errors.append(f"Missing required columns: {', '.join(missing_columns)}")
         
         # Check 3: Validate column naming pattern
         # Columns should be either 'taxonomy_id' or end with time suffixes (p, e, 2.4m with or without dots)
@@ -399,7 +437,20 @@ class FileValidator:
                 invalid_columns.append(col)  # Show original column name in error
                 self.log_user_action('bracken_validation_debug', f"Invalid column found: '{col}' (sanitized: '{sanitized_col}')", success=False)
         
+        if invalid_columns:
+            error_msg = f"Invalid column names found: {', '.join(invalid_columns[:5])}{'...' if len(invalid_columns) > 5 else ''}. Columns must be 'taxonomy_id' or end with time suffixes (P/p, E/e, 2.4M/2.4m with or without dots)"
+            errors.append(error_msg)
+            self.log_user_action('bracken_validation_error', error_msg, success=False)
         
+        # Check 4: Check for numeric values in measurement columns
+        measurement_columns = [col for col in df.columns if col.lower().strip() != 'taxonomy_id']
+        if measurement_columns:
+            # Test first few rows to ensure they contain numeric values
+            sample_col = measurement_columns[0]
+            try:
+                pd.to_numeric(df[sample_col], errors='coerce')
+            except:
+                errors.append(f"Measurement column '{sample_col}' contains non-numeric values")
         
         # Convert all pandas objects to native Python types for JSON serialization
         missing_values_dict = df.isna().sum().to_dict()

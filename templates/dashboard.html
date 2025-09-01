@@ -37,6 +37,13 @@
                         <div class="flex-grow-1">
                             <h5 class="card-title mb-1">Total Datasets</h5>
                             <h2 class="mb-0">{{ datasets|length }}</h2>
+                            <small class="opacity-75">
+                                {% if total_size %}
+                                    {{ "%.1f"|format(total_size / 1024 / 1024) }} MB total
+                                {% else %}
+                                    0 MB total
+                                {% endif %}
+                            </small>
                         </div>
                         <div class="ms-3">
                             <i class="fas fa-database fa-2x opacity-75"></i>
@@ -105,7 +112,7 @@
                         <div id="grid-container" class="row g-3">
                             {% for dataset in datasets %}
                                 <div class="col-md-6 col-lg-4">
-                                    <div class="card h-100 dataset-card">
+                                    <div class="card h-100 dataset-card" data-dataset-id="{{ dataset.id }}">
                                         <div class="card-body">
                                             <div class="d-flex align-items-start justify-content-between mb-2">
                                                 <h6 class="card-title mb-0">
@@ -129,6 +136,16 @@
                                                         <i class="fas fa-file me-1"></i>
                                                         {{ dataset.file_count }} files
                                                     </span>
+                                                    <span>
+                                                        <i class="fas fa-hdd me-1"></i>
+                                                        {% if dataset.total_size %}
+                                                            {{ "%.1f"|format(dataset.total_size / 1024 / 1024) }} MB
+                                                        {% else %}
+                                                            0 MB
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                                <div class="d-flex justify-content-between mt-1">
                                                     <span>
                                                         <i class="fas fa-clock me-1"></i>
                                                         {{ dataset.updated_at.strftime('%m/%d/%Y') }}
@@ -157,6 +174,7 @@
                                             <th>Name</th>
                                             <th>Status</th>
                                             <th>Files</th>
+                                            <th>Size</th>
                                             <th>Created</th>
                                             <th>Updated</th>
                                             <th>Actions</th>
@@ -182,12 +200,26 @@
                                                     </span>
                                                 </td>
                                                 <td>{{ dataset.file_count }}</td>
+                                                <td>
+                                                    {% if dataset.total_size %}
+                                                        {{ "%.1f"|format(dataset.total_size / 1024 / 1024) }} MB
+                                                    {% else %}
+                                                        0 MB
+                                                    {% endif %}
+                                                </td>
                                                 <td>{{ dataset.created_at.strftime('%m/%d/%Y') }}</td>
                                                 <td>{{ dataset.updated_at.strftime('%m/%d/%Y') }}</td>
                                                 <td>
-                                                    <a href="{{ url_for('view_dataset', dataset_id=dataset.id) }}" class="btn btn-outline-primary btn-sm">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
+                                                    <div class="btn-group" role="group">
+                                                        <a href="{{ url_for('view_dataset', dataset_id=dataset.id) }}" class="btn btn-outline-primary btn-sm" title="View Dataset">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                                onclick="showDeleteConfirmation({{ dataset.id }}, '{{ dataset.name }}')" 
+                                                                title="Delete Dataset">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         {% endfor %}
@@ -216,6 +248,51 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Dataset Confirmation Modal -->
+<div class="modal fade" id="deleteDatasetModal" tabindex="-1" aria-labelledby="deleteDatasetModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteDatasetModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Delete Dataset
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Warning: This action cannot be undone!
+                    </h6>
+                    <p class="mb-2">You are about to delete the dataset <strong id="datasetNameToDelete"></strong> and all its associated data:</p>
+                    <ul class="mb-3" id="datasetDetailsToDelete">
+                        <!-- Will be populated dynamically -->
+                    </ul>
+                    <p class="mb-0"><strong>This action is permanent and cannot be reversed.</strong></p>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="deleteConfirmation" class="form-label">
+                        To confirm deletion, please type <code>delete</code> in the box below:
+                    </label>
+                    <input type="text" class="form-control" id="deleteConfirmation" 
+                           placeholder="Type 'delete' to confirm" 
+                           oninput="checkDeleteConfirmation()">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled onclick="deleteDataset()">
+                    <i class="fas fa-trash me-1"></i>Delete Dataset
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -239,6 +316,157 @@ document.addEventListener('DOMContentLoaded', function() {
         listContainer.classList.remove('d-none');
         gridContainer.classList.add('d-none');
     });
+    
+    // Global variables for delete functionality
+    let datasetToDelete = null;
+    
+    // Global functions for dataset deletion
+    window.showDeleteConfirmation = function(datasetId, datasetName) {
+        datasetToDelete = { id: datasetId, name: datasetName };
+        
+        // Update modal content
+        document.getElementById('datasetNameToDelete').textContent = datasetName;
+        
+        // Get dataset details from the table row
+        const row = document.querySelector(`button[onclick="showDeleteConfirmation(${datasetId}, '${datasetName}')"]`).closest('tr');
+        const fileCount = row.querySelector('td:nth-child(3)').textContent;
+        const size = row.querySelector('td:nth-child(4)').textContent;
+        
+        // Populate dataset details
+        document.getElementById('datasetDetailsToDelete').innerHTML = `
+            <li><strong>${fileCount}</strong> uploaded files</li>
+            <li><strong>${size}</strong> of data</li>
+            <li>All analysis results and metadata</li>
+        `;
+        
+        // Reset confirmation input
+        document.getElementById('deleteConfirmation').value = '';
+        document.getElementById('confirmDeleteBtn').disabled = true;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('deleteDatasetModal'));
+        modal.show();
+    };
+    
+    window.checkDeleteConfirmation = function() {
+        const input = document.getElementById('deleteConfirmation');
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        
+        if (input.value.toLowerCase() === 'delete') {
+            confirmBtn.disabled = false;
+        } else {
+            confirmBtn.disabled = true;
+        }
+    };
+    
+    window.deleteDataset = function() {
+        if (!datasetToDelete) {
+            console.error('No dataset selected for deletion');
+            return;
+        }
+        
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        const input = document.getElementById('deleteConfirmation');
+        
+        // Double-check confirmation
+        if (input.value.toLowerCase() !== 'delete') {
+            showAlert('Please type "delete" to confirm deletion', 'warning');
+            return;
+        }
+        
+        // Disable button and show loading
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Deleting...';
+        
+        // Send delete request
+        fetch(`/dataset/${datasetToDelete.id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteDatasetModal'));
+                modal.hide();
+                
+                // Remove the row from the table
+                const row = document.querySelector(`button[onclick="showDeleteConfirmation(${datasetToDelete.id}, '${datasetToDelete.name}')"]`).closest('tr');
+                if (row) {
+                    row.remove();
+                }
+                
+                // Update the grid view if it exists
+                const gridCard = document.querySelector(`[data-dataset-id="${datasetToDelete.id}"]`);
+                if (gridCard) {
+                    gridCard.remove();
+                }
+                
+                // Update statistics
+                updateDashboardStats();
+                
+                // Redirect to dashboard after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showAlert(data.message, 'danger');
+                resetDeleteButton();
+            }
+        })
+        .catch(error => {
+            console.error('Delete error:', error);
+            showAlert('Error deleting dataset. Please try again.', 'danger');
+            resetDeleteButton();
+        });
+    };
+    
+    function resetDeleteButton() {
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete Dataset';
+    }
+    
+    function updateDashboardStats() {
+        // Update the total datasets count
+        const totalDatasetsCard = document.querySelector('.card.bg-primary .card-title + h2');
+        if (totalDatasetsCard) {
+            const currentCount = parseInt(totalDatasetsCard.textContent);
+            totalDatasetsCard.textContent = currentCount - 1;
+        }
+        
+        // Update ready datasets count if needed
+        const readyDatasetsCard = document.querySelector('.card.bg-success .card-title + h2');
+        if (readyDatasetsCard) {
+            // This would need more complex logic to determine if the deleted dataset was ready
+            // For now, we'll just reload the page to get accurate counts
+        }
+    }
+    
+    function showAlert(message, type) {
+        // Create alert element
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insert at the top of the content
+        const container = document.querySelector('.container');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
 });
 </script>
 {% endblock %}
