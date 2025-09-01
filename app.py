@@ -6,6 +6,7 @@ Main application entry point
 import os
 import uuid
 import time
+import json
 from flask import Flask, render_template, session, redirect, url_for, request, flash, jsonify, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -15,7 +16,8 @@ from datetime import datetime
 # import redis  # Commented out since we're using filesystem sessions
 from celery import Celery
 from dotenv import load_dotenv
-from logging_config import setup_logging, ErrorLogger, log_user_action, log_performance, PerformanceTracker
+from scripts.logging_config import setup_logging, ErrorLogger, log_user_action, log_performance, PerformanceTracker
+from scripts.file_validator import FileValidator
 
 # Load environment variables
 load_dotenv()
@@ -95,6 +97,40 @@ celery = make_celery(app)
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+def get_user_folder(user_id):
+    """Get the user folder path for a specific user"""
+    if user_id:
+        # Get user email for folder naming
+        user = User.query.get(user_id)
+        if user:
+            # Create safe folder name from email (replace special chars)
+            safe_email = user.email.replace('@', '_at_').replace('.', '_dot_').replace('-', '_')
+            user_dir = os.path.join(app.instance_path, 'users', safe_email)
+            os.makedirs(user_dir, exist_ok=True)
+            return user_dir
+    return None
+
+def get_user_upload_folder(user_id):
+    """Get the upload folder path for a specific user"""
+    if user_id:
+        user_dir = get_user_folder(user_id)
+        if user_dir:
+            upload_dir = os.path.join(user_dir, 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+            return upload_dir
+    # Fallback to global upload folder for anonymous users
+    return app.config['UPLOAD_FOLDER']
+
+def get_user_log_folder(user_id):
+    """Get the log folder path for a specific user"""
+    if user_id:
+        user_dir = get_user_folder(user_id)
+        if user_dir:
+            log_dir = os.path.join(user_dir, 'logs')
+            os.makedirs(log_dir, exist_ok=True)
+            return log_dir
+    return None
+
 # Models
 from flask_login import UserMixin
 
@@ -162,6 +198,14 @@ class DatasetFile(db.Model):
     upload_method = db.Column(db.String(50), default='file')  # file, csv_paste
     csv_content = db.Column(db.Text)  # Store CSV content if uploaded via paste
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Processing status fields
+    processing_status = db.Column(db.String(50), default='pending')  # 'pending', 'processing', 'completed', 'failed'
+    processing_started_at = db.Column(db.DateTime)
+    processing_completed_at = db.Column(db.DateTime)
+    processing_error = db.Column(db.Text)
+    processed_file_path = db.Column(db.String(500))  # Path to processed file
+    processing_summary = db.Column(db.Text)  # JSON string with processing summary
     
     def __repr__(self):
         return f'<DatasetFile {self.original_filename} ({self.file_type})>'
@@ -269,7 +313,7 @@ def upload_dataset_file(dataset_id):
             
             # Save file
             filename = f"{dataset.id}_{file_type}_{int(datetime.utcnow().timestamp())}{file_ext}"
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file_path = os.path.join(get_user_upload_folder(current_user.id), filename)
             file.save(file_path)
             
             # Get file size
@@ -293,7 +337,7 @@ def upload_dataset_file(dataset_id):
             
             # Save CSV content to file
             filename = f"{dataset.id}_{file_type}_{int(datetime.utcnow().timestamp())}.csv"
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file_path = os.path.join(get_user_upload_folder(current_user.id), filename)
             
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(csv_content)
@@ -314,32 +358,130 @@ def upload_dataset_file(dataset_id):
         else:
             raise ValueError("Invalid upload method")
         
-        # Save to database
+        # Save to database first
         db.session.add(dataset_file)
-        
-        # Update dataset status
-        if file_type == 'patients':
-            dataset.patients_file_uploaded = True
-        elif file_type == 'taxonomy':
-            dataset.taxonomy_file_uploaded = True
-        elif file_type == 'bracken':
-            dataset.bracken_file_uploaded = True
-        
-        dataset.updated_at = datetime.utcnow()
-        
-        # Update status to ready if all files are uploaded
-        if dataset.is_complete:
-            dataset.status = 'ready'
-        
         db.session.commit()
         
-        # Refresh the dataset to get updated file count and total size
-        db.session.refresh(dataset)
-        
-        # Update file count and total size after commit
-        dataset.file_count = len(dataset.files)
-        dataset.total_size = sum(f.file_size for f in dataset.files)
+        # Start file processing
+        dataset_file.processing_status = 'processing'
+        dataset_file.processing_started_at = datetime.utcnow()
         db.session.commit()
+        
+        # Process the file asynchronously
+        try:
+            validator = FileValidator(log_user_action)
+            processing_result = validator.validate_and_process_file(file_path, file_type, current_user.id)
+            
+            if processing_result['success']:
+                # Update file with processing results
+                dataset_file.processing_status = 'completed'
+                dataset_file.processing_completed_at = datetime.utcnow()
+                dataset_file.processed_file_path = processing_result['processed_file_path']
+                try:
+                    dataset_file.processing_summary = json.dumps(processing_result['summary'])
+                except TypeError as e:
+                    # Log the problematic summary for debugging
+                    ErrorLogger.log_exception(
+                        e,
+                        context="JSON serialization of processing summary",
+                        user_action=f"Serializing summary for {file_type} file",
+                        extra_data={'summary': str(processing_result['summary'])}
+                    )
+                    # Convert any remaining pandas objects to strings recursively
+                    def convert_pandas_objects(obj):
+                        if hasattr(obj, 'dtype'):  # pandas object
+                            return str(obj)
+                        elif isinstance(obj, dict):
+                            return {str(k): convert_pandas_objects(v) for k, v in obj.items()}
+                        elif isinstance(obj, list):
+                            return [convert_pandas_objects(item) for item in obj]
+                        else:
+                            return obj
+                    
+                    summary_copy = convert_pandas_objects(processing_result['summary'])
+                    dataset_file.processing_summary = json.dumps(summary_copy)
+                
+                # Update dataset status
+                if file_type == 'patients':
+                    dataset.patients_file_uploaded = True
+                elif file_type == 'taxonomy':
+                    dataset.taxonomy_file_uploaded = True
+                elif file_type == 'bracken':
+                    dataset.bracken_file_uploaded = True
+                
+                dataset.updated_at = datetime.utcnow()
+                
+                # Update status to ready if all files are uploaded
+                if dataset.is_complete:
+                    dataset.status = 'ready'
+                
+                db.session.commit()
+                
+                # Refresh the dataset to get updated file count and total size
+                db.session.refresh(dataset)
+                
+                # Update file count and total size after commit
+                dataset.file_count = len(dataset.files)
+                dataset.total_size = sum(f.file_size for f in dataset.files)
+                db.session.commit()
+                
+                log_user_action(
+                    f"file_uploaded_and_processed", 
+                    f"{file_type} file uploaded and processed successfully: {dataset_file.original_filename}",
+                    success=True
+                )
+                
+            else:
+                # Processing failed
+                dataset_file.processing_status = 'failed'
+                dataset_file.processing_completed_at = datetime.utcnow()
+                dataset_file.processing_error = processing_result['error']
+                
+                # Delete the uploaded file
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                
+                # Remove from database
+                db.session.delete(dataset_file)
+                db.session.commit()
+                
+                log_user_action(
+                    f"file_processing_failed",
+                    f"{file_type} file processing failed: {processing_result['error']}",
+                    success=False
+                )
+                
+                return jsonify({
+                    'success': False,
+                    'message': f'File validation failed: {processing_result["error"]}',
+                    'details': processing_result.get('details', {})
+                }), 400
+                
+        except Exception as e:
+            # Processing error
+            dataset_file.processing_status = 'failed'
+            dataset_file.processing_completed_at = datetime.utcnow()
+            dataset_file.processing_error = str(e)
+            
+            # Delete the uploaded file
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            
+            # Remove from database
+            db.session.delete(dataset_file)
+            db.session.commit()
+            
+            ErrorLogger.log_exception(
+                e,
+                context="File processing",
+                user_action=f"Processing {file_type} file: {dataset_file.original_filename}",
+                extra_data={'file_path': file_path, 'file_type': file_type}
+            )
+            
+            return jsonify({
+                'success': False,
+                'message': f'Error processing file: {str(e)}'
+            }), 500
         
         log_user_action(
             f"file_uploaded", 
@@ -387,6 +529,37 @@ def upload_dataset_file(dataset_id):
             'message': str(e)
         }), 400
 
+@app.route('/dataset/<int:dataset_id>/processing-status', methods=['GET'])
+@login_required
+def get_processing_status(dataset_id):
+    """Get processing status for all files in a dataset"""
+    dataset = Dataset.query.filter_by(id=dataset_id, user_id=current_user.id).first_or_404()
+    
+    processing_status = {}
+    for file in dataset.files:
+        processing_status[file.file_type] = {
+            'status': file.processing_status,
+            'started_at': file.processing_started_at.isoformat() if file.processing_started_at else None,
+            'completed_at': file.processing_completed_at.isoformat() if file.processing_completed_at else None,
+            'error': file.processing_error,
+            'summary': json.loads(file.processing_summary) if file.processing_summary else None
+        }
+    
+    return jsonify({
+        'success': True,
+        'processing_status': processing_status,
+        'dataset_status': {
+            'completion_percentage': dataset.completion_percentage,
+            'is_complete': dataset.is_complete,
+            'status': dataset.status,
+            'patients_uploaded': dataset.patients_file_uploaded,
+            'taxonomy_uploaded': dataset.taxonomy_file_uploaded,
+            'bracken_uploaded': dataset.bracken_file_uploaded,
+            'file_count': dataset.file_count,
+            'total_size': dataset.total_size
+        }
+    })
+
 @app.route('/dataset/<int:dataset_id>/delete', methods=['POST'])
 @login_required
 def delete_dataset(dataset_id):
@@ -401,7 +574,7 @@ def delete_dataset(dataset_id):
         
         # Delete all associated files from filesystem
         for file in dataset.files:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file_path = os.path.join(get_user_upload_folder(current_user.id), file.filename)
             if os.path.exists(file_path):
                 try:
                     os.remove(file_path)
@@ -657,11 +830,12 @@ def logout():
 @app.route('/api/config')
 def api_config():
     """API endpoint to get application configuration"""
+    user_upload_folder = get_user_upload_folder(current_user.id if current_user.is_authenticated else None)
     return jsonify({
         'maxFileSize': app.config['MAX_CONTENT_LENGTH'],
         'maxFileSizeMB': app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024),
         'allowedFileTypes': ['.csv', '.tsv', '.txt'],
-        'uploadFolder': app.config['UPLOAD_FOLDER']
+        'uploadFolder': user_upload_folder
     })
 
 @app.route('/api/datasets')
@@ -886,8 +1060,10 @@ def after_request(response):
     
     return response
 
-# Create upload directory
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Create directory structure
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)  # Global fallback
+os.makedirs(os.path.join(app.instance_path, 'users'), exist_ok=True)  # User folders
+os.makedirs(os.path.join(app.instance_path, 'logs', 'notLogged'), exist_ok=True)  # Anonymous logs
 
 # Create database tables
 with app.app_context():

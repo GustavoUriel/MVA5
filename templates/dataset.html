@@ -530,7 +530,12 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showAlert(data.message, 'success');
@@ -538,10 +543,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Upload successful, dataset status:', data.dataset_status);
                 updateProgress(data.dataset_status); // Update progress with response data
                 
-                // Add a small delay to ensure database is updated
-                setTimeout(() => {
-                    loadFiles(); // Refresh files table
-                }, 500);
+                // Start monitoring processing status
+                startProcessingMonitor(fileType);
+                
+                // Refresh files immediately after successful upload
+                loadFiles();
             } else {
                 showAlert(data.message, 'danger');
             }
@@ -553,6 +559,91 @@ document.addEventListener('DOMContentLoaded', function() {
         .finally(() => {
             resetButton(btn);
         });
+    }
+    
+    function startProcessingMonitor(fileType) {
+        // Show processing message
+        const uploadSection = document.querySelector(`[data-file-type="${fileType}"]`);
+        if (uploadSection) {
+            uploadSection.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-cog fa-spin fa-2x text-primary mb-3"></i>
+                    <h6 class="text-primary mb-2">Processing ${fileType} data...</h6>
+                    <p class="text-muted mb-0 small">Verifying, sanitizing, and validating your data</p>
+                    <div class="progress mt-3" style="height: 4px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Start polling for processing status
+        const pollInterval = setInterval(() => {
+            fetch(`/dataset/${datasetId}/processing-status`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const fileStatus = data.processing_status[fileType];
+                        if (fileStatus) {
+                            if (fileStatus.status === 'completed') {
+                                clearInterval(pollInterval);
+                                showProcessingSuccess(uploadSection, fileType, fileStatus);
+                            } else if (fileStatus.status === 'failed') {
+                                clearInterval(pollInterval);
+                                showProcessingError(uploadSection, fileType, fileStatus.error);
+                            }
+                            // If still processing, continue polling
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking processing status:', error);
+                });
+        }, 2000); // Poll every 2 seconds
+        
+        // Stop polling after 5 minutes (300 seconds)
+        setTimeout(() => {
+            clearInterval(pollInterval);
+        }, 300000);
+    }
+    
+    function showProcessingSuccess(uploadSection, fileType, fileStatus) {
+        uploadSection.innerHTML = `
+            <div class="text-center text-success mb-3">
+                <i class="fas fa-check-circle fa-2x"></i>
+                <p class="mt-2 mb-0">File processed successfully!</p>
+                ${fileStatus.summary ? `
+                    <div class="mt-3 small text-muted">
+                        <div>Rows: ${fileStatus.summary.total_rows}</div>
+                        <div>Columns: ${fileStatus.summary.total_columns}</div>
+                        ${fileStatus.summary.unique_patients ? `<div>Unique patients: ${fileStatus.summary.unique_patients}</div>` : ''}
+                        ${fileStatus.summary.unique_taxonomies ? `<div>Unique taxonomies: ${fileStatus.summary.unique_taxonomies}</div>` : ''}
+                        ${fileStatus.summary.unique_samples ? `<div>Unique samples: ${fileStatus.summary.unique_samples}</div>` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        // Update progress and refresh files
+        fetch(`/dataset/${datasetId}/files`)
+            .then(response => response.json())
+            .then(data => {
+                updateProgress(data.dataset_status);
+                updateFilesTable(data.files);
+            });
+    }
+    
+    function showProcessingError(uploadSection, fileType, error) {
+        uploadSection.innerHTML = `
+            <div class="text-center text-danger mb-3">
+                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                <p class="mt-2 mb-0">Processing failed</p>
+                <p class="small text-muted mt-1">${error}</p>
+            </div>
+            <button type="button" class="btn btn-outline-primary w-100" onclick="location.reload()">
+                <i class="fas fa-refresh me-2"></i>Try Again
+            </button>
+        `;
     }
     
     function updateUploadSection(uploadSection, fileType) {
@@ -567,6 +658,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function loadFiles() {
         // Show loading state
         const filesTable = document.getElementById('filesTable');
+        if (!filesTable) {
+            console.error('Files table element not found');
+            return;
+        }
+        
         filesTable.innerHTML = `
             <div class="text-center py-4">
                 <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
@@ -575,19 +671,28 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         fetch(`/dataset/${datasetId}/files`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Files data received:', data);
                 updateFilesTable(data.files);
                 updateProgress(data.dataset_status);
             })
             .catch(error => {
                 console.error('Error loading files:', error);
-                document.getElementById('filesTable').innerHTML = `
-                    <div class="text-center text-danger py-4">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
-                        <p class="mt-2">Error loading files</p>
-                    </div>
-                `;
+                if (filesTable) {
+                    filesTable.innerHTML = `
+                        <div class="text-center text-danger py-4">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                            <p class="mt-2">Error loading files</p>
+                            <small class="text-muted">${error.message}</small>
+                        </div>
+                    `;
+                }
             });
     }
     
@@ -660,10 +765,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const progressBar = document.querySelector('.progress-bar');
             const progressBadge = document.querySelector('.badge');
             
-            progressBar.style.width = datasetStatus.completion_percentage + '%';
-            progressBar.className = `progress-bar bg-${datasetStatus.is_complete ? 'success' : 'warning'}`;
-            progressBadge.className = `badge bg-${datasetStatus.is_complete ? 'success' : 'warning'}`;
-            progressBadge.textContent = datasetStatus.completion_percentage + '% Complete';
+            if (progressBar) {
+                progressBar.style.width = datasetStatus.completion_percentage + '%';
+                progressBar.className = `progress-bar bg-${datasetStatus.is_complete ? 'success' : 'warning'}`;
+            }
+            
+            if (progressBadge) {
+                progressBadge.className = `badge bg-${datasetStatus.is_complete ? 'success' : 'warning'}`;
+                progressBadge.textContent = datasetStatus.completion_percentage + '% Complete';
+            }
             
             // Update status indicators
             updateStatusIndicator('patients', datasetStatus.patients_uploaded);
@@ -720,12 +830,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const icon = indicator.querySelector('i');
             const text = indicator.querySelector('span');
             
-            if (isUploaded) {
-                icon.className = 'fas fa-check-circle text-success me-2';
-                text.className = 'text-success';
-            } else {
-                icon.className = 'fas fa-times-circle text-muted me-2';
-                text.className = 'text-muted';
+            // Check if elements exist before setting className
+            if (icon) {
+                if (isUploaded) {
+                    icon.className = 'fas fa-check-circle text-success me-2';
+                } else {
+                    icon.className = 'fas fa-times-circle text-muted me-2';
+                }
+            }
+            
+            if (text) {
+                if (isUploaded) {
+                    text.className = 'text-success';
+                } else {
+                    text.className = 'text-muted';
+                }
             }
         });
     }

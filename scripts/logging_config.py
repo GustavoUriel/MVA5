@@ -21,9 +21,15 @@ class UserAwareFormatter(logging.Formatter):
     def format(self, record):
         # Add user context to the record
         try:
-            if hasattr(current_user, 'id') and current_user.is_authenticated:
-                record.user_id = current_user.id
-                record.user_email = getattr(current_user, 'email', 'unknown')
+            # Prevent infinite logging loop by checking if we're already in a database operation
+            if (hasattr(current_user, '_sa_instance_state') and 
+                hasattr(current_user, 'is_authenticated') and 
+                current_user.is_authenticated and
+                not getattr(record, '_avoid_db_access', False)):
+                # Safely access user info without triggering database queries
+                user_id = getattr(current_user, '_sa_instance_state').key[1] if current_user._sa_instance_state.key else 'unknown'
+                record.user_id = user_id
+                record.user_email = getattr(current_user, 'email', 'unknown') if hasattr(current_user, 'email') else 'unknown'
             else:
                 record.user_id = 'anonymous'
                 record.user_email = 'anonymous'
@@ -67,20 +73,42 @@ class UserAwareFormatter(logging.Formatter):
 class UserSpecificHandler(logging.Handler):
     """Custom handler that routes logs to user-specific files"""
     
-    def __init__(self, log_dir='logs'):
+    def __init__(self, log_dir='logs', instance_path=None):
         super().__init__()
         self.log_dir = log_dir
+        self.instance_path = instance_path
         self.handlers = {}
         os.makedirs(log_dir, exist_ok=True)
-        os.makedirs(os.path.join(log_dir, 'users'), exist_ok=True)
+        os.makedirs(os.path.join(log_dir, 'notLogged'), exist_ok=True)
         os.makedirs(os.path.join(log_dir, 'system'), exist_ok=True)
+        if instance_path:
+            os.makedirs(os.path.join(instance_path, 'users'), exist_ok=True)
     
     def emit(self, record):
         try:
             # Determine which file to log to
             if hasattr(record, 'user_id') and record.user_id not in ['anonymous', 'system']:
-                log_file = os.path.join(self.log_dir, 'users', f'user_{record.user_id}.log')
+                # Get user email for folder naming
+                try:
+                    from app import User
+                    user = User.query.get(int(record.user_id))
+                    if user:
+                        # Create safe folder name from email
+                        safe_email = user.email.replace('@', '_at_').replace('.', '_dot_').replace('-', '_')
+                        user_dir = os.path.join(self.instance_path, 'users', safe_email, 'logs')
+                        os.makedirs(user_dir, exist_ok=True)
+                        log_file = os.path.join(user_dir, 'user.log')
+                    else:
+                        # Fallback to system logs if user not found
+                        log_file = os.path.join(self.log_dir, 'system', 'system.log')
+                except Exception:
+                    # Fallback to system logs if error getting user
+                    log_file = os.path.join(self.log_dir, 'system', 'system.log')
+            elif hasattr(record, 'user_id') and record.user_id == 'anonymous':
+                # Log to notLogged directory for anonymous users
+                log_file = os.path.join(self.log_dir, 'notLogged', 'anonymous.log')
             else:
+                # System logs
                 log_file = os.path.join(self.log_dir, 'system', 'system.log')
             
             # Get or create handler for this file
@@ -203,6 +231,7 @@ def setup_logging(app):
     # Create logs directory structure
     log_dir = os.path.join(app.instance_path, 'logs')
     os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(os.path.join(log_dir, 'notLogged'), exist_ok=True)
     os.makedirs(os.path.join(log_dir, 'users'), exist_ok=True)
     os.makedirs(os.path.join(log_dir, 'system'), exist_ok=True)
     os.makedirs(os.path.join(log_dir, 'errors'), exist_ok=True)
@@ -227,7 +256,7 @@ def setup_logging(app):
         root_logger.addHandler(console_handler)
     
     # 2. User-specific logging handler
-    user_handler = UserSpecificHandler(log_dir)
+    user_handler = UserSpecificHandler(log_dir, app.instance_path)
     user_handler.setLevel(logging.INFO)
     root_logger.addHandler(user_handler)
     

@@ -1,0 +1,14 @@
+when pasting a text that is over a size it says this. I want that the text max size to be 100Mb like the file max size
+
+    4:603   POST http://127.0.0.1:5005/dataset/4/upload 500 (INTERNAL SERVER ERROR)
+    handleUpload @ 4:603
+    4:627  Upload error: Error: HTTP error! status: 500
+        at 4:609:23
+    (anonymous) @ 4:627
+    Promise.catch
+    handleUpload @ 4:626
+    4:603   POST http://127.0.0.1:5005/dataset/4/upload 500 (INTERNAL SERVER ERROR)
+    handleUpload @ 4:603
+    4:627  Upload error: Error: HTTP error! status: 500
+    at 4:609:23
+
