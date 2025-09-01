@@ -900,9 +900,55 @@ document.addEventListener('DOMContentLoaded', function() {
      };
      
      window.deleteFile = function(fileId) {
-         if (confirm('Are you sure you want to delete this file?')) {
-             // TODO: Implement file deletion
-             showAlert('Delete functionality will be implemented soon', 'info');
+         // Show confirmation dialog with more details
+         if (confirm('Are you sure you want to delete this file? This action cannot be undone and will remove the file from your dataset.')) {
+             // Find the row to get file info for better user feedback
+             const row = document.querySelector(`button[onclick="deleteFile(${fileId})"]`).closest('tr');
+             const fileName = row.querySelector('td:first-child').textContent.trim();
+             
+             // Show loading state
+             const deleteBtn = document.querySelector(`button[onclick="deleteFile(${fileId})"]`);
+             const originalContent = deleteBtn.innerHTML;
+             deleteBtn.disabled = true;
+             deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+             
+             // Send delete request
+             fetch(`/dataset/${datasetId}/file/${fileId}/delete`, {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                 }
+             })
+             .then(response => response.json())
+             .then(data => {
+                 if (data.success) {
+                     showAlert(data.message, 'success');
+                     
+                     console.log('File deleted successfully, dataset status:', data.dataset_status);
+                     
+                     // Update progress and statistics
+                     updateProgress(data.dataset_status);
+                     
+                     // Refresh the files table
+                     loadFiles();
+                     
+                     // Check if we need to show upload sections again
+                     console.log('Restoring upload sections...');
+                     restoreUploadSections(data.dataset_status);
+                 } else {
+                     showAlert(data.message, 'danger');
+                     // Restore button state on error
+                     deleteBtn.disabled = false;
+                     deleteBtn.innerHTML = originalContent;
+                 }
+             })
+             .catch(error => {
+                 console.error('Delete error:', error);
+                 showAlert('Error deleting file. Please try again.', 'danger');
+                 // Restore button state on error
+                 deleteBtn.disabled = false;
+                 deleteBtn.innerHTML = originalContent;
+             });
          }
      };
      
@@ -976,6 +1022,105 @@ document.addEventListener('DOMContentLoaded', function() {
          confirmBtn.disabled = false;
          confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete Dataset';
      }
- });
+     
+     function restoreUploadSections(datasetStatus) {
+         // Restore upload sections for files that are no longer uploaded
+         const fileTypes = ['patients', 'taxonomy', 'bracken'];
+         const uploadedFlags = {
+             'patients': datasetStatus.patients_uploaded,
+             'taxonomy': datasetStatus.taxonomy_uploaded,
+             'bracken': datasetStatus.bracken_uploaded
+         };
+         
+         fileTypes.forEach(fileType => {
+             if (!uploadedFlags[fileType]) {
+                 // Find the card by looking for the specific file type in the card structure
+                 // Use a more robust selector that finds the card based on position and content
+                 let card = null;
+                 
+                 // First try to find by data attribute if it exists
+                 const existingSection = document.querySelector(`[data-file-type="${fileType}"]`);
+                 if (existingSection) {
+                     card = existingSection.closest('.card-body');
+                 }
+                 
+                 // If not found, try to find by card position and header content
+                 if (!card) {
+                     const cards = document.querySelectorAll('.col-md-4 .card-body');
+                     cards.forEach(c => {
+                         const header = c.closest('.card').querySelector('.card-header h6');
+                         if (header && header.textContent.toLowerCase().includes(fileType)) {
+                             card = c;
+                         }
+                     });
+                 }
+                 
+                 if (card) {
+                     // Restore the upload interface
+                     const capitalizedType = fileType.charAt(0).toUpperCase() + fileType.slice(1);
+                     const colors = {'patients': 'primary', 'taxonomy': 'info', 'bracken': 'success'};
+                     const color = colors[fileType];
+                     
+                     card.innerHTML = `
+                         <div class="upload-section" data-file-type="${fileType}">
+                             <!-- File Upload -->
+                             <div class="mb-3">
+                                 <label class="form-label">Upload File</label>
+                                 <input type="file" class="form-control" accept=".csv,.tsv,.txt" 
+                                        data-file-type="${fileType}" data-upload-method="file">
+                                 <div class="form-text">Supported formats: CSV, TSV, TXT</div>
+                             </div>
+                             
+                             <div class="text-center mb-3">
+                                 <span class="text-muted">or</span>
+                             </div>
+                             
+                             <!-- CSV Paste -->
+                             <div class="mb-3">
+                                 <label class="form-label">Paste CSV Data</label>
+                                 <textarea class="form-control" rows="6" placeholder="Paste your CSV data here..."
+                                           data-file-type="${fileType}" data-upload-method="csv_paste"></textarea>
+                                 <div class="form-text">Paste comma-separated values directly</div>
+                             </div>
+                             
+                             <button type="button" class="btn btn-${color} w-100 upload-btn" 
+                                     data-file-type="${fileType}">
+                                 <i class="fas fa-upload me-2"></i>
+                                 Upload ${capitalizedType} Data
+                             </button>
+                         </div>
+                     `;
+                     
+                     // Re-attach event listeners for the new elements
+                     const newUploadBtn = card.querySelector('.upload-btn');
+                     const newFileInput = card.querySelector('input[type="file"]');
+                     const newTextarea = card.querySelector('textarea');
+                     
+                     if (newUploadBtn) {
+                         newUploadBtn.addEventListener('click', handleUpload);
+                     }
+                     
+                     if (newFileInput) {
+                         newFileInput.addEventListener('change', function() {
+                             const textarea = this.closest('.upload-section').querySelector('textarea');
+                             if (textarea) textarea.value = '';
+                         });
+                     }
+                     
+                     if (newTextarea) {
+                         newTextarea.addEventListener('input', function() {
+                             const fileInput = this.closest('.upload-section').querySelector('input[type="file"]');
+                             if (fileInput) fileInput.value = '';
+                         });
+                     }
+                     
+                     console.log(`Restored upload section for ${fileType}`);
+                 } else {
+                     console.warn(`Could not find card for ${fileType}`);
+                 }
+             }
+         });
+     }
+});
 </script>
 {% endblock %}
