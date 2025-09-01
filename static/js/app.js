@@ -2,21 +2,41 @@
 
 // Global app object
 const MicrobiomeApp = {
-    // Configuration
+    // Configuration - will be loaded from server
     config: {
         apiBaseUrl: '/api',
-        maxFileSize: 16 * 1024 * 1024, // 16MB
+        maxFileSize: 16 * 1024 * 1024, // Default 16MB, will be updated from server
         allowedFileTypes: ['.csv', '.xlsx', '.xls', '.json'],
         refreshInterval: 30000 // 30 seconds
     },
 
     // Initialize the application
-    init() {
+    async init() {
+        await this.loadConfiguration();
         this.setupEventListeners();
         this.initializeTooltips();
         this.setupFormValidation();
         this.checkAuthStatus();
-        console.log('Microbiome Analysis Platform initialized');
+        console.log('Microbiome Analysis Platform initialized with config:', this.config);
+    },
+
+    // Load configuration from server
+    async loadConfiguration() {
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                const serverConfig = await response.json();
+                // Update config with server values
+                this.config.maxFileSize = serverConfig.maxFileSize;
+                this.config.maxFileSizeMB = serverConfig.maxFileSizeMB;
+                this.config.allowedFileTypes = serverConfig.allowedFileTypes;
+                console.log('Configuration loaded from server:', serverConfig);
+            } else {
+                console.warn('Failed to load server configuration, using defaults');
+            }
+        } catch (error) {
+            console.warn('Error loading server configuration:', error);
+        }
     },
 
     // Setup global event listeners
@@ -122,7 +142,8 @@ const MicrobiomeApp = {
         Array.from(files).forEach(file => {
             // Check file size
             if (file.size > this.config.maxFileSize) {
-                errors.push(`${file.name} is too large. Maximum size is 16MB.`);
+                const maxSizeMB = this.config.maxFileSizeMB || (this.config.maxFileSize / (1024 * 1024));
+                errors.push(`${file.name} is too large. Maximum size is ${maxSizeMB}MB.`);
                 return;
             }
 
@@ -369,7 +390,9 @@ const DatasetManager = {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    MicrobiomeApp.init();
+    MicrobiomeApp.init().catch(error => {
+        console.error('Failed to initialize MicrobiomeApp:', error);
+    });
     
     // Page-specific initialization
     const currentPage = document.body.getAttribute('data-page');

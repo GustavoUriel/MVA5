@@ -35,7 +35,7 @@ app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'microbiome:'
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 100 * 1024 * 1024))  # 100MB
 
 # Google OAuth Configuration
 app.config['GOOGLE_CLIENT_ID'] = os.environ.get('GOOGLE_CLIENT_ID', 'dummy-client-id')
@@ -49,7 +49,7 @@ app.config['CELERY_RESULT_BACKEND'] = os.environ.get('CELERY_RESULT_BACKEND', 'r
 # Initialize extensions
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-login_manager.login_view = 'auth.login'
+login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
 Session(app)
@@ -126,8 +126,45 @@ class Dataset(db.Model):
     file_count = db.Column(db.Integer, default=0)
     total_size = db.Column(db.BigInteger, default=0)  # in bytes
     
+    # Table file status
+    patients_file_uploaded = db.Column(db.Boolean, default=False)
+    taxonomy_file_uploaded = db.Column(db.Boolean, default=False)
+    bracken_file_uploaded = db.Column(db.Boolean, default=False)
+    
+    # Relationships
+    files = db.relationship('DatasetFile', backref='dataset', lazy=True, cascade='all, delete-orphan')
+    
     def __repr__(self):
         return f'<Dataset {self.name}>'
+    
+    @property
+    def is_complete(self):
+        """Check if all required files are uploaded"""
+        return (self.patients_file_uploaded and 
+                self.taxonomy_file_uploaded and 
+                self.bracken_file_uploaded)
+    
+    @property
+    def completion_percentage(self):
+        """Calculate completion percentage based on uploaded files"""
+        uploaded = sum([self.patients_file_uploaded, 
+                       self.taxonomy_file_uploaded, 
+                       self.bracken_file_uploaded])
+        return int((uploaded / 3) * 100)
+
+class DatasetFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    dataset_id = db.Column(db.Integer, db.ForeignKey('dataset.id'), nullable=False)
+    file_type = db.Column(db.String(50), nullable=False)  # patients, taxonomy, bracken
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    file_size = db.Column(db.BigInteger, nullable=False)
+    upload_method = db.Column(db.String(50), default='file')  # file, csv_paste
+    csv_content = db.Column(db.Text)  # Store CSV content if uploaded via paste
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<DatasetFile {self.original_filename} ({self.file_type})>'
 
 # Routes
 @app.route('/')
@@ -201,6 +238,246 @@ def view_dataset(dataset_id):
     """View a specific dataset"""
     dataset = Dataset.query.filter_by(id=dataset_id, user_id=current_user.id).first_or_404()
     return render_template('dataset.html', dataset=dataset)
+
+@app.route('/dataset/<int:dataset_id>/upload', methods=['POST'])
+@login_required
+def upload_dataset_file(dataset_id):
+    """Upload a file to a dataset"""
+    dataset = Dataset.query.filter_by(id=dataset_id, user_id=current_user.id).first_or_404()
+    
+    try:
+        file_type = request.form.get('file_type')
+        upload_method = request.form.get('upload_method', 'file')
+        
+        if file_type not in ['patients', 'taxonomy', 'bracken']:
+            raise ValueError("Invalid file type")
+        
+        if upload_method == 'file':
+            # Handle file upload
+            if 'file' not in request.files:
+                raise ValueError("No file provided")
+            
+            file = request.files['file']
+            if file.filename == '':
+                raise ValueError("No file selected")
+            
+            # Validate file extension
+            allowed_extensions = {'.csv', '.tsv', '.txt'}
+            file_ext = os.path.splitext(file.filename)[1].lower()
+            if file_ext not in allowed_extensions:
+                raise ValueError(f"Invalid file type. Allowed: {', '.join(allowed_extensions)}")
+            
+            # Save file
+            filename = f"{dataset.id}_{file_type}_{int(datetime.utcnow().timestamp())}{file_ext}"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            
+            # Get file size
+            file_size = os.path.getsize(file_path)
+            
+            # Create database record
+            dataset_file = DatasetFile(
+                dataset_id=dataset.id,
+                file_type=file_type,
+                filename=filename,
+                original_filename=file.filename,
+                file_size=file_size,
+                upload_method='file'
+            )
+            
+        elif upload_method == 'csv_paste':
+            # Handle CSV paste
+            csv_content = request.form.get('csv_content', '').strip()
+            if not csv_content:
+                raise ValueError("No CSV content provided")
+            
+            # Save CSV content to file
+            filename = f"{dataset.id}_{file_type}_{int(datetime.utcnow().timestamp())}.csv"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(csv_content)
+            
+            file_size = len(csv_content.encode('utf-8'))
+            
+            # Create database record
+            dataset_file = DatasetFile(
+                dataset_id=dataset.id,
+                file_type=file_type,
+                filename=filename,
+                original_filename=f"{file_type}_data.csv",
+                file_size=file_size,
+                upload_method='csv_paste',
+                csv_content=csv_content
+            )
+        
+        else:
+            raise ValueError("Invalid upload method")
+        
+        # Save to database
+        db.session.add(dataset_file)
+        
+        # Update dataset status
+        if file_type == 'patients':
+            dataset.patients_file_uploaded = True
+        elif file_type == 'taxonomy':
+            dataset.taxonomy_file_uploaded = True
+        elif file_type == 'bracken':
+            dataset.bracken_file_uploaded = True
+        
+        dataset.updated_at = datetime.utcnow()
+        
+        # Update status to ready if all files are uploaded
+        if dataset.is_complete:
+            dataset.status = 'ready'
+        
+        db.session.commit()
+        
+        # Refresh the dataset to get updated file count and total size
+        db.session.refresh(dataset)
+        
+        # Update file count and total size after commit
+        dataset.file_count = len(dataset.files)
+        dataset.total_size = sum(f.file_size for f in dataset.files)
+        db.session.commit()
+        
+        log_user_action(
+            f"file_uploaded", 
+            f"Dataset: {dataset.name}, File: {dataset_file.original_filename}, Type: {file_type}", 
+            success=True
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'{file_type.title()} file uploaded successfully',
+            'file_info': {
+                'id': dataset_file.id,
+                'filename': dataset_file.original_filename,
+                'size': dataset_file.file_size,
+                'uploaded_at': dataset_file.uploaded_at.isoformat()
+            },
+            'dataset_status': {
+                'completion_percentage': dataset.completion_percentage,
+                'is_complete': dataset.is_complete,
+                'status': dataset.status,
+                'patients_uploaded': dataset.patients_file_uploaded,
+                'taxonomy_uploaded': dataset.taxonomy_file_uploaded,
+                'bracken_uploaded': dataset.bracken_file_uploaded,
+                'file_count': dataset.file_count,
+                'total_size': dataset.total_size
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        ErrorLogger.log_exception(
+            e,
+            context=f"Uploading {file_type} file to dataset",
+            user_action=f"User uploading file to dataset '{dataset.name}'",
+            extra_data={
+                'dataset_id': dataset.id,
+                'file_type': file_type,
+                'upload_method': upload_method
+            }
+        )
+        log_user_action("file_upload_failed", f"Dataset: {dataset.name}, Type: {file_type}", success=False)
+        
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+@app.route('/dataset/<int:dataset_id>/delete', methods=['POST'])
+@login_required
+def delete_dataset(dataset_id):
+    """Delete a dataset and all its files"""
+    dataset = Dataset.query.filter_by(id=dataset_id, user_id=current_user.id).first_or_404()
+    
+    try:
+        # Get dataset info for logging
+        dataset_name = dataset.name
+        file_count = len(dataset.files)
+        total_size = sum(f.file_size for f in dataset.files)
+        
+        # Delete all associated files from filesystem
+        for file in dataset.files:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError as e:
+                    ErrorLogger.log_warning(
+                        f"Could not delete file {file.filename}: {e}",
+                        context="Dataset deletion",
+                        user_action=f"User deleting dataset '{dataset_name}'",
+                        extra_data={'file_path': file_path, 'error': str(e)}
+                    )
+        
+        # Delete dataset from database (cascade will delete files)
+        db.session.delete(dataset)
+        db.session.commit()
+        
+        log_user_action(
+            "dataset_deleted", 
+            f"Dataset: {dataset_name} (files: {file_count}, size: {total_size} bytes)", 
+            success=True
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Dataset "{dataset_name}" deleted successfully',
+            'redirect_url': url_for('dashboard')
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        ErrorLogger.log_exception(
+            e,
+            context=f"Deleting dataset {dataset_id}",
+            user_action=f"User trying to delete dataset '{dataset.name}'",
+            extra_data={
+                'dataset_id': dataset_id,
+                'dataset_name': dataset.name,
+                'file_count': len(dataset.files)
+            }
+        )
+        log_user_action("dataset_deletion_failed", f"Dataset: {dataset.name}", success=False)
+        
+        return jsonify({
+            'success': False,
+            'message': f'Error deleting dataset: {str(e)}'
+        }), 500
+
+@app.route('/dataset/<int:dataset_id>/files')
+@login_required
+def get_dataset_files(dataset_id):
+    """Get files for a dataset"""
+    dataset = Dataset.query.filter_by(id=dataset_id, user_id=current_user.id).first_or_404()
+    
+    files = []
+    for file in dataset.files:
+        files.append({
+            'id': file.id,
+            'file_type': file.file_type,
+            'filename': file.original_filename,
+            'size': file.file_size,
+            'upload_method': file.upload_method,
+            'uploaded_at': file.uploaded_at.isoformat()
+        })
+    
+    return jsonify({
+        'files': files,
+        'dataset_status': {
+            'completion_percentage': dataset.completion_percentage,
+            'is_complete': dataset.is_complete,
+            'status': dataset.status,
+            'patients_uploaded': dataset.patients_file_uploaded,
+            'taxonomy_uploaded': dataset.taxonomy_file_uploaded,
+            'bracken_uploaded': dataset.bracken_file_uploaded,
+            'file_count': dataset.file_count,
+            'total_size': dataset.total_size
+        }
+    })
 
 # Authentication routes
 @app.route('/auth/login')
@@ -377,6 +654,16 @@ def logout():
         return redirect(url_for('index'))
 
 # API routes
+@app.route('/api/config')
+def api_config():
+    """API endpoint to get application configuration"""
+    return jsonify({
+        'maxFileSize': app.config['MAX_CONTENT_LENGTH'],
+        'maxFileSizeMB': app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024),
+        'allowedFileTypes': ['.csv', '.tsv', '.txt'],
+        'uploadFolder': app.config['UPLOAD_FOLDER']
+    })
+
 @app.route('/api/datasets')
 @login_required
 def api_datasets():
@@ -457,17 +744,21 @@ def not_found(error):
 @app.errorhandler(413)
 def file_too_large(error):
     """Handle file too large errors"""
+    max_size_mb = app.config.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024) // (1024 * 1024)
     ErrorLogger.log_exception(
         error,
         context="File upload too large (413)",
         user_action="User trying to upload file",
         extra_data={
             'max_content_length': app.config.get('MAX_CONTENT_LENGTH'),
+            'max_size_mb': max_size_mb,
             'content_length': request.content_length
         }
     )
-    log_user_action("error_413", "File upload too large", success=False)
-    return render_template('error.html', error='File too large', code=413), 413
+    log_user_action("error_413", f"File upload too large (max: {max_size_mb}MB)", success=False)
+    return render_template('error.html', 
+                         error=f'File too large. Maximum file size is {max_size_mb}MB.', 
+                         code=413), 413
 
 @app.errorhandler(429)
 def rate_limit_exceeded(error):
