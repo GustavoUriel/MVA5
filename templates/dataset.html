@@ -1007,6 +1007,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <th>Size</th>
                             <th>Upload Method</th>
                             <th>Uploaded</th>
+                            <th>Modified</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -1029,7 +1030,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </span>
                                 </td>
                                 <td>${new Date(file.uploaded_at).toLocaleDateString()}</td>
+                                <td>${new Date(file.modified_at).toLocaleDateString()}</td>
                                 <td>
+                                    <button class="btn btn-sm btn-outline-warning" onclick="editTable('${file.file_type}')" title="Edit Table">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-outline-primary" onclick="downloadFile(${file.id})">
                                         <i class="fas fa-download"></i>
                                     </button>
@@ -1289,6 +1294,11 @@ document.addEventListener('DOMContentLoaded', function() {
                  deleteBtn.innerHTML = originalContent;
              });
          }
+     };
+     
+     window.editTable = function(tableType) {
+         // Navigate to the edit table page
+         window.location.href = `/api/dataset/${datasetId}/table/${tableType}`;
      };
      
      // Delete Dataset Functions - Make them globally accessible

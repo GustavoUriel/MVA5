@@ -198,6 +198,7 @@ class DatasetFile(db.Model):
     upload_method = db.Column(db.String(50), default='file')  # file, csv_paste
     csv_content = db.Column(db.Text)  # Store CSV content if uploaded via paste
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    modified_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Processing status fields
     processing_status = db.Column(db.String(50), default='pending')  # 'pending', 'processing', 'completed', 'failed'
@@ -209,6 +210,11 @@ class DatasetFile(db.Model):
     
     def __repr__(self):
         return f'<DatasetFile {self.original_filename} ({self.file_type})>'
+    
+    def update_modified_timestamp(self):
+        """Update the modified_at timestamp to current time"""
+        self.modified_at = datetime.utcnow()
+        return self
 
 # Routes
 @app.route('/')
@@ -656,7 +662,8 @@ def get_dataset_files(dataset_id):
             'filename': file.original_filename,
             'size': file.file_size,
             'upload_method': file.upload_method,
-            'uploaded_at': file.uploaded_at.isoformat()
+            'uploaded_at': file.uploaded_at.isoformat(),
+            'modified_at': file.modified_at.isoformat()
         })
     
     return jsonify({
