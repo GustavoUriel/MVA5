@@ -1,12 +1,52 @@
-from flask import Flask, jsonify, render_template, send_from_directory, request
+''' Description for IA:
+
+Create an api endpoint that uses the functions in this file
+
+
+
+
+@app.route("/api/table/data")
+def api_table():
+  return jsonify(build_table_data(csv_file=DATA_PATH))
+
+
+@app.route("/api/table/schema")
+def api_table_schema():
+  return jsonify(build_schema(csv_file=DATA_PATH))
+
+
+@app.route("/api/table/save", methods=['POST'])
+def save(csv_file=DATA_PATH):
+  try:
+    data = request.get_json()
+    if not data:
+      return jsonify({"status": "error", "message": "No data received"}), 400
+    save_table(data=data, csv_file=csv_file)
+    return jsonify({"status": "success", "message": "Data saved successfully"}), 200
+  except Exception as e:
+    print(f"Error processing request: {str(e)}")
+    return jsonify({"status": "error", "message": f"Error processing request: {str(e)}"}), 500
+
+'''
+
+
+import colorsys
+from flask import jsonify
 import pandas as pd
 import re
-import os
+import json
 
-#@app.route("/api/patients")
-def api_table_data(data_path):
-  # return data with the same unique column names used by the schema
-  full = pd.read_csv(data_path)
+
+def build_table_data(csv_file):
+  """Read CSV and return sanitized list of records suitable for JSON response.
+
+  Mirrors the column sanitization used by build_schema so field names match.
+  """
+
+  if csv_file is None:
+    return []
+
+  full = pd.read_csv(csv_file)
   # deduplicate & sanitize columns the same way build_schema does
   cols = list(full.columns)
 
@@ -25,29 +65,33 @@ def api_table_data(data_path):
       new = base
     fields.append(new)
   full.columns = fields
-  # replace NaN with None for clean JSON
+
   # convert to list of plain Python records and replace any missing values with None
   records = full.to_dict(orient="records")
-  # sanitize values (convert numpy types and NaN to None)
-  
-  # Clean the records by replacing NaN values with None
-  cleaned_records = []
-  for record in records:
-    cleaned_record = {}
-    for key, value in record.items():
-      if pd.isna(value):
-        cleaned_record[key] = None
-      elif isinstance(value, (int, float)):
-        # Convert numpy types to Python types
-        cleaned_record[key] = float(value) if isinstance(value, float) else int(value)
-      else:
-        cleaned_record[key] = str(value) if value is not None else None
-    cleaned_records.append(cleaned_record)
-  
-  return cleaned_records
+
+  def sanitize_value(v):
+    try:
+      if pd.isna(v):
+        return None
+    except Exception:
+      pass
+    # convert numpy types to native python
+    if hasattr(v, 'item'):
+      try:
+        return v.item()
+      except Exception:
+        return v
+    return v
+
+  sanitized = []
+  for r in records:
+    nr = {k: sanitize_value(v) for k, v in r.items()}
+    sanitized.append(nr)
+
+  return sanitized
 
 
-def api_schema(sample_rows=200, visible_limit=20, data_path=None):
+def build_schema(sample_rows=200, visible_limit=12, csv_file=None):
   """Build a simple schema from the CSV header and a small sample of rows.
 
   - Fields are created from CSV column names. If the same column name appears
@@ -57,13 +101,10 @@ def api_schema(sample_rows=200, visible_limit=20, data_path=None):
   - Any column name containing "id" is given an initial ascending sort and a
     hyperlink template that searches the value on Google (changeable).
   """
-  import colorsys
-  import pandas as pd
-  import re
+  if csv_file is None:
+    return []
 
-  if data_path is None:
-    data_path = os.path.join(os.path.dirname(__file__), '..', 'instance', 'patients.csv')
-  df = pd.read_csv(data_path, nrows=sample_rows)
+  df = pd.read_csv(csv_file, nrows=sample_rows)
   orig_cols = list(df.columns)
 
   # sanitize base names (remove dots and non-word chars) then deduplicate
@@ -202,3 +243,76 @@ def api_schema(sample_rows=200, visible_limit=20, data_path=None):
   return {"columns": schema_cols}
 
 
+def save_table(data=None, csv_file=None):
+  # Save modified data (filtered and edited) to a new CSV file
+  try:
+    if not data:
+      return jsonify({"status": "error", "message": "No data received"}), 400
+    if not csv_file:
+      return jsonify({"status": "error", "message": "No csv_file name received"}), 400
+
+    modified_data = data.get('data', [])
+    has_changes = data.get('hasChanges', False)
+    change_log = data.get('changeLog', [])
+    timestamp = data.get('timestamp', '')
+
+    if not modified_data:
+      return jsonify({"status": "error", "message": "No data to save"}), 400
+
+    if not has_changes:
+      return jsonify({"status": "warning", "message": "No modified data to save"}), 400
+
+    # Convert back to DataFrame
+    df = pd.DataFrame(modified_data)
+
+    # Create a timestamp for the filename and preserve original CSV name when possible
+    from datetime import datetime
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Attempt to derive original filename from a module-level known path if available
+    try:
+      # fall back to a sensible default if not set
+      orig_path = csv_file
+      import os as _os
+      orig_dir, orig_file = _os.path.split(orig_path)
+      base, ext = _os.path.splitext(orig_file)
+    except Exception:
+      return jsonify({"status": "error", "message": "Bad csv_file name/path received"}), 400
+
+#    output_filename = _os.path.join(
+#        orig_dir, f"{base} mod {timestamp_str}{ext}")
+    output_filename = orig_path
+    change_log_filename = _os.path.join(
+        orig_dir, f"{base} changes {timestamp_str}.json")
+
+  # Save the modified dataset as csv
+    df.to_csv(output_filename, index=False)
+
+  # Also save change log
+
+    with open(change_log_filename, 'w') as f:
+      json.dump({
+          'changes': change_log,
+          'total_changes': len(change_log),
+          'timestamp': timestamp,
+          'saved_at': datetime.now().isoformat()
+      }, f, indent=2)
+
+    return jsonify({
+        "status": "success",
+        "message": f"Successfully saved {len(df)} records",
+        "filename": output_filename,
+        "total_records": len(df),
+        "has_changes": has_changes,
+        "total_changes": len(change_log),
+        "change_log_file": change_log_filename if has_changes else None,
+        "timestamp": timestamp,
+        "saved_at": datetime.now().isoformat()
+    })
+
+  except Exception as e:
+    print(f"Error saving table data: {str(e)}")  # For debugging
+    return jsonify({
+        "status": "error",
+        "message": f"Failed to save data: {str(e)}"
+    }), 500
