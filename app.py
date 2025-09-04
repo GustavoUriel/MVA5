@@ -1235,7 +1235,10 @@ def rename_dataset_file(dataset_id, file_id):
 
     return jsonify({
         'success': True,
-        'message': f'File renamed to "{new_filename}" successfully'
+        'message': f'File renamed to "{new_filename}" successfully',
+        'old_filename': old_original_filename,
+        'new_filename': new_filename,
+        'file_type': dataset_file.file_type
     })
 
   except Exception as e:
