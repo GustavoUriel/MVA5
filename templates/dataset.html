@@ -216,16 +216,17 @@
                                             Upload Patients Data
                                         </button>
                                         
-                                        <!-- Status/Results Line -->
-                                        <div class="mt-2">
-                                            <small class="text-muted" id="patients-status">
+                                        <!-- Status/Results Box -->
+                                        <div class="mt-3" id="patients-status-container">
+                                            <div class="alert alert-light border" role="alert" id="patients-status" style="padding: 0.75rem 1rem;">
                                                 {% if dataset.patients_file_uploaded %}
-                                                    <i class="fas fa-check-circle text-success me-1"></i>
-                                                    File uploaded successfully
+                                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                                    <strong>File uploaded successfully</strong>
                                                 {% else %}
-                                                    No actions
+                                                    <i class="fas fa-info-circle text-muted me-2"></i>
+                                                    <span class="text-muted">No actions yet</span>
                                                 {% endif %}
-                                            </small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -257,16 +258,17 @@
                                             Upload Taxonomy Data
                                         </button>
                                         
-                                        <!-- Status/Results Line -->
-                                        <div class="mt-2">
-                                            <small class="text-muted" id="taxonomy-status">
+                                        <!-- Status/Results Box -->
+                                        <div class="mt-3" id="taxonomy-status-container">
+                                            <div class="alert alert-light border" role="alert" id="taxonomy-status" style="padding: 0.75rem 1rem;">
                                                 {% if dataset.taxonomy_file_uploaded %}
-                                                    <i class="fas fa-check-circle text-success me-1"></i>
-                                                    File uploaded successfully
+                                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                                    <strong>File uploaded successfully</strong>
                                                 {% else %}
-                                                    No actions
+                                                    <i class="fas fa-info-circle text-muted me-2"></i>
+                                                    <span class="text-muted">No actions yet</span>
                                                 {% endif %}
-                                            </small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -298,16 +300,17 @@
                                             Upload Bracken Results
                                         </button>
                                         
-                                        <!-- Status/Results Line -->
-                                        <div class="mt-2">
-                                            <small class="text-muted" id="bracken-status">
+                                        <!-- Status/Results Box -->
+                                        <div class="mt-3" id="bracken-status-container">
+                                            <div class="alert alert-light border" role="alert" id="bracken-status" style="padding: 0.75rem 1rem;">
                                                 {% if dataset.bracken_file_uploaded %}
-                                                    <i class="fas fa-check-circle text-success me-1"></i>
-                                                    File uploaded successfully
+                                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                                    <strong>File uploaded successfully</strong>
                                                 {% else %}
-                                                    No actions
+                                                    <i class="fas fa-info-circle text-muted me-2"></i>
+                                                    <span class="text-muted">No actions yet</span>
                                                 {% endif %}
-                                            </small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -812,13 +815,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function startProcessingMonitor(fileType) {
-        // Update only the status line with processing message, keep upload form visible
+        // Update the status alert box with processing message, keep upload form visible
         const statusElement = document.getElementById(`${fileType}-status`);
         if (statusElement) {
+            statusElement.className = 'alert alert-info border';
             statusElement.innerHTML = `
-                <i class="fas fa-cog fa-spin text-primary me-1"></i>
-                Processing ${fileType} data... Verifying, sanitizing, and validating your data
-                <div class="progress mt-1" style="height: 3px;">
+                <i class="fas fa-cog fa-spin text-primary me-2"></i>
+                <strong>Processing ${fileType} data...</strong>
+                <div class="mt-2">Verifying, sanitizing, and validating your data</div>
+                <div class="progress mt-2" style="height: 4px;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 100%"></div>
                 </div>
             `;
@@ -855,16 +860,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showProcessingSuccess(uploadSection, fileType, fileStatus) {
-        // Update only the status line, keep the upload form visible
+        // Update the status alert box with success message, keep upload form visible
         const statusElement = document.getElementById(`${fileType}-status`);
         if (statusElement) {
-            let statusText = '<i class="fas fa-check-circle text-success me-1"></i>File processed successfully!';
+            statusElement.className = 'alert alert-success border';
+            let statusText = '<i class="fas fa-check-circle me-2"></i><strong>File processed successfully!</strong>';
             if (fileStatus.summary) {
-                statusText += ` (Rows: ${fileStatus.summary.total_rows}, Columns: ${fileStatus.summary.total_columns}`;
+                statusText += `<div class="mt-2 small">Rows: ${fileStatus.summary.total_rows}, Columns: ${fileStatus.summary.total_columns}`;
                 if (fileStatus.summary.unique_patients) statusText += `, Patients: ${fileStatus.summary.unique_patients}`;
                 if (fileStatus.summary.unique_taxonomies) statusText += `, Taxonomies: ${fileStatus.summary.unique_taxonomies}`;
                 if (fileStatus.summary.unique_samples) statusText += `, Samples: ${fileStatus.summary.unique_samples}`;
-                statusText += ')';
+                statusText += '</div>';
             }
             statusElement.innerHTML = statusText;
         }
@@ -879,23 +885,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showProcessingError(uploadSection, fileType, error) {
-        // Update only the status line, keep the upload form visible
+        // Update the status alert box with error message, keep upload form visible
         const statusElement = document.getElementById(`${fileType}-status`);
         if (statusElement) {
+            statusElement.className = 'alert alert-danger border';
             statusElement.innerHTML = `
-                <i class="fas fa-exclamation-triangle text-danger me-1"></i>
-                Processing failed: ${error}
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Processing failed:</strong> ${error}
             `;
         }
     }
     
     function updateUploadSection(uploadSection, fileType) {
-        // Update only the status line, keep the upload form visible
+        // Update the status alert box with upload success message
         const statusElement = document.getElementById(`${fileType}-status`);
         if (statusElement) {
+            statusElement.className = 'alert alert-success border';
             statusElement.innerHTML = `
-                <i class="fas fa-check-circle text-success me-1"></i>
-                File uploaded successfully
+                <i class="fas fa-check-circle me-2"></i>
+                <strong>File uploaded successfully</strong>
             `;
         }
     }
@@ -973,7 +981,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <tr>
                                 <td>
                                     <i class="fas fa-file-csv me-2 text-primary"></i>
-                                    ${file.filename}
+                                    ${file.filename.replace(/\.csv$/i, '')}
                                 </td>
                                 <td>
                                     <span class="badge bg-${getFileTypeColor(file.file_type)}">
@@ -994,6 +1002,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </button>
                                     <button class="btn btn-sm btn-outline-warning me-1" onclick="editTable('${file.id}')" title="Edit Table">
                                         <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success me-1" onclick="duplicateFile(${file.id})" title="Duplicate File">
+                                        <i class="fas fa-copy"></i>
                                     </button>
                                     <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadFile(${file.id})">
                                         <i class="fas fa-download"></i>
@@ -1256,6 +1267,59 @@ document.addEventListener('DOMContentLoaded', function() {
          }
      };
      
+     window.duplicateFile = function(fileId) {
+         // Show confirmation dialog
+         if (confirm('Are you sure you want to duplicate this file? A copy will be created with "_copy" appended to the filename.')) {
+             // Find the row to get file info for better user feedback
+             const row = document.querySelector(`button[onclick="duplicateFile(${fileId})"]`).closest('tr');
+             const fileName = row.querySelector('td:first-child').textContent.trim();
+             
+             // Show loading state
+             const duplicateBtn = document.querySelector(`button[onclick="duplicateFile(${fileId})"]`);
+             const originalContent = duplicateBtn.innerHTML;
+             duplicateBtn.disabled = true;
+             duplicateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+             
+             // Send duplicate request
+             fetch(`/dataset/${datasetId}/file/${fileId}/duplicate`, {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                 }
+             })
+             .then(response => response.json())
+             .then(data => {
+                 if (data.success) {
+                     showAlert(data.message, 'success');
+                     
+                     console.log('File duplicated successfully, dataset status:', data.dataset_status);
+                     
+                     // Update progress and statistics
+                     updateProgress(data.dataset_status);
+                     
+                     // Refresh the files table
+                     loadFiles();
+                     
+                     // Check if we need to show upload sections again
+                     console.log('Restoring upload sections...');
+                     restoreUploadSections(data.dataset_status);
+                 } else {
+                     showAlert(data.message, 'danger');
+                     // Restore button state on error
+                     duplicateBtn.disabled = false;
+                     duplicateBtn.innerHTML = originalContent;
+                 }
+             })
+             .catch(error => {
+                 console.error('Duplicate error:', error);
+                 showAlert('Error duplicating file. Please try again.', 'danger');
+                 // Restore button state on error
+                 duplicateBtn.disabled = false;
+                 duplicateBtn.innerHTML = originalContent;
+             });
+         }
+     };
+     
      window.renameFile = function(fileId, currentName, fileType) {
          // Extract the base name without extension for better UX
          const lastDotIndex = currentName.lastIndexOf('.');
@@ -1297,12 +1361,13 @@ document.addEventListener('DOMContentLoaded', function() {
              if (data.success) {
                  showAlert(data.message, 'success');
                  
-                 // Update the status line with rename message
+                 // Update the status alert box with rename message
                  const statusElement = document.getElementById(`${data.file_type}-status`);
                  if (statusElement) {
+                     statusElement.className = 'alert alert-info border';
                      statusElement.innerHTML = `
-                         <i class="fas fa-edit text-info me-1"></i>
-                         ${data.file_type} file "${data.old_filename}" renamed to "${data.new_filename}"
+                         <i class="fas fa-edit me-2"></i>
+                         <strong>${data.file_type} file "${data.old_filename}" renamed to "${data.new_filename}"</strong>
                      `;
                  }
                  
@@ -1435,11 +1500,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                  Upload ${capitalizedType} Data
                              </button>
                              
-                             <!-- Status/Results Line -->
-                             <div class="mt-2">
-                                 <small class="text-muted" id="${fileType}-status">
-                                     No actions
-                                 </small>
+                             <!-- Status/Results Box -->
+                             <div class="mt-3" id="${fileType}-status-container">
+                                 <div class="alert alert-light border" role="alert" id="${fileType}-status" style="padding: 0.75rem 1rem;">
+                                     <i class="fas fa-info-circle text-muted me-2"></i>
+                                     <span class="text-muted">No actions yet</span>
+                                 </div>
                              </div>
                          </div>
                      `;

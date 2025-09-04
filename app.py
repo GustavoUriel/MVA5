@@ -8,6 +8,7 @@ import os
 import uuid
 import time
 import json
+import shutil
 from flask import Flask, render_template, session, redirect, url_for, request, flash, jsonify, g, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -1064,13 +1065,16 @@ def delete_dataset_file(dataset_id, file_id):
                 'file_path': dataset_file.processed_file_path, 'error': str(e)}
         )
 
-    # Update dataset file status flags
-    if file_type == 'patients':
-      dataset.patients_file_uploaded = False
-    elif file_type == 'taxonomy':
-      dataset.taxonomy_file_uploaded = False
-    elif file_type == 'bracken':
-      dataset.bracken_file_uploaded = False
+    # Update dataset file status flags - only reset if no files of this type remain
+    remaining_files_of_type = [
+        f for f in dataset.files if f.id != file_id and f.file_type == file_type]
+    if not remaining_files_of_type:
+      if file_type == 'patients':
+        dataset.patients_file_uploaded = False
+      elif file_type == 'taxonomy':
+        dataset.taxonomy_file_uploaded = False
+      elif file_type == 'bracken':
+        dataset.bracken_file_uploaded = False
 
     # Update dataset status
     if not dataset.is_complete:
@@ -1130,6 +1134,117 @@ def delete_dataset_file(dataset_id, file_id):
     return jsonify({
         'success': False,
         'message': f'Error deleting file: {str(e)}'
+    }), 500
+
+
+@app.route('/dataset/<int:dataset_id>/file/<int:file_id>/duplicate', methods=['POST'])
+@login_required
+def duplicate_dataset_file(dataset_id, file_id):
+  """Duplicate a specific file in a dataset"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  dataset_file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+
+  try:
+    # Get file info
+    original_filename = dataset_file.original_filename
+    filename = dataset_file.filename
+    file_type = dataset_file.file_type
+    file_size = dataset_file.file_size
+
+    # Generate new filename with "_copy" suffix
+    name_parts = original_filename.rsplit('.', 1)
+    if len(name_parts) == 2:
+      base_name, extension = name_parts
+      new_original_filename = f"{base_name}_copy.{extension}"
+    else:
+      new_original_filename = f"{original_filename}_copy"
+
+    # Generate new internal filename
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    new_filename = f"{dataset.id}_{file_type}_{timestamp}_copy{os.path.splitext(filename)[1]}"
+
+    # Copy the physical file
+    user_upload_folder = get_user_upload_folder(current_user.id)
+    original_file_path = os.path.join(user_upload_folder, filename)
+    new_file_path = os.path.join(user_upload_folder, new_filename)
+
+    if os.path.exists(original_file_path):
+      shutil.copy2(original_file_path, new_file_path)
+    else:
+      raise FileNotFoundError(f"Original file not found: {original_file_path}")
+
+    # Also copy processed file if it exists
+    if dataset_file.processed_file_path and os.path.exists(dataset_file.processed_file_path):
+      processed_filename = f"{os.path.splitext(new_filename)[0]}_processed{os.path.splitext(dataset_file.processed_file_path)[1]}"
+      processed_file_path = os.path.join(user_upload_folder, processed_filename)
+      shutil.copy2(dataset_file.processed_file_path, processed_file_path)
+    else:
+      processed_file_path = None
+
+    # Create new database entry
+    new_dataset_file = DatasetFile(
+        dataset_id=dataset_id,
+        file_type=file_type,
+        filename=new_filename,
+        original_filename=new_original_filename,
+        file_size=file_size,
+        upload_method='duplicate',
+        processed_file_path=processed_file_path,
+        processing_status=dataset_file.processing_status,
+        processing_summary=dataset_file.processing_summary
+    )
+
+    db.session.add(new_dataset_file)
+    db.session.commit()
+
+    # Update dataset statistics
+    dataset.updated_at = datetime.utcnow()
+    dataset.file_count = len(dataset.files)
+    dataset.total_size = sum(f.file_size for f in dataset.files)
+    db.session.commit()
+
+    log_user_action(
+        "file_duplicated",
+        f"File duplicated: {original_filename} -> {new_original_filename} in dataset '{dataset.name}'",
+        success=True
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'File "{original_filename}" duplicated successfully as "{new_original_filename}"',
+        'dataset_status': {
+            'completion_percentage': dataset.completion_percentage,
+            'is_complete': dataset.is_complete,
+            'status': dataset.status,
+            'patients_uploaded': dataset.patients_file_uploaded,
+            'taxonomy_uploaded': dataset.taxonomy_file_uploaded,
+            'bracken_uploaded': dataset.bracken_file_uploaded,
+            'file_count': dataset.file_count,
+            'total_size': dataset.total_size
+        }
+    })
+
+  except Exception as e:
+    db.session.rollback()
+    ErrorLogger.log_exception(
+        e,
+        context=f"Duplicating file {file_id} from dataset {dataset_id}",
+        user_action=f"User trying to duplicate file from dataset '{dataset.name}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'file_id': file_id,
+            'file_type': dataset_file.file_type,
+            'filename': dataset_file.original_filename
+        }
+    )
+    log_user_action("file_duplication_failed",
+                    f"File: {dataset_file.original_filename}", success=False)
+
+    return jsonify({
+        'success': False,
+        'message': f'Error duplicating file: {str(e)}'
     }), 500
 
 
