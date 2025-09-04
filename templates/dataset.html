@@ -216,18 +216,6 @@
                                                 <div class="form-text">Supported formats: CSV, TSV, TXT</div>
                                             </div>
                                             
-                                            <div class="text-center mb-3">
-                                                <span class="text-muted">or</span>
-                                            </div>
-                                            
-                                            <!-- CSV Paste -->
-                                            <div class="mb-3">
-                                                <label class="form-label">Paste CSV Data</label>
-                                                <textarea class="form-control" rows="6" placeholder="Paste your CSV data here..."
-                                                          data-file-type="patients" data-upload-method="csv_paste"></textarea>
-                                                <div class="form-text">Paste comma-separated values directly</div>
-                                            </div>
-                                            
                                             <button type="button" class="btn btn-primary w-100 upload-btn" 
                                                     data-file-type="patients">
                                                 <i class="fas fa-upload me-2"></i>
@@ -264,18 +252,6 @@
                                                 <div class="form-text">Supported formats: CSV, TSV, TXT</div>
                                             </div>
                                             
-                                            <div class="text-center mb-3">
-                                                <span class="text-muted">or</span>
-                                            </div>
-                                            
-                                            <!-- CSV Paste -->
-                                            <div class="mb-3">
-                                                <label class="form-label">Paste CSV Data</label>
-                                                <textarea class="form-control" rows="6" placeholder="Paste your CSV data here..."
-                                                          data-file-type="taxonomy" data-upload-method="csv_paste"></textarea>
-                                                <div class="form-text">Paste comma-separated values directly</div>
-                                            </div>
-                                            
                                             <button type="button" class="btn btn-info w-100 upload-btn" 
                                                     data-file-type="taxonomy">
                                                 <i class="fas fa-upload me-2"></i>
@@ -310,18 +286,6 @@
                                                 <input type="file" class="form-control" accept=".csv,.tsv,.txt" 
                                                        data-file-type="bracken" data-upload-method="file">
                                                 <div class="form-text">Supported formats: CSV, TSV, TXT</div>
-                                            </div>
-                                            
-                                            <div class="text-center mb-3">
-                                                <span class="text-muted">or</span>
-                                            </div>
-                                            
-                                            <!-- CSV Paste -->
-                                            <div class="mb-3">
-                                                <label class="form-label">Paste CSV Data</label>
-                                                <textarea class="form-control" rows="6" placeholder="Paste your CSV data here..."
-                                                          data-file-type="bracken" data-upload-method="csv_paste"></textarea>
-                                                <div class="form-text">Paste comma-separated values directly</div>
                                             </div>
                                             
                                             <button type="button" class="btn btn-success w-100 upload-btn" 
@@ -769,20 +733,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle file input changes
     document.querySelectorAll('input[type="file"]').forEach(input => {
         input.addEventListener('change', function() {
-            const fileType = this.dataset.fileType;
-            const uploadSection = this.closest('.upload-section');
-            const textarea = uploadSection.querySelector('textarea');
-            textarea.value = ''; // Clear textarea when file is selected
-        });
-    });
-    
-    // Handle textarea changes
-    document.querySelectorAll('textarea').forEach(textarea => {
-        textarea.addEventListener('input', function() {
-            const fileType = this.dataset.fileType;
-            const uploadSection = this.closest('.upload-section');
-            const fileInput = uploadSection.querySelector('input[type="file"]');
-            fileInput.value = ''; // Clear file input when textarea is used
+            // File selected - no additional handling needed
         });
     });
     
@@ -791,7 +742,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileType = btn.dataset.fileType;
         const uploadSection = btn.closest('.upload-section');
         const fileInput = uploadSection.querySelector('input[type="file"]');
-        const textarea = uploadSection.querySelector('textarea');
         
         // Disable button and show loading
         btn.disabled = true;
@@ -800,15 +750,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData();
         formData.append('file_type', fileType);
         
-        // Determine upload method
+        // Only handle file upload
         if (fileInput.files.length > 0) {
             formData.append('upload_method', 'file');
             formData.append('file', fileInput.files[0]);
-        } else if (textarea.value.trim()) {
-            formData.append('upload_method', 'csv_paste');
-            formData.append('csv_content', textarea.value.trim());
         } else {
-            showAlert('Please select a file or paste CSV data', 'warning');
+            showAlert('Please select a file to upload', 'warning');
             resetButton(btn);
             return;
         }
@@ -1025,17 +972,20 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </td>
                                 <td>${formatFileSize(file.size)}</td>
                                 <td>
-                                    <span class="badge bg-${file.upload_method === 'file' ? 'primary' : 'info'}">
-                                        ${file.upload_method === 'file' ? 'File Upload' : 'CSV Paste'}
+                                    <span class="badge bg-primary">
+                                        File Upload
                                     </span>
                                 </td>
                                 <td>${new Date(file.uploaded_at).toLocaleDateString()}</td>
                                 <td>${new Date(file.modified_at).toLocaleDateString()}</td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-warning" onclick="editTable('${file.id}')" title="Edit Table">
+                                    <button class="btn btn-sm btn-outline-info me-1" onclick="renameFile(${file.id}, '${file.filename}')" title="Rename File">
+                                        <i class="fas fa-i-cursor"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning me-1" onclick="editTable('${file.id}')" title="Edit Table">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="downloadFile(${file.id})">
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadFile(${file.id})">
                                         <i class="fas fa-download"></i>
                                     </button>
                                     <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${file.id})">
@@ -1296,6 +1246,64 @@ document.addEventListener('DOMContentLoaded', function() {
          }
      };
      
+     window.renameFile = function(fileId, currentName) {
+         // Extract the base name without extension for better UX
+         const lastDotIndex = currentName.lastIndexOf('.');
+         const baseName = lastDotIndex !== -1 ? currentName.substring(0, lastDotIndex) : currentName;
+         const extension = lastDotIndex !== -1 ? currentName.substring(lastDotIndex) : '';
+         
+         // Prompt user for new name
+         const newBaseName = prompt('Enter new file name:', baseName);
+         
+         if (newBaseName === null || newBaseName.trim() === '') {
+             return; // User cancelled or entered empty name
+         }
+         
+         if (newBaseName === baseName) {
+             showAlert('File name unchanged', 'info');
+             return;
+         }
+         
+         const newName = extension ? newBaseName.trim() + extension : newBaseName.trim();
+         
+         // Show loading state
+         const renameBtn = document.querySelector(`button[onclick="renameFile(${fileId}, '${currentName}')"]`);
+         const originalContent = renameBtn.innerHTML;
+         renameBtn.disabled = true;
+         renameBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+         
+         // Send rename request
+         fetch(`/dataset/${datasetId}/file/${fileId}/rename`, {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({
+                 new_filename: newName
+             })
+         })
+         .then(response => response.json())
+         .then(data => {
+             if (data.success) {
+                 showAlert(data.message, 'success');
+                 // Refresh the files table
+                 loadFiles();
+             } else {
+                 showAlert(data.message, 'danger');
+                 // Restore button state on error
+                 renameBtn.disabled = false;
+                 renameBtn.innerHTML = originalContent;
+             }
+         })
+         .catch(error => {
+             console.error('Rename error:', error);
+             showAlert('Error renaming file. Please try again.', 'danger');
+             // Restore button state on error
+             renameBtn.disabled = false;
+             renameBtn.innerHTML = originalContent;
+         });
+     };
+     
      window.editTable = function(file_id) {
          // Navigate to the edit table page
          window.location.href = `/api/editor/file/${file_id}`;
@@ -1403,18 +1411,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                  <div class="form-text">Supported formats: CSV, TSV, TXT</div>
                              </div>
                              
-                             <div class="text-center mb-3">
-                                 <span class="text-muted">or</span>
-                             </div>
-                             
-                             <!-- CSV Paste -->
-                             <div class="mb-3">
-                                 <label class="form-label">Paste CSV Data</label>
-                                 <textarea class="form-control" rows="6" placeholder="Paste your CSV data here..."
-                                           data-file-type="${fileType}" data-upload-method="csv_paste"></textarea>
-                                 <div class="form-text">Paste comma-separated values directly</div>
-                             </div>
-                             
                              <button type="button" class="btn btn-${color} w-100 upload-btn" 
                                      data-file-type="${fileType}">
                                  <i class="fas fa-upload me-2"></i>
@@ -1426,7 +1422,6 @@ document.addEventListener('DOMContentLoaded', function() {
                      // Re-attach event listeners for the new elements
                      const newUploadBtn = cardBody.querySelector('.upload-btn');
                      const newFileInput = cardBody.querySelector('input[type="file"]');
-                     const newTextarea = cardBody.querySelector('textarea');
                      
                      if (newUploadBtn) {
                          newUploadBtn.addEventListener('click', handleUpload);
@@ -1434,15 +1429,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      
                      if (newFileInput) {
                          newFileInput.addEventListener('change', function() {
-                             const textarea = this.closest('.upload-section').querySelector('textarea');
-                             if (textarea) textarea.value = '';
-                         });
-                     }
-                     
-                     if (newTextarea) {
-                         newTextarea.addEventListener('input', function() {
-                             const fileInput = this.closest('.upload-section').querySelector('input[type="file"]');
-                             if (fileInput) fileInput.value = '';
+                             // File input change handling if needed
                          });
                      }
                      

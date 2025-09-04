@@ -222,8 +222,7 @@ class DatasetFile(db.Model):
   filename = db.Column(db.String(255), nullable=False)
   original_filename = db.Column(db.String(255), nullable=False)
   file_size = db.Column(db.BigInteger, nullable=False)
-  upload_method = db.Column(db.String(50), default='file')  # file, csv_paste
-  csv_content = db.Column(db.Text)  # Store CSV content if uploaded via paste
+  upload_method = db.Column(db.String(50), default='file')  # file
   uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
   modified_at = db.Column(
       db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -346,72 +345,46 @@ def upload_dataset_file(dataset_id):
     if file_type not in ['patients', 'taxonomy', 'bracken']:
       raise ValueError("Invalid file type")
 
-    if upload_method == 'file':
-      # Handle file upload
-      if 'file' not in request.files:
-        raise ValueError("No file provided")
+    if upload_method != 'file':
+      raise ValueError("Invalid upload method")
 
-      file = request.files['file']
-      if file.filename == '':
-        raise ValueError("No file selected")
+    # Handle file upload
+    if 'file' not in request.files:
+      raise ValueError("No file provided")
 
-      # Validate file extension
-      allowed_extensions = {'.csv', '.tsv', '.txt'}
+    file = request.files['file']
+    if file.filename == '':
+      raise ValueError("No file selected")
+
+    # Validate file extension
+    allowed_extensions = {'.csv', '.tsv', '.txt'}
+    if file.filename:
       file_ext = os.path.splitext(file.filename)[1].lower()
       if file_ext not in allowed_extensions:
         raise ValueError(
             f"Invalid file type. Allowed: {', '.join(allowed_extensions)}")
-
-      # Save file
-      timestamp = datetime.utcnow().strftime('%y%m%d-%H%M%S')
-      filename = f"{dataset.id}_{file_type}_{timestamp}{file_ext}"
-      file_path = os.path.join(
-          get_user_upload_folder(current_user.id), filename)
-      file.save(file_path)
-
-      # Get file size
-      file_size = os.path.getsize(file_path)
-
-      # Create database record
-      dataset_file = DatasetFile(
-          dataset_id=dataset.id,
-          file_type=file_type,
-          filename=filename,
-          original_filename=file.filename,
-          file_size=file_size,
-          upload_method='file'
-      )
-
-    elif upload_method == 'csv_paste':
-      # Handle CSV paste
-      csv_content = request.form.get('csv_content', '').strip()
-      if not csv_content:
-        raise ValueError("No CSV content provided")
-
-      # Save CSV content to file
-      timestamp = datetime.utcnow().strftime('%y%m%d-%H%M%S')
-      filename = f"{dataset.id}_{file_type}_{timestamp}.csv"
-      file_path = os.path.join(
-          get_user_upload_folder(current_user.id), filename)
-
-      with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(csv_content)
-
-      file_size = len(csv_content.encode('utf-8'))
-
-      # Create database record
-      dataset_file = DatasetFile(
-          dataset_id=dataset.id,
-          file_type=file_type,
-          filename=filename,
-          original_filename=f"{file_type}_data.csv",
-          file_size=file_size,
-          upload_method='csv_paste',
-          csv_content=csv_content
-      )
-
     else:
-      raise ValueError("Invalid upload method")
+      raise ValueError("Invalid file")
+
+    # Save file
+    timestamp = datetime.utcnow().strftime('%y%m%d-%H%M%S')
+    filename = f"{dataset.id}_{file_type}_{timestamp}{file_ext}"
+    file_path = os.path.join(
+        get_user_upload_folder(current_user.id), filename)
+    file.save(file_path)
+
+    # Get file size
+    file_size = os.path.getsize(file_path)
+
+    # Create database record
+    dataset_file = DatasetFile(
+        dataset_id=dataset.id,
+        file_type=file_type,
+        filename=filename,
+        original_filename=file.filename or f"{file_type}_data.csv",
+        file_size=file_size,
+        upload_method='file'
+    )
 
     # Save to database first
     db.session.add(dataset_file)
@@ -1157,6 +1130,133 @@ def delete_dataset_file(dataset_id, file_id):
     return jsonify({
         'success': False,
         'message': f'Error deleting file: {str(e)}'
+    }), 500
+
+
+@app.route('/dataset/<int:dataset_id>/file/<int:file_id>/rename', methods=['POST'])
+@login_required
+def rename_dataset_file(dataset_id, file_id):
+  """Rename a specific file in a dataset"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  dataset_file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+
+  try:
+    data = request.get_json()
+    new_filename = data.get('new_filename', '').strip()
+
+    if not new_filename:
+      return jsonify({
+          'success': False,
+          'message': 'New filename cannot be empty'
+      }), 400
+
+    # Validate filename (basic validation)
+    if '/' in new_filename or '\\' in new_filename:
+      return jsonify({
+          'success': False,
+          'message': 'Filename cannot contain path separators'
+      }), 400
+
+    # Get the original filename for comparison
+    old_filename = dataset_file.filename
+    old_original_filename = dataset_file.original_filename
+
+    # Check if the new filename already exists in the same dataset
+    existing_file = DatasetFile.query.filter_by(
+        dataset_id=dataset_id,
+        filename=new_filename
+    ).first()
+
+    if existing_file and existing_file.id != file_id:
+      # Generate a unique name with 4-digit number
+      base_name = new_filename
+      extension = ''
+      if '.' in new_filename:
+        parts = new_filename.rsplit('.', 1)
+        base_name = parts[0]
+        extension = '.' + parts[1]
+
+      # Find the next available number
+      counter = 1
+      while counter < 10000:
+        numbered_filename = f"{base_name}_{counter:04d}{extension}"
+        existing_numbered = DatasetFile.query.filter_by(
+            dataset_id=dataset_id,
+            filename=numbered_filename
+        ).first()
+        if not existing_numbered:
+          new_filename = numbered_filename
+          break
+        counter += 1
+
+      if counter >= 10000:
+        return jsonify({
+            'success': False,
+            'message': 'Could not generate unique filename'
+        }), 400
+
+    # Rename the physical file
+    user_folder = get_user_upload_folder(current_user.id)
+    old_file_path = os.path.join(user_folder, old_filename)
+    new_file_path = os.path.join(user_folder, new_filename)
+
+    if os.path.exists(old_file_path):
+      try:
+        os.rename(old_file_path, new_file_path)
+      except OSError as e:
+        ErrorLogger.log_exception(
+            e,
+            context=f"Renaming file {old_filename} to {new_filename}",
+            user_action=f"User renaming file in dataset '{dataset.name}'",
+            extra_data={
+                'old_path': old_file_path,
+                'new_path': new_file_path,
+                'error': str(e)
+            }
+        )
+        return jsonify({
+            'success': False,
+            'message': f'Error renaming file: {str(e)}'
+        }), 500
+
+    # Update the database record
+    dataset_file.filename = new_filename
+    dataset_file.original_filename = new_filename  # Update original filename too
+    dataset_file.modified_at = datetime.utcnow()
+    db.session.commit()
+
+    log_user_action(
+        "file_renamed",
+        f"File renamed: '{old_original_filename}' → '{new_filename}' in dataset '{dataset.name}'",
+        success=True
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'File renamed to "{new_filename}" successfully'
+    })
+
+  except Exception as e:
+    db.session.rollback()
+    ErrorLogger.log_exception(
+        e,
+        context=f"Renaming file {file_id} in dataset {dataset_id}",
+        user_action=f"User trying to rename file in dataset '{dataset.name}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'file_id': file_id,
+            'new_filename': data.get('new_filename') if 'data' in locals() else None
+        }
+    )
+    log_user_action("file_rename_failed",
+                    f"File ID: {file_id}, New name: {data.get('new_filename') if 'data' in locals() else 'unknown'}",
+                    success=False)
+
+    return jsonify({
+        'success': False,
+        'message': f'Error renaming file: {str(e)}'
     }), 500
 
 # Authentication routes
