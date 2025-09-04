@@ -20,17 +20,22 @@
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
       }
       .smart-table-header .title {
-        font-size: 1.05rem;
+        font-size: 1.25 rem;
         font-weight: 700;
         margin: 0;
       }
       .smart-table-header .done-btn {
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #fff;
-        padding: 6px 10px;
+        background: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: #0b5ed7;
+        padding: 10px 24px;
         border-radius: 6px;
         cursor: pointer;
+        transition: background-color 0.2s ease;
+        font-weight: bold;
+      }
+      .smart-table-header .done-btn:hover {
+        background: #f8f9fa;
       }
       /* make sure the main content doesn't sit under the sticky header */
       main.smart-table-main {
@@ -47,18 +52,14 @@
         <h1 class="title">{{ title }}</h1>
       </div>
       <div>
-        <button class="done-btn" onclick="history.back();">Done</button>
+        <button class="done-btn" onclick="history.back();">Close</button>
       </div>
     </header>
 
-    <main class="smart-table-main">
-      <!-- Table Component Container -->
-      <div id="table-component"></div>
-    </main>
+    <!-- Table Component Container -->
+    <div id="table-component"></div>
 
     <!-- Scripts -->
-    <!-- Tabulator (must be loaded before smart_table.js) -->
-    <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
     <!-- Component script -->
     <script src="/static/js/smart_table.js"></script>
     <script>
