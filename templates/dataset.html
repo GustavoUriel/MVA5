@@ -652,22 +652,6 @@ window.displayDataStats = function(stats) {
         `;
     }
     
-    // Validation warnings from file processing
-    if (stats.validation_warnings && stats.validation_warnings.length > 0) {
-        html += `
-            <div class="row mt-3">
-                <div class="col-12">
-                    <div class="alert alert-warning">
-                        <h6 class="mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Validation Warnings</h6>
-                        <ul class="mb-0">
-                            ${stats.validation_warnings.map(warning => `<li>${warning}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
     // Overall data quality summary
     if (stats.sanitization_needed && stats.sanitization_needed.length > 0) {
         html += `
@@ -792,12 +776,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 showAlert(data.message, 'success');
+                
+                // Show success message in the file type status box
+                const statusElement = document.getElementById(`${fileType}-status`);
+                if (statusElement) {
+                    statusElement.className = 'alert alert-success border';
+                    statusElement.innerHTML = `
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong>File uploaded successfully!</strong>
+                        <div class="mt-1">${data.message}</div>
+                    `;
+                }
+                
                 updateUploadSection(uploadSection, fileType);
                 console.log('Upload successful, dataset status:', data.dataset_status);
                 updateProgress(data.dataset_status); // Update progress with response data
-                
-                // Start monitoring processing status
-                startProcessingMonitor(fileType);
                 
                 // Refresh files immediately after successful upload
                 loadFiles();
@@ -1006,7 +999,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <th>Name</th>
                                     <th>Type</th>
                                     <th>Size</th>
-                                    <th>Upload Method</th>
+                                    <th>Cure Status</th>
                                     <th>Uploaded</th>
                                     <th>Modified</th>
                                     <th>Actions</th>
@@ -1025,11 +1018,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                             </span>
                                         </td>
                                         <td>${formatFileSize(file.size)}</td>
-                                        <td>
-                                            <span class="badge bg-primary">
-                                                File Upload
-                                            </span>
-                                        </td>
+                                        <td>${getCureStatusIcon(file.cure_status, file.cure_validation_status)}</td>
                                         <td>${new Date(file.uploaded_at).toLocaleDateString()}</td>
                                         <td>${new Date(file.modified_at).toLocaleDateString()}</td>
                                         <td>
@@ -1045,7 +1034,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                             <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadFile(${file.id})">
                                                 <i class="fas fa-download"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${file.id})">
+                                            <button class="btn btn-sm ${file.cure_status === 'cured' && file.cure_validation_status === 'ok' ? 'btn-success disabled' : 'btn-outline-secondary'}" 
+                                                    onclick="cureData(${file.id})" 
+                                                    ${file.cure_status === 'cured' && file.cure_validation_status === 'ok' ? 'disabled' : ''} 
+                                                    title="Cure Data">
+                                                <i class="fas fa-magic"></i> Cure
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteFile(${file.id})">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
@@ -1166,6 +1161,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function getCureStatusIcon(cureStatus, validationStatus) {
+        if (cureStatus === 'cured') {
+            if (validationStatus === 'ok') {
+                return '<i class="fas fa-check-circle text-success" title="Cured and validation OK"></i>';
+            } else if (validationStatus === 'warnings') {
+                return '<i class="fas fa-exclamation-triangle text-warning" title="Cured with warnings"></i>';
+            } else if (validationStatus === 'errors') {
+                return '<i class="fas fa-times-circle text-danger" title="Cured with errors"></i>';
+            }
+        } else if (cureStatus === 'curing') {
+            return '<i class="fas fa-spinner fa-spin text-info" title="Curing in progress"></i>';
+        } else if (cureStatus === 'failed') {
+            return '<i class="fas fa-times-circle text-danger" title="Cure failed"></i>';
+        } else {
+            return '<i class="fas fa-clock text-muted" title="Not yet cured"></i>';
+        }
     }
     
     function resetButton(btn) {
@@ -1579,6 +1592,59 @@ document.addEventListener('DOMContentLoaded', function() {
          });
      }
 });
+
+window.cureData = function(fileId) {
+    // Show confirmation dialog
+    if (!confirm('Are you sure you want to cure this data? This will process and validate the file.')) {
+        return;
+    }
+    
+    // Find the button and show loading state
+    const cureBtn = document.querySelector(`button[onclick="cureData(${fileId})"]`);
+    const originalContent = cureBtn.innerHTML;
+    cureBtn.disabled = true;
+    cureBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Curing...';
+    
+    // Send cure request
+    fetch(`/dataset/${datasetId}/file/${fileId}/cure`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            
+            // Update the status alert box
+            const statusElement = document.getElementById(`${data.file_type}-status`);
+            if (statusElement) {
+                statusElement.className = 'alert alert-success border';
+                statusElement.innerHTML = `
+                    <i class="fas fa-magic me-2"></i>
+                    <strong>Data cured successfully!</strong>
+                    <div class="mt-1">${data.message}</div>
+                `;
+            }
+            
+            // Refresh the files table to show updated cure status
+            loadFiles();
+        } else {
+            showAlert(data.message, 'danger');
+            // Restore button state on error
+            cureBtn.disabled = false;
+            cureBtn.innerHTML = originalContent;
+        }
+    })
+    .catch(error => {
+        console.error('Cure error:', error);
+        showAlert('Error curing data. Please try again.', 'danger');
+        // Restore button state on error
+        cureBtn.disabled = false;
+        cureBtn.innerHTML = originalContent;
+    });
+};
 
 </script>
 

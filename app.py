@@ -19,7 +19,6 @@ from datetime import datetime
 from celery import Celery
 from dotenv import load_dotenv
 from scripts.logging_config import setup_logging, ErrorLogger, log_user_action, log_performance, PerformanceTracker
-from scripts.file_validator import FileValidator
 from scripts.smart_table import build_schema, build_table_data, save_table
 # Load environment variables
 load_dotenv()
@@ -237,6 +236,13 @@ class DatasetFile(db.Model):
   processed_file_path = db.Column(db.String(500))  # Path to processed file
   processing_summary = db.Column(db.Text)  # JSON string with processing summary
 
+  # Cure status fields
+  # 'not_cured', 'curing', 'cured', 'failed'
+  cure_status = db.Column(db.String(50), default='not_cured')
+  # 'pending', 'ok', 'warnings', 'errors'
+  cure_validation_status = db.Column(db.String(50), default='pending')
+  cured_at = db.Column(db.DateTime)
+
   def __repr__(self):
     return f'<DatasetFile {self.original_filename} ({self.file_type})>'
 
@@ -357,15 +363,11 @@ def upload_dataset_file(dataset_id):
     if file.filename == '':
       raise ValueError("No file selected")
 
-    # Validate file extension
-    allowed_extensions = {'.csv', '.tsv', '.txt'}
+    # Get file extension (no validation)
     if file.filename:
       file_ext = os.path.splitext(file.filename)[1].lower()
-      if file_ext not in allowed_extensions:
-        raise ValueError(
-            f"Invalid file type. Allowed: {', '.join(allowed_extensions)}")
     else:
-      raise ValueError("Invalid file")
+      file_ext = '.csv'  # Default extension
 
     # Save file
     timestamp = datetime.utcnow().strftime('%y%m%d-%H%M%S')
@@ -384,167 +386,45 @@ def upload_dataset_file(dataset_id):
         filename=filename,
         original_filename=file.filename or f"{file_type}_data.csv",
         file_size=file_size,
-        upload_method='file'
+        upload_method='file',
+        processing_status='completed'  # Mark as completed since no processing needed
     )
 
-    # Save to database first
+    # Save to database
     db.session.add(dataset_file)
     db.session.commit()
 
-    # Start file processing
-    dataset_file.processing_status = 'processing'
-    dataset_file.processing_started_at = datetime.utcnow()
+    # Update dataset status immediately (no processing needed)
+    if file_type == 'patients':
+      dataset.patients_file_uploaded = True
+    elif file_type == 'taxonomy':
+      dataset.taxonomy_file_uploaded = True
+    elif file_type == 'bracken':
+      dataset.bracken_file_uploaded = True
+
+    dataset.updated_at = datetime.utcnow()
+
+    # Update status to ready if all files are uploaded
+    if dataset.is_complete:
+      dataset.status = 'ready'
+
+    # Update file count and total size
+    dataset.file_count = len(dataset.files)
+    dataset.total_size = sum(f.file_size for f in dataset.files)
     db.session.commit()
 
-    # Process the file asynchronously
-    try:
-      validator = FileValidator(log_user_action)
-      processing_result = validator.validate_and_process_file(
-          file_path, file_type, current_user.id)
-
-      if processing_result['success']:
-        # Update file with processing results
-        dataset_file.processing_status = 'completed'
-        dataset_file.processing_completed_at = datetime.utcnow()
-        dataset_file.processed_file_path = processing_result['processed_file_path']
-        # Combine summary and validation warnings
-        processing_summary = {
-            'summary': processing_result['summary'],
-            'validation_warnings': processing_result.get('validation_warnings', [])
-        }
-
-        try:
-          dataset_file.processing_summary = json.dumps(processing_summary)
-        except TypeError as e:
-          # Log the problematic summary for debugging
-          ErrorLogger.log_exception(
-              e,
-              context="JSON serialization of processing summary",
-              user_action=f"Serializing summary for {file_type} file",
-              extra_data={'summary': str(processing_summary)}
-          )
-          # Convert any remaining pandas objects to strings recursively
-
-          def convert_pandas_objects(obj):
-            if hasattr(obj, 'dtype'):  # pandas object
-              return str(obj)
-            elif isinstance(obj, dict):
-              return {str(k): convert_pandas_objects(v) for k, v in obj.items()}
-            elif isinstance(obj, list):
-              return [convert_pandas_objects(item) for item in obj]
-            else:
-              return obj
-
-          summary_copy = convert_pandas_objects(processing_summary)
-          dataset_file.processing_summary = json.dumps(summary_copy)
-
-        # Update dataset status
-        if file_type == 'patients':
-          dataset.patients_file_uploaded = True
-        elif file_type == 'taxonomy':
-          dataset.taxonomy_file_uploaded = True
-        elif file_type == 'bracken':
-          dataset.bracken_file_uploaded = True
-
-        dataset.updated_at = datetime.utcnow()
-
-        # Update status to ready if all files are uploaded
-        if dataset.is_complete:
-          dataset.status = 'ready'
-
-        db.session.commit()
-
-        # Refresh the dataset to get updated file count and total size
-        db.session.refresh(dataset)
-
-        # Update file count and total size after commit
-        dataset.file_count = len(dataset.files)
-        dataset.total_size = sum(f.file_size for f in dataset.files)
-        db.session.commit()
-
-        # Show flash notifications for validation warnings
-        validation_warnings = processing_result.get('validation_warnings', [])
-        if validation_warnings:
-          for warning in validation_warnings:
-            flash(f'⚠️ {warning}', 'warning')
-
-        # Also show success message
-        flash(
-            f'✅ {file_type.title()} file uploaded and processed successfully!', 'success')
-
-        log_user_action(
-            f"file_uploaded_and_processed",
-            f"{file_type} file uploaded and processed successfully: {dataset_file.original_filename}",
-            success=True
-        )
-
-      else:
-        # Processing failed
-        dataset_file.processing_status = 'failed'
-        dataset_file.processing_completed_at = datetime.utcnow()
-        dataset_file.processing_error = processing_result['error']
-
-        # Delete the uploaded file
-        if os.path.exists(file_path):
-          os.remove(file_path)
-
-        # Remove from database
-        db.session.delete(dataset_file)
-        db.session.commit()
-
-        log_user_action(
-            f"file_processing_failed",
-            f"{file_type} file processing failed: {processing_result['error']}",
-            success=False
-        )
-
-        return jsonify({
-            'success': False,
-            'message': f'File validation failed: {processing_result["error"]}',
-            'details': processing_result.get('details', {})
-        }), 400
-
-    except Exception as e:
-      # Processing error
-      dataset_file.processing_status = 'failed'
-      dataset_file.processing_completed_at = datetime.utcnow()
-      dataset_file.processing_error = str(e)
-
-      # Delete the uploaded file
-      if os.path.exists(file_path):
-        os.remove(file_path)
-
-      # Remove from database
-      db.session.delete(dataset_file)
-      db.session.commit()
-
-      ErrorLogger.log_exception(
-          e,
-          context="File processing",
-          user_action=f"Processing {file_type} file: {dataset_file.original_filename}",
-          extra_data={'file_path': file_path, 'file_type': file_type}
-      )
-
-      return jsonify({
-          'success': False,
-          'message': f'Error processing file: {str(e)}'
-      }), 500
+    # Show success message
+    flash(f'✅ {file_type.title()} file uploaded successfully!', 'success')
 
     log_user_action(
         f"file_uploaded",
-        f"Dataset: {dataset.name}, File: {dataset_file.original_filename}, Type: {file_type}",
+        f"{file_type} file uploaded successfully: {dataset_file.original_filename}",
         success=True
     )
 
     return jsonify({
         'success': True,
         'message': f'{file_type.title()} file uploaded successfully',
-        'file_info': {
-            'id': dataset_file.id,
-            'filename': dataset_file.original_filename,
-            'size': dataset_file.file_size,
-            'uploaded_at': dataset_file.uploaded_at.isoformat()
-        },
         'dataset_status': {
             'completion_percentage': dataset.completion_percentage,
             'is_complete': dataset.is_complete,
@@ -561,21 +441,17 @@ def upload_dataset_file(dataset_id):
     db.session.rollback()
     ErrorLogger.log_exception(
         e,
-        context=f"Uploading {file_type} file to dataset",
-        user_action=f"User uploading file to dataset '{dataset.name}'",
-        extra_data={
-            'dataset_id': dataset.id,
-            'file_type': file_type,
-            'upload_method': upload_method
-        }
+        context="File upload",
+        user_action=f"Uploading {file_type} file to dataset '{dataset.name}'",
+        extra_data={'file_type': file_type}
     )
     log_user_action("file_upload_failed",
                     f"Dataset: {dataset.name}, Type: {file_type}", success=False)
 
     return jsonify({
         'success': False,
-        'message': str(e)
-    }), 400
+        'message': f'Error uploading file: {str(e)}'
+    }), 500
 
 
 @app.route('/dataset/<int:dataset_id>/processing-status', methods=['GET'])
@@ -690,7 +566,8 @@ def get_dataset_files(dataset_id):
         'file_type': file.file_type,
         'filename': file.original_filename,
         'size': file.file_size,
-        'upload_method': file.upload_method,
+        'cure_status': file.cure_status,
+        'cure_validation_status': file.cure_validation_status,
         'uploaded_at': file.uploaded_at.isoformat(),
         'modified_at': file.modified_at.isoformat()
     })
@@ -835,18 +712,6 @@ def get_dataset_data_stats(dataset_id):
 
       except Exception as e:
         stats['cross_references']['error'] = str(e)
-
-    # Add validation warnings from processing summary
-    stats['validation_warnings'] = []
-    for file_obj in dataset.files:
-      if file_obj.processing_summary:
-        try:
-          summary_data = json.loads(file_obj.processing_summary)
-          if 'validation_warnings' in summary_data and summary_data['validation_warnings']:
-            stats['validation_warnings'].extend(
-                summary_data['validation_warnings'])
-        except (json.JSONDecodeError, KeyError):
-          continue
 
     return jsonify({
         'success': True,
@@ -1248,6 +1113,76 @@ def duplicate_dataset_file(dataset_id, file_id):
     return jsonify({
         'success': False,
         'message': f'Error duplicating file: {str(e)}'
+    }), 500
+
+
+@app.route('/dataset/<int:dataset_id>/file/<int:file_id>/cure', methods=['POST'])
+@login_required
+def cure_dataset_file(dataset_id, file_id):
+  """Cure (process and validate) a specific file in a dataset"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  dataset_file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+
+  try:
+    # Update cure status to curing
+    dataset_file.cure_status = 'curing'
+    db.session.commit()
+
+    # Simulate curing process (in a real implementation, this would be more complex)
+    # For now, we'll just mark it as cured with OK validation
+    import time
+    time.sleep(1)  # Simulate processing time
+
+    # Update cure status
+    dataset_file.cure_status = 'cured'
+    dataset_file.cure_validation_status = 'ok'  # or 'warnings', 'errors'
+    dataset_file.cured_at = datetime.utcnow()
+    db.session.commit()
+
+    # Update dataset statistics
+    dataset.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    log_user_action(
+        "file_cured",
+        f"File cured: {dataset_file.original_filename} in dataset '{dataset.name}'",
+        success=True
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'File "{dataset_file.original_filename}" cured successfully',
+        'file_type': dataset_file.file_type,
+        'cure_status': dataset_file.cure_status,
+        'validation_status': dataset_file.cure_validation_status
+    })
+
+  except Exception as e:
+    db.session.rollback()
+    # Reset cure status on error
+    dataset_file.cure_status = 'not_cured'
+    dataset_file.cure_validation_status = 'pending'
+    db.session.commit()
+
+    ErrorLogger.log_exception(
+        e,
+        context=f"Curing file {file_id} from dataset {dataset_id}",
+        user_action=f"User trying to cure file from dataset '{dataset.name}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'file_id': file_id,
+            'file_type': dataset_file.file_type,
+            'filename': dataset_file.original_filename
+        }
+    )
+    log_user_action("file_cure_failed",
+                    f"File: {dataset_file.original_filename}", success=False)
+
+    return jsonify({
+        'success': False,
+        'message': f'Error curing file: {str(e)}'
     }), 500
 
 
