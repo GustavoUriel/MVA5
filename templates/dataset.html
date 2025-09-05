@@ -951,7 +951,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateFilesTable(files) {
         const filesTable = document.getElementById('filesTable');
-        
+
         if (files.length === 0) {
             filesTable.innerHTML = `
                 <div class="text-center py-4">
@@ -961,65 +961,103 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             return;
         }
-        
-        const tableHTML = `
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Size</th>
-                            <th>Upload Method</th>
-                            <th>Uploaded</th>
-                            <th>Modified</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${files.map(file => `
-                            <tr>
-                                <td>
-                                    <i class="fas fa-file-csv me-2 text-primary"></i>
-                                    ${file.filename.replace(/\.csv$/i, '')}
-                                </td>
-                                <td>
-                                    <span class="badge bg-${getFileTypeColor(file.file_type)}">
-                                        ${file.file_type}
-                                    </span>
-                                </td>
-                                <td>${formatFileSize(file.size)}</td>
-                                <td>
-                                    <span class="badge bg-primary">
-                                        File Upload
-                                    </span>
-                                </td>
-                                <td>${new Date(file.uploaded_at).toLocaleDateString()}</td>
-                                <td>${new Date(file.modified_at).toLocaleDateString()}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-info me-1" onclick="renameFile(${file.id}, '${file.filename}', '${file.file_type}')" title="Rename File">
-                                        <i class="fas fa-i-cursor"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-warning me-1" onclick="editTable('${file.id}')" title="Edit Table">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-success me-1" onclick="duplicateFile(${file.id})" title="Duplicate File">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadFile(${file.id})">
-                                        <i class="fas fa-download"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${file.id})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
+
+        // Group files by type in the specified order: patients, bracken, taxonomy
+        const groupedFiles = {
+            patients: files.filter(file => file.file_type === 'patients'),
+            bracken: files.filter(file => file.file_type === 'bracken'),
+            taxonomy: files.filter(file => file.file_type === 'taxonomy')
+        };
+
+        const fileTypeOrder = ['patients', 'bracken', 'taxonomy'];
+        const fileTypeLabels = {
+            patients: 'Patients Data Files',
+            bracken: 'Bracken Results Files',
+            taxonomy: 'Taxonomy Data Files'
+        };
+        const fileTypeIcons = {
+            patients: 'fas fa-users text-primary',
+            bracken: 'fas fa-chart-bar text-success',
+            taxonomy: 'fas fa-sitemap text-info'
+        };
+
+        let tableHTML = '';
+
+        fileTypeOrder.forEach(fileType => {
+            const typeFiles = groupedFiles[fileType];
+
+            if (typeFiles.length > 0) {
+                // Add separator/header for this file type
+                tableHTML += `
+                    <div class="file-group-separator" data-file-type="${fileType}">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="${fileTypeIcons[fileType]} me-2"></i>
+                                <h6 class="mb-0 fw-bold">${fileTypeLabels[fileType]}</h6>
+                            </div>
+                            <span class="badge bg-secondary">${typeFiles.length} file${typeFiles.length > 1 ? 's' : ''}</span>
+                        </div>
+                        <hr class="my-2">
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Size</th>
+                                    <th>Upload Method</th>
+                                    <th>Uploaded</th>
+                                    <th>Modified</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${typeFiles.map(file => `
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-file-csv me-2 text-primary"></i>
+                                            ${file.filename.replace(/\.csv$/i, '')}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-${getFileTypeColor(file.file_type)}">
+                                                ${file.file_type}
+                                            </span>
+                                        </td>
+                                        <td>${formatFileSize(file.size)}</td>
+                                        <td>
+                                            <span class="badge bg-primary">
+                                                File Upload
+                                            </span>
+                                        </td>
+                                        <td>${new Date(file.uploaded_at).toLocaleDateString()}</td>
+                                        <td>${new Date(file.modified_at).toLocaleDateString()}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-info me-1" onclick="renameFile(${file.id}, '${file.filename}', '${file.file_type}')" title="Rename File">
+                                                <i class="fas fa-i-cursor"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-warning me-1" onclick="editTable('${file.id}')" title="Edit Table">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-success me-1" onclick="duplicateFile(${file.id})" title="Duplicate File">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadFile(${file.id})">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${file.id})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+        });
+
         filesTable.innerHTML = tableHTML;
     }
     
@@ -1290,7 +1328,16 @@ document.addEventListener('DOMContentLoaded', function() {
              .then(response => response.json())
              .then(data => {
                  if (data.success) {
-                     showAlert(data.message, 'success');
+                     // Show success message in the specific file type status box
+                     const statusElement = document.getElementById(`${data.file_type}-status`);
+                     if (statusElement) {
+                         statusElement.className = 'alert alert-success border';
+                         statusElement.innerHTML = `
+                             <i class="fas fa-check-circle text-success me-2"></i>
+                             <strong>File duplicated successfully!</strong>
+                             <div class="mt-1">${data.message}</div>
+                         `;
+                     }
                      
                      console.log('File duplicated successfully, dataset status:', data.dataset_status);
                      
@@ -1534,5 +1581,54 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
+
+<style>
+.file-group-separator {
+    background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 50%, #f8f9fa 100%);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 1.5rem 0 0.5rem 0;
+    border-left: 4px solid #007bff;
+}
+
+.file-group-separator h6 {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.file-group-separator .badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    font-weight: 500;
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background: linear-gradient(135deg, #6c757d, #5a6268) !important;
+    color: white;
+    border: none;
+}
+
+.file-group-separator hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, #007bff, #28a745, #17a2b8);
+    margin: 0.5rem 0;
+    border-radius: 1px;
+}
+
+/* Different colors for different file types */
+.file-group-separator[data-file-type="patients"] {
+    border-left-color: #007bff;
+}
+
+.file-group-separator[data-file-type="bracken"] {
+    border-left-color: #28a745;
+}
+
+.file-group-separator[data-file-type="taxonomy"] {
+    border-left-color: #17a2b8;
+}
+</style>
+
 {% endblock %}
 

@@ -1214,6 +1214,9 @@ def duplicate_dataset_file(dataset_id, file_id):
     return jsonify({
         'success': True,
         'message': f'File "{original_filename}" duplicated successfully as "{new_original_filename}"',
+        'file_type': file_type,
+        'original_filename': original_filename,
+        'new_filename': new_original_filename,
         'dataset_status': {
             'completion_percentage': dataset.completion_percentage,
             'is_complete': dataset.is_complete,
