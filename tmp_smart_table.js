@@ -837,10 +837,7 @@
 
   // Favicon (bright emoji SVG) - ensure not duplicated
   const faviconHref =
-    "data:image/svg+xml;charset=utf-8," +
-    encodeURIComponent(
-      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>"
-    );
+    "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>";
   if (!Array.from(document.querySelectorAll('link[rel="icon"]')).some((l) => l.getAttribute("href") === faviconHref)) {
     const icon = document.createElement("link");
     icon.rel = "icon";

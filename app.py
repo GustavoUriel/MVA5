@@ -1030,23 +1030,55 @@ def duplicate_dataset_file(dataset_id, file_id):
     timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
     new_filename = f"{dataset.id}_{file_type}_{timestamp}_copy{os.path.splitext(filename)[1]}"
 
-    # Copy the physical file
+    # Copy the physical file (handle missing file gracefully)
     user_upload_folder = get_user_upload_folder(current_user.id)
     original_file_path = os.path.join(user_upload_folder, filename)
     new_file_path = os.path.join(user_upload_folder, new_filename)
 
-    if os.path.exists(original_file_path):
+    if not os.path.exists(original_file_path):
+      # Return 404 instead of raising so callers get a clean response
+      ErrorLogger.log_warning(
+          f"Original file not found when duplicating: {original_file_path}",
+          context="File duplication",
+          user_action=f"User trying to duplicate file '{original_filename}' in dataset '{dataset.name}'",
+          extra_data={'dataset_id': dataset_id, 'file_id': file_id}
+      )
+      return jsonify({'success': False, 'message': 'Original file not found'}), 404
+
+    try:
       shutil.copy2(original_file_path, new_file_path)
-    else:
-      raise FileNotFoundError(f"Original file not found: {original_file_path}")
+    except Exception as e:
+      db.session.rollback()
+      ErrorLogger.log_exception(
+          e,
+          context="Copying file during duplication",
+          user_action=f"User duplicating file '{original_filename}' in dataset '{dataset.name}'",
+          extra_data={'src': original_file_path, 'dst': new_file_path}
+      )
+      log_user_action("file_duplication_failed",
+                      f"File copy failed: {original_filename}", success=False)
+      return jsonify({'success': False, 'message': f'Error copying file: {str(e)}'}), 500
 
     # Also copy processed file if it exists
+    processed_file_path = None
     if dataset_file.processed_file_path and os.path.exists(dataset_file.processed_file_path):
-      processed_filename = f"{os.path.splitext(new_filename)[0]}_processed{os.path.splitext(dataset_file.processed_file_path)[1]}"
-      processed_file_path = os.path.join(user_upload_folder, processed_filename)
-      shutil.copy2(dataset_file.processed_file_path, processed_file_path)
-    else:
-      processed_file_path = None
+      try:
+        processed_ext = os.path.splitext(
+            dataset_file.processed_file_path)[1] or '.csv'
+        processed_filename = f"{os.path.splitext(new_filename)[0]}_processed{processed_ext}"
+        processed_file_path = os.path.join(
+            user_upload_folder, processed_filename)
+        shutil.copy2(dataset_file.processed_file_path, processed_file_path)
+      except Exception as e:
+        # Log and continue; duplication of processed file is not critical
+        ErrorLogger.log_warning(
+            f"Could not copy processed file during duplication: {e}",
+            context="File duplication - processed file",
+            user_action=f"User duplicating file '{original_filename}'",
+            extra_data={'processed_src': dataset_file.processed_file_path,
+                        'intended_dst': processed_file_path, 'error': str(e)}
+        )
+        processed_file_path = None
 
     # Create new database entry
     new_dataset_file = DatasetFile(
@@ -1547,18 +1579,23 @@ def editor_route(file_id):
   if not dataset or dataset.user_id != current_user.id:
     return jsonify({'error': 'Forbidden: You do not have access to this file'}), 403
 
-  file_path = os.path.join(get_user_upload_folder(
-      current_user.id), dataset_file.filename)
+  # Prefer processed file if present and exists on disk; otherwise use uploaded file
+  preferred_path = None
+  if getattr(dataset_file, 'processed_file_path', None) and os.path.exists(dataset_file.processed_file_path):
+    preferred_path = dataset_file.processed_file_path
+  else:
+    preferred_path = os.path.join(get_user_upload_folder(
+        current_user.id), dataset_file.filename)
 
-  if not os.path.exists(file_path):
+  if not os.path.exists(preferred_path):
     return jsonify({'error': 'File not found'}), 404
 
   # Build apiBase and options for the client-side table component
   # Determine table type for title
   table_type = dataset_file.file_type if hasattr(
       dataset_file, 'file_type') else 'file'
-  # For the editor, use the processed file if available, else fallback to uploaded file
-  filename = os.path.basename(dataset_file.processed_file_path)
+  # For the editor, use the basename of the preferred file
+  filename = os.path.basename(preferred_path)
   title = f'Smart-table editor for {table_type.title()} table'
   api_base = request.url_root.rstrip('/') + request.path
   options = {
@@ -1588,8 +1625,12 @@ def editor_data(file_id):
   if not dataset or dataset.user_id != current_user.id:
     return jsonify({'error': 'Forbidden: You do not have access to this file'}), 403
 
-  file_path = os.path.join(get_user_upload_folder(
-      current_user.id), dataset_file.filename)
+  # Prefer processed file if present
+  if getattr(dataset_file, 'processed_file_path', None) and os.path.exists(dataset_file.processed_file_path):
+    file_path = dataset_file.processed_file_path
+  else:
+    file_path = os.path.join(get_user_upload_folder(
+        current_user.id), dataset_file.filename)
 
   if not os.path.exists(file_path):
     return jsonify({'error': 'File not found'}), 404
@@ -1605,8 +1646,12 @@ def editor_schema(file_id):
   if not dataset or dataset.user_id != current_user.id:
     return jsonify({'error': 'Forbidden: You do not have access to this file'}), 403
 
-  file_path = os.path.join(get_user_upload_folder(
-      current_user.id), dataset_file.filename)
+  # Prefer processed file if present
+  if getattr(dataset_file, 'processed_file_path', None) and os.path.exists(dataset_file.processed_file_path):
+    file_path = dataset_file.processed_file_path
+  else:
+    file_path = os.path.join(get_user_upload_folder(
+        current_user.id), dataset_file.filename)
 
   if not os.path.exists(file_path):
     return jsonify({'error': 'File not found'}), 404
@@ -1622,8 +1667,12 @@ def editor_save(file_id):
   if not dataset or dataset.user_id != current_user.id:
     return jsonify({'error': 'Forbidden: You do not have access to this file'}), 403
 
-  file_path = os.path.join(get_user_upload_folder(
-      current_user.id), dataset_file.filename)
+  # Prefer processed file if present when saving edits, otherwise save to uploaded file
+  if getattr(dataset_file, 'processed_file_path', None) and os.path.exists(dataset_file.processed_file_path):
+    file_path = dataset_file.processed_file_path
+  else:
+    file_path = os.path.join(get_user_upload_folder(
+        current_user.id), dataset_file.filename)
 
   if not os.path.exists(file_path):
     return jsonify({'error': 'File not found'}), 404

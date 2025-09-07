@@ -61,7 +61,7 @@
 
     <!-- Scripts -->
     <!-- Component script -->
-    <script src="/static/js/smart_table.js"></script>
+    <script src="/static/js/smart_table.js?v=1"></script>
     <script>
           // Ensure the browser title uses the server-provided title (if any)
           const serverTitle = {{ title|tojson }};
@@ -73,7 +73,12 @@
       const apiBase_p = {{ apiBase|tojson }};
       const options_p = {{ options|tojson }};
       // Pass null title so the component doesn't render its own header (we already have a persistent header)
-      createTableComponent("#table-component", apiBase_p, options_p, null);
+      if (typeof createTableComponent === 'function') {
+        createTableComponent("#table-component", apiBase_p, options_p, null);
+      } else {
+        console.error('createTableComponent is not defined. Make sure smart_table.js is loaded.');
+        document.getElementById('table-component').innerHTML = '<div class="alert alert-danger">Error: Table component failed to load. Please refresh the page.</div>';
+      }
     </script>
   </body>
 </html>
