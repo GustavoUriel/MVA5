@@ -3113,7 +3113,7 @@ window.createTableComponent = async function (containerSelector, apiBase, option
 
   // Function to get modified data (filtered + edited) with current column order preserved
   window.getModifiedData = function () {
-    const filteredData = table.getData("visible"); // Only visible (filtered) rows
+    const filteredData = table.getData("active"); // All filtered rows (not just visible/paginated)
 
     // Get current column order from the table (preserves user reordering)
     // Try multiple approaches to get the correct column order
