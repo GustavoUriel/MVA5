@@ -494,6 +494,10 @@ def sanitize_dataset_data(dataset_id):
     file_to_sanitize.processed_file_path = sanitized_path
     file_to_sanitize.processing_summary = f'{{"sanitization_applied": "{sanitization_type}", "original_rows": {original_rows}, "final_rows": {len(df)}, "rows_removed": {original_rows - len(df)}, "sanitized_at": "{datetime.utcnow().isoformat()}"}}'
 
+    # Recalculate file size for the new processed file
+    if os.path.exists(sanitized_path):
+      file_to_sanitize.file_size = os.path.getsize(sanitized_path)
+
     db.session.commit()
 
     log_user_action(

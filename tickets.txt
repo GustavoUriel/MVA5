@@ -1,0 +1,5 @@
+files ops
+when modifying a file it should recalculate the file size. It recalculates but doesn't refresh
+the dataset size and file count should be recalculated after a file is modified, or better, everytime it is shown.
+
+

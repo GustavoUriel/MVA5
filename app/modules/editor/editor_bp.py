@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, current_app, render_template
 from flask_login import login_required, current_user
 from ...scripts.logging_config import ErrorLogger
 from ...scripts.smart_table import build_schema, build_table_data, save_table
-from .. import Dataset, DatasetFile
+from .. import Dataset, DatasetFile, db
 import os
 
 editor_bp = Blueprint('editor', __name__)
@@ -116,6 +116,16 @@ def editor_save(file_id):
     if not data:
       return jsonify({"status": "error", "message": "No data received"}), 400
     save_table(data=data, csv_file=file_path)
+
+    # Recalculate file size after saving
+    new_file_size = os.path.getsize(file_path)
+    dataset_file.file_size = new_file_size
+    dataset_file.update_modified_timestamp()
+
+    # Update dataset total size
+    dataset.total_size = sum(f.file_size for f in dataset.files)
+    db.session.commit()
+
     return jsonify({"status": "success", "message": "Data saved successfully"}), 200
   except Exception as e:
     print(f"Error processing request: {str(e)}")
