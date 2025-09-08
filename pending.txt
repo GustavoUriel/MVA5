@@ -1,3 +1,0 @@
-when pasting a text that is over a size it says this. I want that the text max size to be 100Mb like the file max size
-
-
