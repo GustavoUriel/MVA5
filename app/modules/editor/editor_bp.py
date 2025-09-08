@@ -51,7 +51,7 @@ def editor_route(file_id):
           },
       },
   }
-  return current_app.send_static_file('smart_table.html', title=title, apiBase=api_base, options=options)
+  return render_template('smart_table.html', title=title, apiBase=api_base, options=options)
 
 
 @editor_bp.route('/file/<int:file_id>/data', methods=['GET'])
