@@ -1827,6 +1827,103 @@ window.createTableComponent = async function (containerSelector, apiBase, option
   // re-renders header filter elements. Keyed by field name.
   const headerFilterState = {};
 
+  // Function to download CSV with current table column order (preserves user reordering)
+  function downloadCSVWithCurrentOrder() {
+    console.log("Starting CSV download with current order...");
+
+    if (!table) {
+      console.error("Table instance not available");
+      throw new Error("Table not initialized");
+    }
+
+    const tableData = table.getData();
+    const filename = config.filename + ".csv";
+
+    // Get current column order from the table (preserves user reordering)
+    // Try multiple approaches to get the correct column order
+    let headers = [];
+
+    try {
+      // Method 1: Try Tabulator's getColumnLayout() method (most reliable)
+      try {
+        const columnLayout = table.getColumnLayout();
+        if (columnLayout && columnLayout.length > 0) {
+          headers = columnLayout.map((col) => col.field).filter((field) => field && field !== "");
+          console.log("Headers from getColumnLayout():", headers);
+        }
+      } catch (layoutError) {
+        console.log("getColumnLayout() failed:", layoutError.message);
+      }
+
+      // Method 2: Get columns from DOM order (fallback)
+      if (!headers || headers.length === 0) {
+        console.log("Trying DOM method...");
+        const headerCells = table.element.querySelectorAll(".tabulator-col[tabulator-field]:not(.tabulator-col-group)");
+        headers = Array.from(headerCells)
+          .map((cell) => cell.getAttribute("tabulator-field"))
+          .filter((field) => field && field !== "");
+        console.log("Headers from DOM:", headers);
+      }
+
+      // Method 3: Fallback to table.getColumns()
+      if (!headers || headers.length === 0) {
+        console.log("Falling back to table.getColumns()");
+        const currentColumns = table.getColumns().filter((col) => {
+          const field = col.getField();
+          return field && field !== "";
+        });
+        headers = currentColumns.map((col) => col.getField());
+        console.log("Headers from table.getColumns():", headers);
+      }
+
+      // Method 4: Final fallback to original schema order
+      if (!headers || headers.length === 0) {
+        console.log("Falling back to schema order");
+        headers = schema.columns.map((col) => col.field);
+        console.log("Headers from schema:", headers);
+      }
+    } catch (error) {
+      console.error("Error getting column order:", error);
+      // Final fallback
+      headers = schema.columns.map((col) => col.field);
+    }
+
+    console.log("Final headers for CSV:", headers);
+
+    // Create CSV content with current column order
+    const csvContent = [
+      headers.join(","),
+      ...tableData.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            // Handle values that contain commas, quotes, or newlines
+            if (value === null || value === undefined) return "";
+            const stringValue = String(value);
+            if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+              return '"' + stringValue.replace(/"/g, '""') + '"';
+            }
+            return stringValue;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    console.log("CSV download completed successfully");
+  }
+
   // build Tabulator columns from schema with smart header filters
   const columns = schema.columns.map((col) => {
     const field = col.field;
@@ -2563,13 +2660,25 @@ window.createTableComponent = async function (containerSelector, apiBase, option
 
   // === 3. CONTROL BUTTON EVENTS ===
   function setupControlButtonEvents() {
-    // Download CSV button
+    // Download CSV button - use custom function to preserve column order
     dlBtn.addEventListener("click", () => {
       const originalContent = dlBtn.innerHTML;
       dlBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Downloaded!';
       dlBtn.className = "btn btn-success btn-sm";
 
-      table.download("csv", config.filename + ".csv");
+      try {
+        downloadCSVWithCurrentOrder();
+      } catch (error) {
+        console.error("CSV download failed:", error);
+        showNotification("CSV download failed: " + error.message, "error");
+        dlBtn.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Error';
+        dlBtn.className = "btn btn-danger btn-sm";
+        setTimeout(() => {
+          dlBtn.innerHTML = originalContent;
+          dlBtn.className = "btn btn-success btn-sm";
+        }, 3000);
+        return;
+      }
 
       setTimeout(() => {
         dlBtn.innerHTML = originalContent;
@@ -3002,15 +3111,79 @@ window.createTableComponent = async function (containerSelector, apiBase, option
     });
   }
 
-  // Function to get modified data (filtered + edited)
+  // Function to get modified data (filtered + edited) with current column order preserved
   window.getModifiedData = function () {
     const filteredData = table.getData("visible"); // Only visible (filtered) rows
+
+    // Get current column order from the table (preserves user reordering)
+    // Try multiple approaches to get the correct column order
+    let headers = [];
+
+    try {
+      // Method 1: Try Tabulator's getColumnLayout() method (most reliable)
+      try {
+        const columnLayout = table.getColumnLayout();
+        if (columnLayout && columnLayout.length > 0) {
+          headers = columnLayout.map((col) => col.field).filter((field) => field && field !== "");
+          console.log("Headers from getColumnLayout():", headers);
+        }
+      } catch (layoutError) {
+        console.log("getColumnLayout() failed:", layoutError.message);
+      }
+
+      // Method 2: Get columns from DOM order (fallback)
+      if (!headers || headers.length === 0) {
+        console.log("Trying DOM method...");
+        const headerCells = table.element.querySelectorAll(".tabulator-col[tabulator-field]:not(.tabulator-col-group)");
+        headers = Array.from(headerCells)
+          .map((cell) => cell.getAttribute("tabulator-field"))
+          .filter((field) => field && field !== "");
+        console.log("Headers from DOM:", headers);
+      }
+
+      // Method 3: Fallback to table.getColumns()
+      if (!headers || headers.length === 0) {
+        console.log("Falling back to table.getColumns()");
+        const currentColumns = table.getColumns().filter((col) => {
+          const field = col.getField();
+          return field && field !== "";
+        });
+        headers = currentColumns.map((col) => col.getField());
+        console.log("Headers from table.getColumns():", headers);
+      }
+
+      // Method 4: Final fallback to original schema order
+      if (!headers || headers.length === 0) {
+        console.log("Falling back to schema order");
+        headers = schema.columns.map((col) => col.field);
+        console.log("Headers from schema:", headers);
+      }
+    } catch (error) {
+      console.error("Error getting column order:", error);
+      // Final fallback
+      headers = schema.columns.map((col) => col.field);
+    }
+
+    console.log("Final headers for save data:", headers);
+
+    // Reorder the data according to current column order
+    const reorderedData = filteredData.map((row) => {
+      const reorderedRow = {};
+      headers.forEach((header) => {
+        if (row.hasOwnProperty(header)) {
+          reorderedRow[header] = row[header];
+        }
+      });
+      return reorderedRow;
+    });
+
     return {
-      data: filteredData,
-      totalRows: filteredData.length,
+      data: reorderedData,
+      totalRows: reorderedData.length,
       hasChanges: hasChanges,
       changeLog: changeLog,
       timestamp: new Date().toISOString(),
+      columnOrder: headers, // Include column order for backend reference
     };
   };
 

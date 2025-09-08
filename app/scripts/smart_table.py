@@ -256,14 +256,11 @@ def save_table(data=None, csv_file=None):
     change_log = data.get('changeLog', [])
     timestamp = data.get('timestamp', '')
 
-    if not modified_data:
-      return jsonify({"status": "error", "message": "No data to save"}), 400
+    # ✅ PRESERVE COLUMN ORDER: Get column order from the first data row
+    column_order = list(modified_data[0].keys())
 
-    if not has_changes:
-      return jsonify({"status": "warning", "message": "No modified data to save"}), 400
-
-    # Convert back to DataFrame
-    df = pd.DataFrame(modified_data)
+    # Convert back to DataFrame with preserved column order
+    df = pd.DataFrame(modified_data, columns=column_order)
 
     # Create a timestamp for the filename and preserve original CSV name when possible
     from datetime import datetime
@@ -282,21 +279,9 @@ def save_table(data=None, csv_file=None):
 #    output_filename = _os.path.join(
 #        orig_dir, f"{base} mod {timestamp_str}{ext}")
     output_filename = orig_path
-    change_log_filename = _os.path.join(
-        orig_dir, f"{base} changes {timestamp_str}.json")
 
-  # Save the modified dataset as csv
-    df.to_csv(output_filename, index=False)
-
-  # Also save change log
-
-    with open(change_log_filename, 'w') as f:
-      json.dump({
-          'changes': change_log,
-          'total_changes': len(change_log),
-          'timestamp': timestamp,
-          'saved_at': datetime.now().isoformat()
-      }, f, indent=2)
+    # ✅ SAVE WITH PRESERVED COLUMN ORDER
+    df.to_csv(output_filename, index=False, columns=column_order)
 
     return jsonify({
         "status": "success",
@@ -305,7 +290,6 @@ def save_table(data=None, csv_file=None):
         "total_records": len(df),
         "has_changes": has_changes,
         "total_changes": len(change_log),
-        "change_log_file": change_log_filename if has_changes else None,
         "timestamp": timestamp,
         "saved_at": datetime.now().isoformat()
     })

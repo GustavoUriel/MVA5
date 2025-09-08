@@ -94,7 +94,7 @@ def upload_dataset_file(dataset_id):
       filename = f"{base_name}_{timestamp}"
       show_filename = base_name
     else:
-      filename = f"{show_filename}_{timestamp}"
+      filename = f"{dataset.id}_{show_filename}_{timestamp}"
       show_filename = show_filename
 
     file_path = os.path.join(get_dataset_files_folder(
