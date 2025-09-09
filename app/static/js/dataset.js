@@ -1605,9 +1605,49 @@ function setupAnalysisEditor() {
     
     // Load cluster representative methods for the cluster representative container
     loadClusterRepresentativeMethods();
+    
+    // Load analysis methods for the analysis type container
+    loadAnalysisMethods();
 }
 
 // Extreme Time Point Functions
+function toggleSelectionMode() {
+    const toggle = document.getElementById('selectionModeToggle');
+    const modeLabel = document.getElementById('selectionModeLabel');
+    const modeDescription = document.getElementById('selectionModeDescription');
+    const topLabel = document.getElementById('topPercentageLabel');
+    const bottomLabel = document.getElementById('bottomPercentageLabel');
+    const topDescription = document.getElementById('topPercentageDescription');
+    const bottomDescription = document.getElementById('bottomPercentageDescription');
+    
+    if (!toggle || !modeLabel) return;
+    
+    const isValueMode = toggle.checked;
+    
+    if (isValueMode) {
+        // Value-based selection mode
+        modeLabel.textContent = 'Select by percentage of time variable value range';
+        modeDescription.textContent = 'When enabled: Select by percentage of time variable value range. When disabled: Select by percentage of patients.';
+        
+        if (topLabel) topLabel.textContent = 'Top Value Range %';
+        if (bottomLabel) bottomLabel.textContent = 'Bottom Value Range %';
+        if (topDescription) topDescription.textContent = 'Percentage of time variable value range (highest values)';
+        if (bottomDescription) bottomDescription.textContent = 'Percentage of time variable value range (lowest values)';
+    } else {
+        // Patient-based selection mode
+        modeLabel.textContent = 'Select by percentage of patients';
+        modeDescription.textContent = 'When enabled: Select by percentage of time variable value range. When disabled: Select by percentage of patients.';
+        
+        if (topLabel) topLabel.textContent = 'Top Percentage';
+        if (bottomLabel) bottomLabel.textContent = 'Bottom Percentage';
+        if (topDescription) topDescription.textContent = 'Percentage of patients with highest time values';
+        if (bottomDescription) bottomDescription.textContent = 'Percentage of patients with lowest time values';
+    }
+    
+    // Update summary to reflect the new mode
+    updateExtremeTimePointSummary();
+}
+
 function updateTopPercentage(value) {
     const topPercentageValue = document.getElementById('topPercentageValue');
     const linkCheckbox = document.getElementById('linkPercentages');
@@ -1671,11 +1711,13 @@ function updateExtremeTimePointSummary() {
     const topPatientsCount = document.getElementById('topPatientsCount');
     const bottomPatientsCount = document.getElementById('bottomPatientsCount');
     const totalPatientsCount = document.getElementById('totalPatientsCount');
+    const selectionModeToggle = document.getElementById('selectionModeToggle');
     
     if (!topPercentage || !bottomPercentage || !summaryText) return;
     
     const topPercent = parseInt(topPercentage.value);
     const bottomPercent = parseInt(bottomPercentage.value);
+    const isValueMode = selectionModeToggle ? selectionModeToggle.checked : false;
     
     // Get total patient count from the selected patient file
     const patientFileSelect = document.getElementById('editorPatientFileSelect');
@@ -1687,21 +1729,43 @@ function updateExtremeTimePointSummary() {
             .then(data => {
                 if (data.success) {
                     const totalPatients = data.patient_count;
-                    const topPatients = Math.round((topPercent / 100) * totalPatients);
-                    const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
                     
-                    // Update summary text
-                    summaryText.textContent = `Selecting ${topPercent}% top and ${bottomPercent}% bottom patients for extreme time point analysis`;
-                    
-                    // Update patient count badges
-                    if (topPatientsCount) {
-                        topPatientsCount.textContent = `${topPatients} patients`;
-                    }
-                    if (bottomPatientsCount) {
-                        bottomPatientsCount.textContent = `${bottomPatients} patients`;
-                    }
-                    if (totalPatientsCount) {
-                        totalPatientsCount.textContent = `${totalPatients} total`;
+                    if (isValueMode) {
+                        // Value-based selection mode
+                        const topPatients = Math.round((topPercent / 100) * totalPatients);
+                        const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
+                        
+                        // Update summary text for value mode
+                        summaryText.textContent = `Selecting patients with top ${topPercent}% and bottom ${bottomPercent}% of time variable value range for extreme analysis`;
+                        
+                        // Update patient count badges
+                        if (topPatientsCount) {
+                            topPatientsCount.textContent = `~${topPatients} patients`;
+                        }
+                        if (bottomPatientsCount) {
+                            bottomPatientsCount.textContent = `~${bottomPatients} patients`;
+                        }
+                        if (totalPatientsCount) {
+                            totalPatientsCount.textContent = `${totalPatients} total`;
+                        }
+                    } else {
+                        // Patient-based selection mode
+                        const topPatients = Math.round((topPercent / 100) * totalPatients);
+                        const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
+                        
+                        // Update summary text for patient mode
+                        summaryText.textContent = `Selecting ${topPercent}% top and ${bottomPercent}% bottom patients for extreme time point analysis`;
+                        
+                        // Update patient count badges
+                        if (topPatientsCount) {
+                            topPatientsCount.textContent = `${topPatients} patients`;
+                        }
+                        if (bottomPatientsCount) {
+                            bottomPatientsCount.textContent = `${bottomPatients} patients`;
+                        }
+                        if (totalPatientsCount) {
+                            totalPatientsCount.textContent = `${totalPatients} total`;
+                        }
                     }
                 } else {
                     console.error('Error loading patient count:', data.error);
@@ -1724,14 +1788,20 @@ function updateExtremeTimePointSummaryFallback() {
     const topPatientsCount = document.getElementById('topPatientsCount');
     const bottomPatientsCount = document.getElementById('bottomPatientsCount');
     const totalPatientsCount = document.getElementById('totalPatientsCount');
+    const selectionModeToggle = document.getElementById('selectionModeToggle');
     
     if (!topPercentage || !bottomPercentage || !summaryText) return;
     
     const topPercent = parseInt(topPercentage.value);
     const bottomPercent = parseInt(bottomPercentage.value);
+    const isValueMode = selectionModeToggle ? selectionModeToggle.checked : false;
     
     // Fallback when no file is selected
-    summaryText.textContent = 'Select data files to see patient counts';
+    if (isValueMode) {
+        summaryText.textContent = 'Select data files to see time variable value range analysis';
+    } else {
+        summaryText.textContent = 'Select data files to see patient counts';
+    }
     
     if (topPatientsCount) {
         topPatientsCount.textContent = '0 patients';
@@ -1754,6 +1824,351 @@ function loadPatientCount() {
         // For now, using placeholder
         updateExtremeTimePointSummary();
     }
+}
+
+// Analysis Methods Functions
+function loadAnalysisMethods() {
+    fetch(`/dataset/${datasetId}/metadata/analysis-methods`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayAnalysisMethods(data.methods, data.default_method, data.categories, data.descriptions);
+            } else {
+                showAnalysisMethodError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading analysis methods:', error);
+            showAnalysisMethodError('Failed to load analysis methods');
+        });
+}
+
+function displayAnalysisMethods(methods, defaultMethod, categories, descriptions) {
+    const select = document.getElementById('analysisMethodSelect');
+    const description = document.getElementById('analysisMethodDescription');
+    
+    if (!select || !description) return;
+    
+    // Clear existing options
+    select.innerHTML = '<option value="">Select analysis method...</option>';
+    
+    // Group methods by category
+    Object.keys(categories).forEach(category => {
+        const categoryMethods = categories[category];
+        
+        // Add category header
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = category;
+        
+        // Add methods in this category
+        categoryMethods.forEach(methodKey => {
+            if (methods[methodKey]) {
+                const method = methods[methodKey];
+                const option = document.createElement('option');
+                option.value = methodKey;
+                option.textContent = method.name;
+                optgroup.appendChild(option);
+            }
+        });
+        
+        select.appendChild(optgroup);
+    });
+    
+    // Set default method if available
+    if (defaultMethod && methods[defaultMethod]) {
+        select.value = defaultMethod;
+        updateAnalysisMethod();
+    }
+}
+
+function updateAnalysisMethod() {
+    const select = document.getElementById('analysisMethodSelect');
+    const status = document.getElementById('analysisMethodStatus');
+    const description = document.getElementById('analysisMethodDescription');
+    const parametersContainer = document.getElementById('analysisMethodParametersContainer');
+    const parametersForm = document.getElementById('analysisMethodParametersForm');
+    
+    if (!select || !status || !description) return;
+    
+    const selectedMethod = select.value;
+    
+    if (!selectedMethod) {
+        status.textContent = 'No method selected';
+        status.className = 'badge bg-secondary me-2';
+        description.textContent = 'Choose a method for multivariate survival analysis';
+        parametersContainer.style.display = 'none';
+        updateAnalysisMethodSummary();
+        return;
+    }
+    
+    // Fetch method details
+    fetch(`/dataset/${datasetId}/metadata/analysis-methods/${selectedMethod}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const method = data.method;
+                
+                // Update status and description
+                status.textContent = method.name;
+                status.className = 'badge bg-success me-2';
+                description.textContent = method.description;
+                
+                // Display parameters
+                displayAnalysisMethodParameters(method.parameters);
+                parametersContainer.style.display = 'block';
+                
+                // Update summary
+                updateAnalysisMethodSummary();
+            } else {
+                showAnalysisMethodError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading analysis method details:', error);
+            showAnalysisMethodError('Failed to load method details');
+        });
+}
+
+function displayAnalysisMethodParameters(parameters) {
+    const form = document.getElementById('analysisMethodParametersForm');
+    if (!form || !parameters) return;
+    
+    form.innerHTML = '';
+    
+    // Create parameter inputs in rows of 2
+    const parameterKeys = Object.keys(parameters);
+    for (let i = 0; i < parameterKeys.length; i += 2) {
+        const row = document.createElement('div');
+        row.className = 'row mb-3';
+        
+        // First parameter
+        if (parameterKeys[i]) {
+            const col1 = document.createElement('div');
+            col1.className = 'col-md-6';
+            col1.appendChild(createParameterInput(parameterKeys[i], parameters[parameterKeys[i]]));
+            row.appendChild(col1);
+        }
+        
+        // Second parameter
+        if (parameterKeys[i + 1]) {
+            const col2 = document.createElement('div');
+            col2.className = 'col-md-6';
+            col2.appendChild(createParameterInput(parameterKeys[i + 1], parameters[parameterKeys[i + 1]]));
+            row.appendChild(col2);
+        }
+        
+        form.appendChild(row);
+    }
+}
+
+function createParameterInput(paramKey, paramConfig) {
+    const div = document.createElement('div');
+    div.className = 'mb-3';
+    
+    // Label
+    const label = document.createElement('label');
+    label.className = 'form-label';
+    label.textContent = paramConfig.name;
+    label.setAttribute('for', `analysisParam_${paramKey}`);
+    div.appendChild(label);
+    
+    // Input based on type
+    if (paramConfig.type === 'select') {
+        const select = document.createElement('select');
+        select.className = 'form-select';
+        select.id = `analysisParam_${paramKey}`;
+        select.name = paramKey;
+        select.onchange = () => updateAnalysisMethodSummary();
+        
+        paramConfig.options.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option;
+            optionElement.textContent = option;
+            if (option === paramConfig.default) {
+                optionElement.selected = true;
+            }
+            select.appendChild(optionElement);
+        });
+        
+        div.appendChild(select);
+    } else if (paramConfig.type === 'boolean') {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'form-check-input';
+        checkbox.id = `analysisParam_${paramKey}`;
+        checkbox.name = paramKey;
+        checkbox.checked = paramConfig.default;
+        checkbox.onchange = () => updateAnalysisMethodSummary();
+        
+        const labelCheck = document.createElement('label');
+        labelCheck.className = 'form-check-label';
+        labelCheck.setAttribute('for', `analysisParam_${paramKey}`);
+        labelCheck.textContent = paramConfig.name;
+        
+        const checkDiv = document.createElement('div');
+        checkDiv.className = 'form-check';
+        checkDiv.appendChild(checkbox);
+        checkDiv.appendChild(labelCheck);
+        
+        div.appendChild(checkDiv);
+    } else if (paramConfig.type === 'number') {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'form-control';
+        input.id = `analysisParam_${paramKey}`;
+        input.name = paramKey;
+        input.min = paramConfig.min;
+        input.max = paramConfig.max;
+        input.step = paramConfig.step;
+        input.value = paramConfig.default;
+        input.onchange = () => updateAnalysisMethodSummary();
+        
+        div.appendChild(input);
+    }
+    
+    // Description
+    if (paramConfig.description) {
+        const desc = document.createElement('div');
+        desc.className = 'form-text';
+        desc.textContent = paramConfig.description;
+        div.appendChild(desc);
+    }
+    
+    return div;
+}
+
+function updateAnalysisMethodSummary() {
+    const select = document.getElementById('analysisMethodSelect');
+    const summaryText = document.getElementById('analysisMethodSummaryText');
+    const parametersCount = document.getElementById('analysisMethodParametersCount');
+    const summary = document.getElementById('analysisMethodSummary');
+    
+    if (!select || !summaryText || !parametersCount || !summary) return;
+    
+    const selectedMethod = select.value;
+    
+    if (!selectedMethod) {
+        summaryText.textContent = 'No analysis method configured';
+        parametersCount.textContent = '0 parameters';
+        summary.style.display = 'none';
+        return;
+    }
+    
+    // Count configured parameters
+    const parameterInputs = document.querySelectorAll('#analysisMethodParametersForm input, #analysisMethodParametersForm select');
+    let configuredCount = 0;
+    
+    parameterInputs.forEach(input => {
+        if (input.type === 'checkbox') {
+            if (input.checked) configuredCount++;
+        } else if (input.value && input.value !== '') {
+            configuredCount++;
+        }
+    });
+    
+    // Update summary
+    const methodName = select.options[select.selectedIndex].textContent;
+    summaryText.textContent = `Analysis method: ${methodName}`;
+    parametersCount.textContent = `${configuredCount} parameters configured`;
+    summary.style.display = 'block';
+}
+
+function showAnalysisMethodInfo() {
+    const select = document.getElementById('analysisMethodSelect');
+    if (!select || !select.value) {
+        showToast('Please select an analysis method first', 'warning');
+        return;
+    }
+    
+    const selectedMethod = select.value;
+    
+    // Fetch method details for info modal
+    fetch(`/dataset/${datasetId}/metadata/analysis-methods/${selectedMethod}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAnalysisMethodInfoModal(data.method);
+            } else {
+                showAnalysisMethodError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading method info:', error);
+            showAnalysisMethodError('Failed to load method information');
+        });
+}
+
+function showAnalysisMethodInfoModal(method) {
+    // Create modal HTML
+    const modalHtml = `
+        <div class="modal fade" id="analysisMethodInfoModal" tabindex="-1" aria-labelledby="analysisMethodInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="analysisMethodInfoModalLabel">
+                            <i class="fas fa-info-circle me-2"></i>${method.name}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <h6>Description</h6>
+                            <p>${method.description}</p>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Advantages</h6>
+                                <ul class="list-unstyled">
+                                    ${method.pros.map(pro => `<li><i class="fas fa-check text-success me-2"></i>${pro}</li>`).join('')}
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Limitations</h6>
+                                <ul class="list-unstyled">
+                                    ${method.cons.map(con => `<li><i class="fas fa-times text-danger me-2"></i>${con}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Use Cases</h6>
+                            <ul>
+                                ${method.use_cases.map(useCase => `<li>${useCase}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('analysisMethodInfoModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('analysisMethodInfoModal'));
+    modal.show();
+    
+    // Handle modal cleanup
+    document.getElementById('analysisMethodInfoModal').addEventListener('hidden.bs.modal', function() {
+        document.activeElement.blur();
+        this.remove();
+    });
+}
+
+function showAnalysisMethodError(message) {
+    console.error('Analysis Method Error:', message);
+    showToast(`Analysis Method Error: ${message}`, 'error');
 }
 
 // Column Groups Functions

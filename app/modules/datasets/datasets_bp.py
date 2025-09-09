@@ -834,44 +834,106 @@ def sanitize_dataset_data(dataset_id):
 @datasets_bp.route('/dataset/<int:dataset_id>/file/<int:file_id>/patient-count')
 @login_required
 def get_patient_count(dataset_id, file_id):
-  """Get patient count from a specific file"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-  
-  file = DatasetFile.query.filter_by(
-      id=file_id, dataset_id=dataset_id).first_or_404()
-  
-  try:
-    import pandas as pd
-    import os
+    """Get patient count from a specific file"""
+    dataset = Dataset.query.filter_by(
+        id=dataset_id, user_id=current_user.id).first_or_404()
     
-    # Log file information for debugging
-    print(f"File ID: {file_id}, File Path: {file.file_path}, Show Filename: {file.show_filename}")
+    file = DatasetFile.query.filter_by(
+        id=file_id, dataset_id=dataset_id).first_or_404()
     
-    # Read the file to get patient count
-    if not os.path.exists(file.file_path):
+    try:
+        import pandas as pd
+        import os
+        
+        # Log file information for debugging
+        print(f"File ID: {file_id}, File Path: {file.file_path}, Show Filename: {file.show_filename}")
+        
+        # Read the file to get patient count
+        if not os.path.exists(file.file_path):
+            return jsonify({
+                'success': False,
+                'error': f'File not found at path: {file.file_path}'
+            }), 404
+        
+        # Read the CSV file
+        df = pd.read_csv(file.file_path)
+        
+        # Get patient count (assuming first column or a specific patient ID column)
+        patient_count = len(df)
+        
+        return jsonify({
+            'success': True,
+            'patient_count': patient_count,
+            'file_name': file.show_filename
+        })
+    except Exception as e:
+        print(f"Error in get_patient_count: {str(e)}")
         return jsonify({
             'success': False,
-            'error': f'File not found at path: {file.file_path}'
-        }), 404
+            'error': str(e)
+        }), 500
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods')
+@login_required
+def get_analysis_methods(dataset_id):
+    """Get all analysis methods and default method"""
+    dataset = Dataset.query.filter_by(
+        id=dataset_id, user_id=current_user.id).first_or_404()
     
-    # Read the CSV file
-    df = pd.read_csv(file.file_path)
+    try:
+        # Load analysis methods from metadata
+        analysis_methods = load_metadata_module('ANALYSIS_METHODS')
+        
+        # Get default method and categories
+        import importlib
+        analysis_module = importlib.import_module('metadata.ANALYSIS_METHODS')
+        default_method = getattr(analysis_module, 'DEFAULT_ANALYSIS_METHOD', 'cox_proportional_hazards')
+        method_categories = getattr(analysis_module, 'METHOD_CATEGORIES', {})
+        method_descriptions = getattr(analysis_module, 'METHOD_DESCRIPTIONS', {})
+        
+        return jsonify({
+            'success': True,
+            'methods': analysis_methods,
+            'default_method': default_method,
+            'categories': method_categories,
+            'descriptions': method_descriptions
+        })
+    except Exception as e:
+        print(f"Error loading analysis methods: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods/<method_name>')
+@login_required
+def get_analysis_method(dataset_id, method_name):
+    """Get details for a specific analysis method"""
+    dataset = Dataset.query.filter_by(
+        id=dataset_id, user_id=current_user.id).first_or_404()
     
-    # Get patient count (assuming first column or a specific patient ID column)
-    patient_count = len(df)
-    
-    return jsonify({
-        'success': True,
-        'patient_count': patient_count,
-        'file_name': file.show_filename
-    })
-  except Exception as e:
-    print(f"Error in get_patient_count: {str(e)}")
-    return jsonify({
-        'success': False,
-        'error': str(e)
-    }), 500
+    try:
+        # Load analysis methods from metadata
+        analysis_methods = load_metadata_module('ANALYSIS_METHODS')
+        
+        if method_name not in analysis_methods:
+            return jsonify({
+                'success': False,
+                'error': f'Analysis method "{method_name}" not found'
+            }), 404
+        
+        method_details = analysis_methods[method_name]
+        
+        return jsonify({
+            'success': True,
+            'method': method_details
+        })
+    except Exception as e:
+        print(f"Error loading analysis method {method_name}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @datasets_bp.route('/metadata/<metadata_type>')
