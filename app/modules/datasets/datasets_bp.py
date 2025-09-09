@@ -384,6 +384,71 @@ def get_bracken_time_points(dataset_id):
     }), 500
 
 
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/stratifications')
+@login_required
+def get_stratifications(dataset_id):
+  """Get stratifications metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  try:
+    STRATIFICATIONS = load_metadata_module('STRATIFICATIONS')
+    
+    # Convert to ordered list to preserve the order from the metadata file
+    ordered_stratifications = []
+    for group_name, group_stratifications in STRATIFICATIONS.items():
+        group_data = {
+            'group_name': group_name,
+            'group_label': format_group_name(group_name),
+            'stratifications': []
+        }
+        
+        for strat_name, strat_data in group_stratifications.items():
+            strat_info = {
+                'name': strat_name,
+                'label': format_stratification_name(strat_name),
+                'type': strat_data['type'],
+                'method': strat_data['method'],
+                'groups': []
+            }
+            
+            # Add groups information
+            if 'groups' in strat_data:
+                for group_key, group_info in strat_data['groups'].items():
+                    strat_info['groups'].append({
+                        'key': group_key,
+                        'label': group_info['label']
+                    })
+            
+            # Add parameters for composite stratifications
+            if 'parameters' in strat_data:
+                strat_info['parameters'] = strat_data['parameters']
+            
+            group_data['stratifications'].append(strat_info)
+        
+        ordered_stratifications.append(group_data)
+    
+    return jsonify({
+        'success': True,
+        'stratifications': ordered_stratifications
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+def format_group_name(group_name):
+    """Format group name for display"""
+    return group_name.replace('_', ' ').title()
+
+
+def format_stratification_name(strat_name):
+    """Format stratification name for display"""
+    return strat_name.replace('_', ' ').title()
+
+
 @datasets_bp.route('/dataset/<int:dataset_id>/data-stats')
 @login_required
 def get_dataset_data_stats(dataset_id):

@@ -358,8 +358,6 @@ PUBLICATION_CONFIG = {
 }
 
 
-
-
 # Group Analysis Reporting Configuration
 GROUP_REPORTING_CONFIG = {
     'report_types': {

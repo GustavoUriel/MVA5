@@ -356,6 +356,9 @@ function createNewAnalysis() {
         
         // Load bracken time points
         loadBrackenTimePoints();
+        
+        // Load stratifications
+        loadStratifications();
     }
 }
 
@@ -585,6 +588,25 @@ function loadBrackenTimePoints() {
         });
 }
 
+function loadStratifications() {
+    console.log('Loading stratifications from metadata...');
+    
+    fetch(`/dataset/${datasetId}/metadata/stratifications`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayStratifications(data.stratifications);
+            } else {
+                console.error('Error loading stratifications:', data.error);
+                showStratificationsError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading stratifications:', error);
+            showStratificationsError('Failed to load stratifications');
+        });
+}
+
 function displayBrackenTimePoints(timePoints) {
     const timePointSelect = document.getElementById('editorBrackenTimePointSelect');
     if (!timePointSelect) return;
@@ -611,6 +633,120 @@ function formatTimePointName(timePointKey) {
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
+}
+
+function displayStratifications(stratifications) {
+    const stratificationContainer = document.getElementById('stratificationContainer');
+    if (!stratificationContainer) return;
+    
+    let html = '';
+    let groupIndex = 0;
+    
+    stratifications.forEach(group => {
+        html += `
+            <div class="mb-4">
+                <h6 class="text-primary mb-3">
+                    <i class="fas fa-layer-group me-2"></i>
+                    ${group.group_label}
+                </h6>
+                <div class="row">
+        `;
+        
+        group.stratifications.forEach(stratification => {
+            const stratId = `strat_${groupIndex}_${stratification.name}`;
+            const groupCount = stratification.groups.length;
+            
+            html += `
+                <div class="col-md-6 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="${stratId}" onchange="updateStratificationSummary()">
+                        <label class="form-check-label" for="${stratId}">
+                            <strong>${stratification.label}</strong>
+                            <small class="text-muted d-block">
+                                ${stratification.type} • ${groupCount} groups
+                                ${stratification.parameters ? `• ${stratification.parameters.length} parameters` : ''}
+                            </small>
+                            <div class="mt-1 stratification-groups" style="display: none;">
+                                ${stratification.groups.map(group => 
+                                    `<span class="badge bg-light text-dark me-1 mb-1">${group.label}</span>`
+                                ).join('')}
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            `;
+            groupIndex++;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    stratificationContainer.innerHTML = html;
+}
+
+function toggleStratification() {
+    const stratificationContainer = document.getElementById('stratificationContainer');
+    const toggleButton = document.getElementById('toggleStratificationBtn');
+    
+    if (!stratificationContainer || !toggleButton) return;
+    
+    const isVisible = stratificationContainer.style.display !== 'none';
+    
+    stratificationContainer.style.display = isVisible ? 'none' : 'block';
+    toggleButton.textContent = isVisible ? 'Show Stratification Options' : 'Hide Stratification Options';
+    toggleButton.classList.toggle('btn-outline-secondary', isVisible);
+    toggleButton.classList.toggle('btn-secondary', !isVisible);
+    
+    // Show/hide stratification summary
+    const summary = document.getElementById('stratificationSummary');
+    if (summary) {
+        summary.style.display = isVisible ? 'none' : 'block';
+    }
+}
+
+function selectAllStratifications() {
+    const checkboxes = document.querySelectorAll('#stratificationContainer input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateStratificationSummary();
+}
+
+function clearAllStratifications() {
+    const checkboxes = document.querySelectorAll('#stratificationContainer input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateStratificationSummary();
+}
+
+function updateStratificationSummary() {
+    const checkboxes = document.querySelectorAll('#stratificationContainer input[type="checkbox"]:checked');
+    const summary = document.getElementById('stratificationSummaryText');
+    const count = document.getElementById('stratificationCount');
+    
+    if (summary) {
+        summary.textContent = `${checkboxes.length} stratification${checkboxes.length !== 1 ? 's' : ''} selected`;
+    }
+    
+    if (count) {
+        count.textContent = `${checkboxes.length} stratification${checkboxes.length !== 1 ? 's' : ''}`;
+    }
+}
+
+function showStratificationsError(error) {
+    const stratificationContainer = document.getElementById('stratificationContainer');
+    if (!stratificationContainer) return;
+    
+    stratificationContainer.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${error}
+        </div>
+    `;
 }
 
 function showBrackenTimePointsError(error) {
