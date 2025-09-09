@@ -506,6 +506,9 @@ function displayColumnGroups(columnGroups) {
     const columnGroupsContainer = document.getElementById('columnGroupsContainer');
     if (!columnGroupsContainer) return;
     
+    // Store the original column groups data for toggling
+    window.columnGroupsData = columnGroups;
+    
     let html = '';
     let groupIndex = 0;
     
@@ -515,13 +518,19 @@ function displayColumnGroups(columnGroups) {
         const displayName = formatGroupName(group.name);
         const columnCount = group.columns.length;
         
+        // Create a list of field names, sorted as they appear in the metadata file
+        const fieldNames = group.columns.map(field => `<span class="badge bg-light text-dark me-1 mb-1">${field}</span>`).join('');
+        
         html += `
-            <div class="col-md-6 mb-2">
+            <div class="col-md-6 mb-3">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="${groupId}" checked onchange="updateColumnGroupsSummary()">
                     <label class="form-check-label" for="${groupId}">
                         <strong>${displayName}</strong>
                         <small class="text-muted d-block">${columnCount} columns</small>
+                        <div class="mt-1 field-names" style="display: none;">
+                            ${fieldNames}
+                        </div>
                     </label>
                 </div>
             </div>
@@ -656,6 +665,23 @@ function clearAllColumnGroups() {
         checkbox.checked = false;
     });
     updateColumnGroupsSummary();
+}
+
+function toggleFieldNames() {
+    const fieldNamesElements = document.querySelectorAll('.field-names');
+    const toggleButton = document.getElementById('toggleFieldNamesBtn');
+    
+    if (!fieldNamesElements.length || !toggleButton) return;
+    
+    const isVisible = fieldNamesElements[0].style.display !== 'none';
+    
+    fieldNamesElements.forEach(element => {
+        element.style.display = isVisible ? 'none' : 'block';
+    });
+    
+    toggleButton.textContent = isVisible ? 'Show Field Names' : 'Hide Field Names';
+    toggleButton.classList.toggle('btn-outline-secondary', isVisible);
+    toggleButton.classList.toggle('btn-secondary', !isVisible);
 }
 
 function updateColumnGroupsSummary() {
