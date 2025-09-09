@@ -1,0 +1,262 @@
+{% extends "dataset/base.html" %}
+
+{% block tab_content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h5 class="mb-1">
+                    <i class="fas fa-file-alt me-2 text-info"></i>
+                    Analysis Reports
+                </h5>
+                <p class="text-muted mb-0">View, download, and manage your generated analysis reports</p>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-primary" disabled>
+                    <i class="fas fa-plus me-1"></i>Generate New Report
+                </button>
+                <button type="button" class="btn btn-outline-success" disabled>
+                    <i class="fas fa-download me-1"></i>Download All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reports Filter and Search -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" class="form-control" placeholder="Search reports..." id="reportSearch">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="reportTypeFilter">
+                            <option value="all">All Report Types</option>
+                            <option value="alpha_diversity">Alpha Diversity</option>
+                            <option value="beta_diversity">Beta Diversity</option>
+                            <option value="differential_abundance">Differential Abundance</option>
+                            <option value="summary">Summary Reports</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="reportStatusFilter">
+                            <option value="all">All Statuses</option>
+                            <option value="completed">Completed</option>
+                            <option value="generating">Generating</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-secondary w-100" onclick="clearReportFilters()">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reports List -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Generated Reports
+                    </h6>
+                    <span class="badge bg-secondary" id="reportCount">0 reports</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="reportsContainer">
+                    <!-- No Reports State -->
+                    <div class="text-center py-5" id="noReportsState">
+                        <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted mb-3">No Reports Generated Yet</h5>
+                        <p class="text-muted mb-4">
+                            Once you run analyses, generated reports will appear here.<br>
+                            You can download, view, or share your analysis results.
+                        </p>
+                        <div class="row justify-content-center">
+                            <div class="col-md-8">
+                                <div class="card border-dashed">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-lightbulb text-warning me-2"></i>
+                                            Quick Start Guide
+                                        </h6>
+                                        <ol class="text-start mb-0">
+                                            <li class="mb-2">Upload your data files in the <strong>Files</strong> tab</li>
+                                            <li class="mb-2">Select data sources in the <strong>Data Sources</strong> tab</li>
+                                            <li class="mb-2">Configure analysis parameters in the <strong>Analysis Config</strong> tab</li>
+                                            <li class="mb-2">Run your analysis in the <strong>Analysis</strong> tab</li>
+                                            <li>Reports will be automatically generated and listed here</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-primary me-2" onclick="goToTab('files-tab')">
+                                <i class="fas fa-upload me-1"></i>Start with File Upload
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="goToTab('analysis-tab')">
+                                <i class="fas fa-chart-line me-1"></i>Go to Analysis
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Reports List (hidden by default) -->
+                    <div id="reportsList" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Report Name</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Generated</th>
+                                        <th>Size</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportsTableBody">
+                                    <!-- Reports will be dynamically inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample Reports (for demonstration) -->
+<div class="row mt-4" id="sampleReportsSection" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-eye me-2"></i>
+                    Report Preview
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Sample Alpha Diversity Report -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-primary h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-chart-area me-2"></i>
+                                    Alpha Diversity Analysis
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="h5 text-primary">156</div>
+                                        <small class="text-muted">Samples</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h5 text-primary">3.45</div>
+                                        <small class="text-muted">Avg Shannon</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h5 text-primary">0.02</div>
+                                        <small class="text-muted">P-value</small>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <span class="badge bg-primary">Completed</span>
+                                    <span class="badge bg-light text-dark ms-2">2.3 MB</span>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-primary me-1" disabled>
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" disabled>
+                                        <i class="fas fa-download"></i> Download
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sample Beta Diversity Report -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-info h-100">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-project-diagram me-2"></i>
+                                    Beta Diversity Analysis
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="h5 text-info">PCoA</div>
+                                        <small class="text-muted">Method</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h5 text-info">42%</div>
+                                        <small class="text-muted">PC1 Var</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="h5 text-info">0.001</div>
+                                        <small class="text-muted">PERMANOVA</small>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <span class="badge bg-warning">Generating</span>
+                                    <span class="badge bg-light text-dark ms-2">~ 4.1 MB</span>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-info me-1" disabled>
+                                        <i class="fas fa-spinner fa-spin"></i> Processing
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Reports are automatically generated after running analyses
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary" onclick="goToTab('analysis-tab')">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Analysis
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="goToTab('settings-tab')">
+                    <i class="fas fa-cog me-1"></i>Settings
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

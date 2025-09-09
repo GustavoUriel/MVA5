@@ -1,0 +1,41 @@
+<!-- Progress Indicator Component -->
+<div class="mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="mb-0">Dataset Completion</h6>
+        <span class="badge bg-{{ 'success' if dataset.is_complete else 'warning' }}">
+            {{ dataset.completion_percentage }}% Complete
+        </span>
+    </div>
+    <div class="progress mb-3">
+        <div class="progress-bar bg-{{ 'success' if dataset.is_complete else 'warning' }}" 
+             role="progressbar" 
+             style="width: {{ dataset.completion_percentage }}%">
+        </div>
+    </div>
+    <div class="row text-center">
+        <div class="col-md-4">
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="fas fa-{{ 'check-circle text-success' if dataset.patients_file_uploaded else 'times-circle text-muted' }} me-2"></i>
+                <span class="{{ 'text-success' if dataset.patients_file_uploaded else 'text-muted' }}">
+                    Patients Data
+                </span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="fas fa-{{ 'check-circle text-success' if dataset.taxonomy_file_uploaded else 'times-circle text-muted' }} me-2"></i>
+                <span class="{{ 'text-success' if dataset.taxonomy_file_uploaded else 'text-muted' }}">
+                    Taxonomy Data
+                </span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex align-items-center justify-content-center">
+                <i class="fas fa-{{ 'check-circle text-success' if dataset.bracken_file_uploaded else 'times-circle text-muted' }} me-2"></i>
+                <span class="{{ 'text-success' if dataset.bracken_file_uploaded else 'text-muted' }}">
+                    Bracken Results
+                </span>
+            </div>
+        </div>
+    </div>
+</div>

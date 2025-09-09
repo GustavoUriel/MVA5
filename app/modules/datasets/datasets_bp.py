@@ -11,6 +11,19 @@ from collections import OrderedDict
 
 datasets_bp = Blueprint('datasets', __name__)
 
+def load_metadata_module(module_name):
+    """Helper function to load metadata modules from the project root"""
+    import sys
+    import os
+    # Add the project root to the Python path
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    # Import the metadata module
+    module = __import__(f'metadata.{module_name}', fromlist=[module_name])
+    return getattr(module, module_name)
+
 
 @datasets_bp.route('/dataset/new', methods=['GET', 'POST'])
 @login_required
@@ -46,12 +59,27 @@ def new_dataset():
 
 
 @datasets_bp.route('/dataset/<int:dataset_id>')
+@datasets_bp.route('/dataset/<int:dataset_id>/<tab>')
 @login_required
-def view_dataset(dataset_id):
-  """View a specific dataset"""
+def view_dataset(dataset_id, tab='files'):
+  """View a specific dataset with optional tab parameter"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  return render_template('dataset.html', dataset=dataset)
+  
+  # Validate tab parameter
+  valid_tabs = ['files', 'analysis', 'reports', 'settings']
+  if tab not in valid_tabs:
+    tab = 'files'
+  
+  # Determine which template to render
+  template_map = {
+    'files': 'dataset/files_tab.html',
+    'analysis': 'dataset/analysis_tab.html', 
+    'reports': 'dataset/reports_tab.html',
+    'settings': 'dataset/settings_tab.html'
+  }
+  
+  return render_template(template_map[tab], dataset=dataset, active_tab=tab)
 
 
 @datasets_bp.route('/dataset/<int:dataset_id>/upload', methods=['POST'])
@@ -258,7 +286,7 @@ def delete_dataset(dataset_id):
     }), 500
 
 
-@datasets_bp.route('/dataset/<int:dataset_id>/files')
+@datasets_bp.route('/dataset/<int:dataset_id>/files/api')
 @login_required
 def get_dataset_files(dataset_id):
   """Get files for a dataset"""
@@ -291,6 +319,69 @@ def get_dataset_files(dataset_id):
           'total_size': dataset.total_size
       }
   })
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/column-groups')
+@login_required
+def get_column_groups(dataset_id):
+  """Get column groups metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  try:
+    COLUMN_GROUPS = load_metadata_module('COLUMN_GROUPS')
+    
+    # Convert to ordered list to preserve the order from the metadata file
+    # Python 3.7+ dictionaries maintain insertion order
+    ordered_groups = []
+    for group_name, columns in COLUMN_GROUPS.items():
+        ordered_groups.append({
+            'name': group_name,
+            'columns': columns
+        })
+    
+    return jsonify({
+        'success': True,
+        'column_groups': ordered_groups
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/bracken-time-points')
+@login_required
+def get_bracken_time_points(dataset_id):
+  """Get bracken time points metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  try:
+    BRACKEN_TIME_POINTS = load_metadata_module('BRACKEN_TIME_POINTS')
+    
+    # Convert to ordered list to preserve the order from the metadata file
+    # Python 3.7+ dictionaries maintain insertion order
+    ordered_time_points = []
+    for time_point_key, time_point_data in BRACKEN_TIME_POINTS.items():
+        ordered_time_points.append({
+            'key': time_point_key,
+            'suffix': time_point_data['suffix'],
+            'description': time_point_data['description'],
+            'timepoint': time_point_data['timepoint'],
+            'function': time_point_data['function']
+        })
+    
+    return jsonify({
+        'success': True,
+        'time_points': ordered_time_points
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
 
 
 @datasets_bp.route('/dataset/<int:dataset_id>/data-stats')

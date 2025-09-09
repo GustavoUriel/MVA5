@@ -1,0 +1,51 @@
+{% extends "dataset/base.html" %}
+
+{% block tab_content %}
+<form>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="datasetName" class="form-label">Dataset Name</label>
+                <input type="text" class="form-control" id="datasetName" value="{{ dataset.name }}">
+            </div>
+            <div class="mb-3">
+                <label for="datasetDescription" class="form-label">Description</label>
+                <textarea class="form-control" id="datasetDescription" rows="4">{{ dataset.description or '' }}</textarea>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Dataset Status</label>
+                <select class="form-select">
+                    <option value="draft" {{ 'selected' if dataset.status == 'draft' else '' }}>Draft</option>
+                    <option value="ready" {{ 'selected' if dataset.status == 'ready' else '' }}>Ready</option>
+                    <option value="processing" {{ 'selected' if dataset.status == 'processing' else '' }}>Processing</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Privacy Settings</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="privacy" id="private" checked>
+                    <label class="form-check-label" for="private">
+                        <i class="fas fa-lock me-1"></i>Private (only you)
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="privacy" id="shared" disabled>
+                    <label class="form-check-label text-muted" for="shared">
+                        <i class="fas fa-users me-1"></i>Shared (coming soon)
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="border-top pt-3">
+        <button type="submit" class="btn btn-primary me-2">
+            <i class="fas fa-save me-1"></i>Save Changes
+        </button>
+        <button type="button" class="btn btn-outline-secondary">
+            Cancel
+        </button>
+    </div>
+</form>
+{% endblock %}
