@@ -373,9 +373,20 @@ def get_bracken_time_points(dataset_id):
             'function': time_point_data['function']
         })
     
+    # Get default time point from the module
+    import sys
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    bracken_module = __import__('metadata.BRACKEN_TIME_POINTS', fromlist=['BRACKEN_TIME_POINTS'])
+    default_time_point = getattr(bracken_module, 'DEFAULT_TIME_POINT', None)
+    
     return jsonify({
         'success': True,
-        'time_points': ordered_time_points
+        'time_points': ordered_time_points,
+        'default_time_point': default_time_point
     })
   except Exception as e:
     return jsonify({
@@ -431,6 +442,133 @@ def get_stratifications(dataset_id):
     return jsonify({
         'success': True,
         'stratifications': ordered_stratifications
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/clustering-methods')
+@login_required
+def get_clustering_methods(dataset_id):
+  """Get clustering methods metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  try:
+    CLUSTERING_METHODS = load_metadata_module('CLUSTERING_METHODS')
+    
+    # Get default method from the module
+    import sys
+    import os
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    clustering_module = __import__('metadata.CLUSTERING_METHODS', fromlist=['CLUSTERING_METHODS'])
+    default_method = getattr(clustering_module, 'DEFAULT_CLUSTERING_METHOD', None)
+    
+    return jsonify({
+        'success': True,
+        'clustering_methods': CLUSTERING_METHODS,
+        'default_method': default_method
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/clustering-methods/<method_name>')
+@login_required
+def get_clustering_method(dataset_id, method_name):
+  """Get specific clustering method metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  try:
+    CLUSTERING_METHODS = load_metadata_module('CLUSTERING_METHODS')
+    
+    if method_name not in CLUSTERING_METHODS:
+        return jsonify({
+            'success': False,
+            'error': f'Clustering method "{method_name}" not found'
+        }), 404
+    
+    method_data = CLUSTERING_METHODS[method_name]
+    
+    return jsonify({
+        'success': True,
+        'method': method_data
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/cluster-representative-methods')
+@login_required
+def get_cluster_representative_methods(dataset_id):
+  """Get cluster representative methods metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  try:
+    import sys, os
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    cluster_rep_module = __import__('metadata.CLUSTER_REPRESENTATIVE', fromlist=['CLUSTER_REPRESENTATIVE_METHODS'])
+    CLUSTER_REPRESENTATIVE_METHODS = getattr(cluster_rep_module, 'CLUSTER_REPRESENTATIVE_METHODS', {})
+    default_method = getattr(cluster_rep_module, 'DEFAULT_REPRESENTATIVE_METHOD', None)
+    method_categories = getattr(cluster_rep_module, 'METHOD_CATEGORIES', {})
+    
+    return jsonify({
+        'success': True,
+        'cluster_representative_methods': CLUSTER_REPRESENTATIVE_METHODS,
+        'default_method': default_method,
+        'method_categories': method_categories
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/cluster-representative-methods/<method_name>')
+@login_required
+def get_cluster_representative_method(dataset_id, method_name):
+  """Get specific cluster representative method metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  try:
+    import sys, os
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    cluster_rep_module = __import__('metadata.CLUSTER_REPRESENTATIVE', fromlist=['CLUSTER_REPRESENTATIVE_METHODS'])
+    CLUSTER_REPRESENTATIVE_METHODS = getattr(cluster_rep_module, 'CLUSTER_REPRESENTATIVE_METHODS', {})
+    
+    if method_name not in CLUSTER_REPRESENTATIVE_METHODS:
+        return jsonify({
+            'success': False,
+            'error': f'Cluster representative method "{method_name}" not found'
+        }), 404
+    
+    method_data = CLUSTER_REPRESENTATIVE_METHODS[method_name]
+    
+    return jsonify({
+        'success': True,
+        'method': method_data
     })
   except Exception as e:
     return jsonify({

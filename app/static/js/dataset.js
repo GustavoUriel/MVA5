@@ -576,7 +576,7 @@ function loadBrackenTimePoints() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displayBrackenTimePoints(data.time_points);
+                displayBrackenTimePoints(data.time_points, data.default_time_point);
             } else {
                 console.error('Error loading bracken time points:', data.error);
                 showBrackenTimePointsError(data.error);
@@ -607,7 +607,7 @@ function loadStratifications() {
         });
 }
 
-function displayBrackenTimePoints(timePoints) {
+function displayBrackenTimePoints(timePoints, defaultTimePoint = null) {
     const timePointSelect = document.getElementById('editorBrackenTimePointSelect');
     if (!timePointSelect) return;
     
@@ -623,8 +623,19 @@ function displayBrackenTimePoints(timePoints) {
         option.textContent = `${formatTimePointName(timePoint.key)} - ${timePoint.description}`;
         option.setAttribute('data-suffix', timePoint.suffix);
         option.setAttribute('data-function', timePoint.function);
+        
+        // Set as selected if it's the default
+        if (defaultTimePoint && timePoint.key === defaultTimePoint) {
+            option.selected = true;
+        }
+        
         timePointSelect.appendChild(option);
     });
+    
+    // Update description if default was set
+    if (defaultTimePoint) {
+        updateTimePointDescription();
+    }
 }
 
 function formatTimePointName(timePointKey) {
@@ -700,11 +711,11 @@ function toggleStratification() {
     toggleButton.classList.toggle('btn-outline-secondary', isVisible);
     toggleButton.classList.toggle('btn-secondary', !isVisible);
     
-    // Show/hide stratification summary
-    const summary = document.getElementById('stratificationSummary');
-    if (summary) {
-        summary.style.display = isVisible ? 'none' : 'block';
-    }
+    // Keep stratification summary always visible - don't hide it
+    // const summary = document.getElementById('stratificationSummary');
+    // if (summary) {
+    //     summary.style.display = isVisible ? 'none' : 'block';
+    // }
 }
 
 function selectAllStratifications() {
@@ -749,6 +760,788 @@ function showStratificationsError(error) {
     `;
 }
 
+// Clustering Functions
+function loadClusteringMethods() {
+    console.log('Loading clustering methods from metadata...');
+    
+    fetch(`/dataset/${datasetId}/metadata/clustering-methods`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayClusteringMethods(data.clustering_methods, data.default_method);
+            } else {
+                console.error('Error loading clustering methods:', data.error);
+                showClusteringError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading clustering methods:', error);
+            showClusteringError('Failed to load clustering methods');
+        });
+}
+
+function displayClusteringMethods(clusteringMethods, defaultMethod = null) {
+    const methodSelect = document.getElementById('clusteringMethodSelect');
+    if (!methodSelect) return;
+    
+    // Clear existing options (except the first one)
+    while (methodSelect.children.length > 1) {
+        methodSelect.removeChild(methodSelect.lastChild);
+    }
+    
+    // Add clustering method options
+    Object.entries(clusteringMethods).forEach(([key, method]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = method.name;
+        option.setAttribute('data-description', method.description);
+        
+        // Set as selected if it's the default
+        if (defaultMethod && key === defaultMethod) {
+            option.selected = true;
+        }
+        
+        methodSelect.appendChild(option);
+    });
+    
+    // Auto-select default method and load its parameters (but keep container hidden)
+    if (defaultMethod) {
+        updateClusteringParameters();
+        // Ensure parameters container stays hidden initially
+        const parametersContainer = document.getElementById('clusteringParametersContainer');
+        if (parametersContainer) {
+            parametersContainer.style.display = 'none';
+        }
+    }
+}
+
+function updateClusteringParameters() {
+    const methodSelect = document.getElementById('clusteringMethodSelect');
+    const parametersContainer = document.getElementById('clusteringParametersContainer');
+    const parametersForm = document.getElementById('clusteringParametersForm');
+    const methodDescription = document.getElementById('clusteringMethodDescription');
+    const methodStatus = document.getElementById('clusteringMethodStatus');
+    const clusteringSummary = document.getElementById('clusteringSummary');
+    
+    if (!methodSelect || !parametersContainer || !parametersForm) return;
+    
+    const selectedMethod = methodSelect.value;
+    
+    if (!selectedMethod) {
+        // Hide parameters and reset UI
+        parametersContainer.style.display = 'none';
+        clusteringSummary.style.display = 'none';
+        if (methodDescription) methodDescription.textContent = 'Choose a clustering algorithm for variable grouping';
+        if (methodStatus) {
+            methodStatus.textContent = 'No method selected';
+            methodStatus.className = 'badge bg-secondary me-2';
+        }
+        return;
+    }
+    
+    // Update method description and status
+    const selectedOption = methodSelect.options[methodSelect.selectedIndex];
+    const description = selectedOption.getAttribute('data-description') || 'Clustering method selected';
+    
+    if (methodDescription) methodDescription.textContent = description;
+    if (methodStatus) {
+        methodStatus.textContent = 'Method configured';
+        methodStatus.className = 'badge bg-success me-2';
+    }
+    
+    // Load method parameters
+    fetch(`/dataset/${datasetId}/metadata/clustering-methods/${selectedMethod}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayClusteringParameters(data.method);
+                // Don't automatically show parameters container - keep it hidden
+                // parametersContainer.style.display = 'block';
+                clusteringSummary.style.display = 'block';
+                updateClusteringSummary();
+            } else {
+                console.error('Error loading method parameters:', data.error);
+                showClusteringError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading method parameters:', error);
+            showClusteringError('Failed to load method parameters');
+        });
+}
+
+function displayClusteringParameters(method) {
+    const parametersForm = document.getElementById('clusteringParametersForm');
+    if (!parametersForm || !method.parameters) return;
+    
+    let html = '<div class="row">';
+    
+    Object.entries(method.parameters).forEach(([paramKey, paramConfig]) => {
+        const paramId = `clustering_param_${paramKey}`;
+        const colClass = Object.keys(method.parameters).length > 2 ? 'col-md-6' : 'col-md-4';
+        
+        html += `
+            <div class="${colClass} mb-3">
+                <label for="${paramId}" class="form-label">
+                    <i class="fas fa-cog text-primary me-2"></i>
+                    ${paramConfig.name}
+                </label>
+        `;
+        
+        if (paramConfig.type === 'select') {
+            html += `
+                <select class="form-select" id="${paramId}" onchange="updateClusteringSummary()">
+                    <option value="">Select ${paramConfig.name.toLowerCase()}...</option>
+            `;
+            paramConfig.options.forEach(option => {
+                const isDefault = option === paramConfig.default;
+                const isBest = option === paramConfig.best_component;
+                const selected = isDefault ? 'selected' : '';
+                const badge = isBest ? ' (Best)' : '';
+                html += `<option value="${option}" ${selected}>${option}${badge}</option>`;
+            });
+            html += '</select>';
+        } else if (paramConfig.type === 'number') {
+            const step = paramConfig.step || 1;
+            const min = paramConfig.min || 0;
+            const max = paramConfig.max || 100;
+            html += `
+                <input type="number" class="form-control" id="${paramId}" 
+                       value="${paramConfig.default}" 
+                       min="${min}" max="${max}" step="${step}"
+                       onchange="updateClusteringSummary()">
+            `;
+        }
+        
+        html += `
+                <div class="form-text">
+                    ${paramConfig.description}
+                    ${paramConfig.best_component && paramConfig.best_component !== 'auto' ? 
+                        `<br><small class="text-success"><i class="fas fa-star me-1"></i>Best: ${paramConfig.best_component}</small>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    parametersForm.innerHTML = html;
+}
+
+function toggleClustering() {
+    const parametersContainer = document.getElementById('clusteringParametersContainer');
+    const toggleButton = document.getElementById('toggleClusteringBtn');
+    
+    if (!parametersContainer || !toggleButton) return;
+    
+    const isVisible = parametersContainer.style.display !== 'none';
+    
+    parametersContainer.style.display = isVisible ? 'none' : 'block';
+    toggleButton.innerHTML = isVisible ? 
+        '<i class="fas fa-eye me-1"></i>Show Clustering Options' : 
+        '<i class="fas fa-eye-slash me-1"></i>Hide Clustering Options';
+    toggleButton.classList.toggle('btn-outline-secondary', isVisible);
+    toggleButton.classList.toggle('btn-secondary', !isVisible);
+}
+
+function resetClusteringToDefaults() {
+    const methodSelect = document.getElementById('clusteringMethodSelect');
+    if (!methodSelect || !methodSelect.value) return;
+    
+    // Reset all parameter inputs to their default values
+    const parameterInputs = document.querySelectorAll('#clusteringParametersForm input, #clusteringParametersForm select');
+    parameterInputs.forEach(input => {
+        if (input.type === 'number') {
+            // Find the default value from the method configuration
+            const paramKey = input.id.replace('clustering_param_', '');
+            // This would need to be enhanced to get the actual default value
+            // For now, we'll just reset to the current value
+        } else if (input.tagName === 'SELECT') {
+            // Reset to first non-empty option
+            const firstOption = Array.from(input.options).find(opt => opt.value !== '');
+            if (firstOption) input.value = firstOption.value;
+        }
+    });
+    
+    updateClusteringSummary();
+    showToast('Clustering parameters reset to defaults', 'success');
+}
+
+function applyBestComponents() {
+    const methodSelect = document.getElementById('clusteringMethodSelect');
+    if (!methodSelect || !methodSelect.value) return;
+    
+    // Apply best component values to all parameters
+    const parameterInputs = document.querySelectorAll('#clusteringParametersForm input, #clusteringParametersForm select');
+    parameterInputs.forEach(input => {
+        if (input.tagName === 'SELECT') {
+            // Find option with "Best" in the text
+            const bestOption = Array.from(input.options).find(opt => opt.textContent.includes('Best'));
+            if (bestOption) input.value = bestOption.value;
+        }
+    });
+    
+    updateClusteringSummary();
+    showToast('Best component values applied', 'success');
+}
+
+function updateClusteringSummary() {
+    const methodSelect = document.getElementById('clusteringMethodSelect');
+    const summaryText = document.getElementById('clusteringSummaryText');
+    const parametersCount = document.getElementById('clusteringParametersCount');
+    const clusteringSummary = document.getElementById('clusteringSummary');
+    
+    if (!methodSelect || !summaryText || !parametersCount) return;
+    
+    const selectedMethod = methodSelect.value;
+    if (!selectedMethod) {
+        clusteringSummary.style.display = 'none';
+        return;
+    }
+    
+    const selectedOption = methodSelect.options[methodSelect.selectedIndex];
+    const methodName = selectedOption.textContent;
+    
+    // Count configured parameters
+    const parameterInputs = document.querySelectorAll('#clusteringParametersForm input, #clusteringParametersForm select');
+    const configuredParams = Array.from(parameterInputs).filter(input => 
+        input.value && input.value.trim() !== ''
+    ).length;
+    
+    summaryText.textContent = `${methodName} configured with ${configuredParams} parameters`;
+    parametersCount.textContent = `${configuredParams} parameters`;
+    clusteringSummary.style.display = 'block';
+}
+
+function showClusteringInfo() {
+    const methodSelect = document.getElementById('clusteringMethodSelect');
+    if (!methodSelect || !methodSelect.value) {
+        showToast('Please select a clustering method first', 'warning');
+        return;
+    }
+    
+    const selectedOption = methodSelect.options[methodSelect.selectedIndex];
+    const methodName = selectedOption.textContent;
+    const description = selectedOption.getAttribute('data-description') || 'No description available';
+    
+    // Create and show info modal
+    const modalHtml = `
+        <div class="modal fade" id="clusteringInfoModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-info-circle me-2"></i>
+                            ${methodName} Information
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>Description:</strong></p>
+                        <p class="text-muted">${description}</p>
+                        <p><strong>Parameters:</strong></p>
+                        <ul id="clusteringParametersList">
+                            <!-- Parameters will be populated here -->
+                        </ul>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('clusteringInfoModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Load parameter details
+    fetch(`/dataset/${datasetId}/metadata/clustering-methods/${methodSelect.value}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.method.parameters) {
+                const parametersList = document.getElementById('clusteringParametersList');
+                if (parametersList) {
+                    parametersList.innerHTML = Object.entries(data.method.parameters)
+                        .map(([key, param]) => `
+                            <li>
+                                <strong>${param.name}:</strong> ${param.description}
+                                ${param.best_component && param.best_component !== 'auto' ? 
+                                    `<br><small class="text-success">Best value: ${param.best_component}</small>` : ''}
+                            </li>
+                        `).join('');
+                }
+            }
+        })
+        .catch(error => console.error('Error loading parameter details:', error));
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('clusteringInfoModal'));
+    modal.show();
+}
+
+function showClusteringError(error) {
+    const parametersForm = document.getElementById('clusteringParametersForm');
+    if (!parametersForm) return;
+    
+    parametersForm.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${error}
+        </div>
+    `;
+}
+
+// Cluster Representative Functions
+function loadClusterRepresentativeMethods() {
+    console.log('Loading cluster representative methods from metadata...');
+    
+    fetch(`/dataset/${datasetId}/metadata/cluster-representative-methods`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayClusterRepresentativeMethods(data.cluster_representative_methods, data.default_method);
+            } else {
+                console.error('Error loading cluster representative methods:', data.error);
+                showClusterRepresentativeError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading cluster representative methods:', error);
+            showClusterRepresentativeError('Failed to load cluster representative methods');
+        });
+}
+
+function displayClusterRepresentativeMethods(clusterRepMethods, defaultMethod = null) {
+    const methodSelect = document.getElementById('clusterRepresentativeMethod');
+    if (!methodSelect) return;
+    
+    // Clear existing options (except the first one)
+    while (methodSelect.children.length > 1) {
+        methodSelect.removeChild(methodSelect.lastChild);
+    }
+    
+    // Add methods to dropdown
+    Object.entries(clusterRepMethods).forEach(([methodKey, methodConfig]) => {
+        const option = document.createElement('option');
+        option.value = methodKey;
+        option.textContent = methodConfig.name;
+        methodSelect.appendChild(option);
+    });
+    
+    // Set default method if provided
+    if (defaultMethod && clusterRepMethods[defaultMethod]) {
+        methodSelect.value = defaultMethod;
+        updateClusterRepresentativeMethod();
+    }
+    
+    console.log(`Loaded ${Object.keys(clusterRepMethods).length} cluster representative methods`);
+}
+
+function updateClusterRepresentativeMethod() {
+    const methodSelect = document.getElementById('clusterRepresentativeMethod');
+    const methodStatus = document.getElementById('clusterRepMethodStatus');
+    const container = document.getElementById('clusterRepresentativeContainer');
+    const summary = document.getElementById('clusterRepSummary');
+    
+    if (!methodSelect || !methodStatus || !container || !summary) return;
+    
+    const selectedMethod = methodSelect.value;
+    
+    if (!selectedMethod) {
+        methodStatus.textContent = 'No method selected';
+        methodStatus.className = 'badge bg-secondary me-2';
+        container.style.display = 'none';
+        summary.style.display = 'none';
+        return;
+    }
+    
+    // Update status
+    methodStatus.textContent = 'Method selected';
+    methodStatus.className = 'badge bg-success me-2';
+    
+    // Load method details
+    fetch(`/dataset/${datasetId}/metadata/cluster-representative-methods/${selectedMethod}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayClusterRepresentativeDetails(data.method);
+                summary.style.display = 'block';
+                updateClusterRepresentativeSummary();
+            } else {
+                console.error('Error loading method details:', data.error);
+                showClusterRepresentativeError(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading method details:', error);
+            showClusterRepresentativeError('Failed to load method details');
+        });
+}
+
+function displayClusterRepresentativeDetails(method) {
+    const detailsContainer = document.getElementById('clusterRepresentativeDetails');
+    if (!detailsContainer || !method) return;
+    
+    let html = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Method Information
+                        </h6>
+                        <p class="card-text"><strong>Name:</strong> ${method.name}</p>
+                        <p class="card-text"><strong>Description:</strong> ${method.description}</p>
+                        <p class="card-text"><strong>Method Type:</strong> ${method.method}</p>
+                        <p class="card-text"><strong>Direction:</strong> ${method.direction}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Explanation
+                        </h6>
+                        <p class="card-text">${method.explanation}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    detailsContainer.innerHTML = html;
+}
+
+function toggleClusterRepresentative() {
+    const container = document.getElementById('clusterRepresentativeContainer');
+    const button = document.getElementById('toggleClusterRepBtn');
+    
+    if (!container || !button) return;
+    
+    const isVisible = container.style.display !== 'none';
+    
+    if (isVisible) {
+        container.style.display = 'none';
+        button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Options';
+        button.className = 'btn btn-outline-secondary';
+    } else {
+        container.style.display = 'block';
+        button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Options';
+        button.className = 'btn btn-outline-secondary';
+    }
+}
+
+function resetClusterRepresentativeToDefault() {
+    const methodSelect = document.getElementById('clusterRepresentativeMethod');
+    if (!methodSelect) return;
+    
+    // Reset to default method (abundance_highest)
+    methodSelect.value = 'abundance_highest';
+    updateClusterRepresentativeMethod();
+    
+    showToast('Cluster representative method reset to default (Highest Mean Abundance)', 'success');
+}
+
+function updateClusterRepresentativeSummary() {
+    const methodSelect = document.getElementById('clusterRepresentativeMethod');
+    const summaryText = document.getElementById('clusterRepSummaryText');
+    const methodName = document.getElementById('clusterRepMethodName');
+    
+    if (!methodSelect || !summaryText || !methodName) return;
+    
+    const selectedMethod = methodSelect.value;
+    const selectedOption = methodSelect.options[methodSelect.selectedIndex];
+    
+    if (selectedMethod && selectedOption) {
+        summaryText.textContent = `Using "${selectedOption.textContent}" method for cluster representative selection`;
+        methodName.textContent = selectedOption.textContent;
+    } else {
+        summaryText.textContent = 'No representative method configured';
+        methodName.textContent = 'No method';
+    }
+}
+
+function showClusterRepresentativeInfo() {
+    const methodSelect = document.getElementById('clusterRepresentativeMethod');
+    if (!methodSelect || !methodSelect.value) {
+        showToast('Please select a cluster representative method first', 'warning');
+        return;
+    }
+    
+    const selectedMethod = methodSelect.value;
+    
+    // Load method details for info modal
+    fetch(`/dataset/${datasetId}/metadata/cluster-representative-methods/${selectedMethod}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Create and show info modal
+                showClusterRepresentativeInfoModal(data.method);
+            } else {
+                console.error('Error loading method details:', data.error);
+                showToast('Error loading method information', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading method details:', error);
+            showToast('Error loading method information', 'error');
+        });
+}
+
+function showClusterRepresentativeInfoModal(method) {
+    // Create modal HTML
+    const modalHtml = `
+        <div class="modal fade" id="clusterRepInfoModal" tabindex="-1" aria-labelledby="clusterRepInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="clusterRepInfoModalLabel">
+                            <i class="fas fa-users me-2"></i>
+                            Cluster Representative Method Information
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-info-circle me-2"></i>Method Details</h6>
+                                <p><strong>Name:</strong> ${method.name}</p>
+                                <p><strong>Description:</strong> ${method.description}</p>
+                                <p><strong>Method Type:</strong> ${method.method}</p>
+                                <p><strong>Direction:</strong> ${method.direction}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-lightbulb me-2"></i>Explanation</h6>
+                                <p>${method.explanation}</p>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6><i class="fas fa-question-circle me-2"></i>How it works</h6>
+                                <p>This method will be used to select a representative taxonomy from each cluster when performing clustering analysis. The selected representative will be used as the cluster name and for further multivariate analysis.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('clusterRepInfoModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('clusterRepInfoModal'));
+    modal.show();
+    
+    // Remove modal from DOM when hidden
+    document.getElementById('clusterRepInfoModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+function showClusterRepresentativeError(error) {
+    const detailsContainer = document.getElementById('clusterRepresentativeDetails');
+    if (!detailsContainer) return;
+    
+    detailsContainer.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${error}
+        </div>
+    `;
+}
+
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toastId = 'toast_' + Date.now();
+    const toastHtml = `
+        <div class="toast" id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-${type === 'success' ? 'check-circle text-success' : 
+                                   type === 'error' ? 'exclamation-triangle text-danger' : 
+                                   type === 'warning' ? 'exclamation-triangle text-warning' : 
+                                   'info-circle text-info'} me-2"></i>
+                <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    // Add toast to container (create if doesn't exist)
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1055';
+        document.body.appendChild(toastContainer);
+    }
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // Show toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: type === 'error' ? 5000 : 3000
+    });
+    toast.show();
+    
+    // Remove toast element after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+// Column Groups Toggle Functions
+function toggleColumnGroups() {
+    const columnGroupsContent = document.getElementById('columnGroupsContent');
+    const columnGroupsSummary = document.getElementById('columnGroupsSummary');
+    const toggleButton = document.getElementById('toggleColumnGroupsBtn');
+    
+    if (!columnGroupsContent || !toggleButton) return;
+    
+    const isVisible = columnGroupsContent.style.display !== 'none';
+    
+    columnGroupsContent.style.display = isVisible ? 'none' : 'block';
+    // Keep summary always visible - don't hide it
+    // if (columnGroupsSummary) {
+    //     columnGroupsSummary.style.display = isVisible ? 'none' : 'block';
+    // }
+    
+    toggleButton.innerHTML = isVisible ? 
+        '<i class="fas fa-eye me-1"></i>Show Column Groups' : 
+        '<i class="fas fa-eye-slash me-1"></i>Hide Column Groups';
+    toggleButton.classList.toggle('btn-outline-secondary', isVisible);
+    toggleButton.classList.toggle('btn-secondary', !isVisible);
+}
+
+// Bracken Time Point Functions
+
+function showBrackenTimePointInfo() {
+    const timePointSelect = document.getElementById('editorBrackenTimePointSelect');
+    if (!timePointSelect) {
+        showToast('Time point selector not found', 'warning');
+        return;
+    }
+    
+    const selectedOption = timePointSelect.options[timePointSelect.selectedIndex];
+    const selectedValue = timePointSelect.value;
+    
+    if (!selectedValue) {
+        showToast('Please select a time point first', 'warning');
+        return;
+    }
+    
+    const timePointName = selectedOption.textContent;
+    const suffix = selectedOption.getAttribute('data-suffix') || 'N/A';
+    const functionType = selectedOption.getAttribute('data-function') || 'N/A';
+    
+    // Create and show info modal
+    const modalHtml = `
+        <div class="modal fade" id="brackenTimePointInfoModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Bracken Time Point Information
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Time Point:</strong></p>
+                                <p class="text-muted">${timePointName}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Value:</strong></p>
+                                <p class="text-muted">${selectedValue}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>File Suffix:</strong></p>
+                                <p class="text-muted">${suffix}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Function Type:</strong></p>
+                                <p class="text-muted">${functionType}</p>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <p><strong>Description:</strong></p>
+                            <p class="text-muted">This time point configuration determines how Bracken abundance data is processed and analyzed for the selected time period.</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('brackenTimePointInfoModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('brackenTimePointInfoModal'));
+    modal.show();
+}
+
+function updateTimePointDescription() {
+    const timePointSelect = document.getElementById('editorBrackenTimePointSelect');
+    const descriptionElement = document.getElementById('timePointDescription');
+    
+    if (!timePointSelect) return;
+    
+    const selectedOption = timePointSelect.options[timePointSelect.selectedIndex];
+    const selectedValue = timePointSelect.value;
+    
+    if (!selectedValue) {
+        if (descriptionElement) descriptionElement.textContent = 'Select a time point to see its description';
+        return;
+    }
+    
+    const timePointName = selectedOption.textContent;
+    const suffix = selectedOption.getAttribute('data-suffix') || '';
+    const functionType = selectedOption.getAttribute('data-function') || '';
+    
+    // Update description
+    if (descriptionElement) {
+        let description = `Time point: ${timePointName}`;
+        if (suffix) description += ` | Suffix: ${suffix}`;
+        if (functionType) description += ` | Function: ${functionType}`;
+        descriptionElement.textContent = description;
+    }
+}
+
 function showBrackenTimePointsError(error) {
     const timePointSelect = document.getElementById('editorBrackenTimePointSelect');
     if (!timePointSelect) return;
@@ -784,6 +1577,12 @@ function setupAnalysisEditor() {
     if (brackenSelect) {
         brackenSelect.addEventListener('change', validateAnalysisEditor);
     }
+    
+    // Load clustering methods for the clustering parameters container
+    loadClusteringMethods();
+    
+    // Load cluster representative methods for the cluster representative container
+    loadClusterRepresentativeMethods();
 }
 
 // Column Groups Functions

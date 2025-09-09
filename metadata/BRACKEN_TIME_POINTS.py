@@ -37,3 +37,6 @@ BRACKEN_TIME_POINTS = {
         'function': '.2.4M - .P'
     },
 }
+
+# Default time point selection
+DEFAULT_TIME_POINT = 'pre'

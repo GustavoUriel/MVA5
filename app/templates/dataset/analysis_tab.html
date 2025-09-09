@@ -200,6 +200,9 @@
                                                 Patient Data Column Groups
                                             </h6>
                                             <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-secondary" id="toggleColumnGroupsBtn" onclick="toggleColumnGroups()">
+                                                    <i class="fas fa-eye me-1"></i>Show Column Groups
+                                                </button>
                                                 <button type="button" class="btn btn-outline-secondary" id="toggleFieldNamesBtn" onclick="toggleFieldNames()">
                                                     <i class="fas fa-eye me-1"></i>Show Field Names
                                                 </button>
@@ -214,12 +217,16 @@
                                     </div>
                                     <div class="card-body">
                                         <p class="text-muted mb-3">Select which groups of patient data columns to include in your analysis:</p>
-                                        <div class="row" id="columnGroupsContainer">
-                                            <!-- Column groups will be dynamically populated here -->
+                                        
+                                        <!-- Column Groups Container -->
+                                        <div id="columnGroupsContent" style="display: none;">
+                                            <div class="row" id="columnGroupsContainer">
+                                                <!-- Column groups will be dynamically populated here -->
+                                            </div>
                                         </div>
                                         
-                                        <!-- Selection Summary -->
-                                        <div class="mt-3 p-3 bg-light rounded">
+                                        <!-- Column Groups Summary -->
+                                        <div class="mt-3 p-3 bg-light rounded" id="columnGroupsSummary">
                                             <div class="row align-items-center">
                                                 <div class="col-md-8">
                                                     <div class="d-flex align-items-center">
@@ -239,22 +246,47 @@
 
                         <!-- Bracken Time Point Selection -->
                         <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label for="editorBrackenTimePointSelect" class="form-label">
-                                    <i class="fas fa-timeline text-warning me-2"></i>
-                                    Bracken Time Point
-                                </label>
-                                <select class="form-select" id="editorBrackenTimePointSelect" onchange="updateTimePointDescription()">
-                                    <option value="">Choose time point...</option>
-                                    <!-- Options will be populated dynamically -->
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Run Analysis</label>
-                                <div>
-                                    <button type="button" class="btn btn-primary w-100" onclick="runAnalysisFromEditor()">
-                                        <i class="fas fa-play me-1"></i>Run Analysis
-                                    </button>
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-timeline text-warning me-2"></i>
+                                                Bracken Time Point Selection
+                                            </h6>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-info" onclick="showBrackenTimePointInfo()">
+                                                    <i class="fas fa-info-circle me-1"></i>Info
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted mb-3">Select the time point for Bracken abundance analysis:</p>
+                                        
+                                        <!-- Time Point Selection -->
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <label for="editorBrackenTimePointSelect" class="form-label">
+                                                    <i class="fas fa-timeline text-warning me-2"></i>
+                                                    Bracken Time Point
+                                                </label>
+                                                <select class="form-select" id="editorBrackenTimePointSelect" onchange="updateTimePointDescription()">
+                                                    <option value="">Choose time point...</option>
+                                                    <!-- Options will be populated dynamically -->
+                                                </select>
+                                                <div class="form-text" id="timePointDescription">Select a time point to see its description</div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Analysis Action</label>
+                                                <div>
+                                                    <button type="button" class="btn btn-primary w-100" onclick="runAnalysisFromEditor()">
+                                                        <i class="fas fa-play me-1"></i>Run Analysis
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -289,7 +321,7 @@
                                         </div>
                                         
                                         <!-- Stratification Summary -->
-                                        <div class="mt-3 p-3 bg-light rounded" id="stratificationSummary" style="display: none;">
+                                        <div class="mt-3 p-3 bg-light rounded" id="stratificationSummary">
                                             <div class="row align-items-center">
                                                 <div class="col-md-8">
                                                     <div class="d-flex align-items-center">
@@ -299,6 +331,163 @@
                                                 </div>
                                                 <div class="col-md-4 text-end">
                                                     <span class="badge bg-primary" id="stratificationCount">0 stratifications</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clustering Parameters Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-project-diagram me-2"></i>
+                                                Clustering Parameters
+                                            </h6>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-secondary" id="toggleClusteringBtn" onclick="toggleClustering()">
+                                                    <i class="fas fa-eye me-1"></i>Show Clustering Options
+                                                </button>
+                                                <button type="button" class="btn btn-outline-primary" onclick="resetClusteringToDefaults()">
+                                                    <i class="fas fa-undo me-1"></i>Reset to Defaults
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success" onclick="applyBestComponents()">
+                                                    <i class="fas fa-magic me-1"></i>Apply Best Components
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted mb-3">Configure clustering methods and parameters for variable clustering analysis:</p>
+                                        
+                                        <!-- Clustering Method Selection -->
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="clusteringMethodSelect" class="form-label">
+                                                    <i class="fas fa-cogs text-primary me-2"></i>
+                                                    Clustering Method
+                                                </label>
+                                                <select class="form-select" id="clusteringMethodSelect" onchange="updateClusteringParameters()">
+                                                    <option value="">Select clustering method...</option>
+                                                    <!-- Options will be populated dynamically -->
+                                                </select>
+                                                <div class="form-text" id="clusteringMethodDescription">Choose a clustering algorithm for variable grouping</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Method Status</label>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge bg-secondary me-2" id="clusteringMethodStatus">No method selected</span>
+                                                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showClusteringInfo()">
+                                                        <i class="fas fa-info-circle me-1"></i>Info
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Clustering Parameters Container -->
+                                        <div id="clusteringParametersContainer" style="display: none;">
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-sliders-h me-2"></i>
+                                                        Method Parameters
+                                                    </h6>
+                                                    <div id="clusteringParametersForm">
+                                                        <!-- Parameters will be dynamically populated here -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Clustering Summary -->
+                                        <div class="mt-3 p-3 bg-light rounded" id="clusteringSummary" style="display: none;">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-8">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-info-circle text-primary me-2"></i>
+                                                        <span id="clusteringSummaryText">No clustering method configured</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 text-end">
+                                                    <span class="badge bg-primary" id="clusteringParametersCount">0 parameters</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cluster Representative Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-users me-2"></i>
+                                                Cluster Representative Selection
+                                            </h6>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-secondary" id="toggleClusterRepBtn" onclick="toggleClusterRepresentative()">
+                                                    <i class="fas fa-eye me-1"></i>Show Options
+                                                </button>
+                                                <button type="button" class="btn btn-outline-primary" onclick="resetClusterRepresentativeToDefault()">
+                                                    <i class="fas fa-undo me-1"></i>Reset to Default
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Representative Method</label>
+                                                <select class="form-select" id="clusterRepresentativeMethod" onchange="updateClusterRepresentativeMethod()">
+                                                    <option value="">Select a method...</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Method Status</label>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge bg-secondary me-2" id="clusterRepMethodStatus">No method selected</span>
+                                                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showClusterRepresentativeInfo()">
+                                                        <i class="fas fa-info-circle me-1"></i>Info
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Cluster Representative Container -->
+                                        <div id="clusterRepresentativeContainer" style="display: none;">
+                                            <div class="row mt-3">
+                                                <div class="col-12">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-cog me-2"></i>
+                                                        Method Details
+                                                    </h6>
+                                                    <div id="clusterRepresentativeDetails">
+                                                        <!-- Method details will be dynamically populated here -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Cluster Representative Summary -->
+                                        <div class="mt-3 p-3 bg-light rounded" id="clusterRepSummary" style="display: none;">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-8">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-info-circle text-primary me-2"></i>
+                                                        <span id="clusterRepSummaryText">No representative method configured</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 text-end">
+                                                    <span class="badge bg-primary" id="clusterRepMethodName">No method</span>
                                                 </div>
                                             </div>
                                         </div>
