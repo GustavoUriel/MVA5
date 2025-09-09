@@ -132,16 +132,6 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="data-sources-tab" data-bs-toggle="tab" data-bs-target="#data-sources" type="button" role="tab">
-                        <i class="fas fa-layer-group me-2"></i>Data Sources
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="analysis-config-tab" data-bs-toggle="tab" data-bs-target="#analysis-config" type="button" role="tab">
-                        <i class="fas fa-sliders-h me-2"></i>Analysis Config
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
                     <button class="nav-link" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">
                         <i class="fas fa-chart-line me-2"></i>Analysis
                     </button>
@@ -370,415 +360,436 @@
                     </div>
                 </div>
 
-                <!-- Data Sources Tab -->
-                <div class="tab-pane fade" id="data-sources" role="tabpanel">
-                    <div class="row">
+                <!-- Analysis Tab -->
+                <div class="tab-pane fade" id="analysis" role="tabpanel">
+                    <!-- Analysis List Section -->
+                    <div class="row mb-4">
                         <div class="col-12">
-                            <div class="d-flex align-items-center justify-content-between mb-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
                                 <div>
                                     <h5 class="mb-1">
-                                        <i class="fas fa-layer-group me-2 text-primary"></i>
-                                        Select Data Sources
+                                        <i class="fas fa-chart-line me-2 text-primary"></i>
+                                        Analysis Management
                                     </h5>
-                                    <p class="text-muted mb-0">Choose which files and data groups to include in your analysis</p>
+                                    <p class="text-muted mb-0">Create, manage, and run microbiome analyses</p>
                                 </div>
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-outline-primary" disabled>
-                                        <i class="fas fa-check-all me-1"></i>Select All
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" disabled>
-                                        <i class="fas fa-times me-1"></i>Clear All
-                                    </button>
+                                <button type="button" class="btn btn-primary" onclick="createNewAnalysis()">
+                                    <i class="fas fa-plus me-1"></i>New Analysis
+                                </button>
+                            </div>
+                            
+                            <!-- Analysis List -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-list me-2"></i>
+                                            Existing Analyses
+                                        </h6>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="refreshAnalysisList()">
+                                                <i class="fas fa-sync-alt me-1"></i>Refresh
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="analysisListContainer">
+                                        <!-- Analysis list will be populated here -->
+                                        <div class="text-center py-4" id="noAnalysesState">
+                                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                                            <h6 class="text-muted mb-2">No Analyses Created Yet</h6>
+                                            <p class="text-muted mb-3">Create your first analysis to get started with microbiome data exploration.</p>
+                                            <button type="button" class="btn btn-primary" onclick="createNewAnalysis()">
+                                                <i class="fas fa-plus me-1"></i>Create First Analysis
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Analysis Table (hidden by default) -->
+                                        <div id="analysisTable" style="display: none;">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Name</th>
+                                                            <th>Created</th>
+                                                            <th>Modified</th>
+                                                            <th>Size</th>
+                                                            <th>Last Run</th>
+                                                            <th>Patients</th>
+                                                            <th>Status</th>
+                                                            <th>Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="analysisTableBody">
+                                                        <!-- Analysis rows will be populated here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- File Selection Section -->
+                    <!-- Analysis Editor Section -->
+                    <div class="row" id="analysisEditorSection" style="display: none;">
+                        <div class="col-12">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-edit me-2"></i>
+                                            <span id="editorTitle">New Analysis</span>
+                                        </h6>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-light btn-sm" onclick="saveAnalysis()">
+                                                <i class="fas fa-save me-1"></i>Save
+                                            </button>
+                                            <button type="button" class="btn btn-outline-light btn-sm" onclick="cancelAnalysisEdit()">
+                                                <i class="fas fa-times me-1"></i>Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Analysis Name -->
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="analysisName" class="form-label">Analysis Name</label>
+                                            <input type="text" class="form-control" id="analysisName" placeholder="Enter analysis name...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="analysisDescription" class="form-label">Description</label>
+                                            <input type="text" class="form-control" id="analysisDescription" placeholder="Brief description...">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Editor Tabs -->
+                                    <ul class="nav nav-tabs" id="analysisEditorTabs" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="datasources-editor-tab" data-bs-toggle="tab" data-bs-target="#datasources-editor" type="button" role="tab">
+                                                <i class="fas fa-layer-group me-2"></i>Data Sources
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="config-editor-tab" data-bs-toggle="tab" data-bs-target="#config-editor" type="button" role="tab">
+                                                <i class="fas fa-sliders-h me-2"></i>Analysis Config
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="reports-config-tab" data-bs-toggle="tab" data-bs-target="#reports-config" type="button" role="tab">
+                                                <i class="fas fa-file-alt me-2"></i>Report Config
+                                            </button>
+                                        </li>
+                                    </ul>
+                                    
+                                    <div class="tab-content mt-3" id="analysisEditorTabsContent">
+                                        <!-- Data Sources Editor Tab -->
+                                        <div class="tab-pane fade show active" id="datasources-editor" role="tabpanel">
+                                            <!-- File Selection Section -->
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card">
                                 <div class="card-header">
                                     <h6 class="mb-0">
                                         <i class="fas fa-files me-2"></i>
-                                        Available Files
+                                        Select Data Files
                                     </h6>
                                 </div>
                                 <div class="card-body">
-                                    <div class="row" id="fileSelectionContainer">
-                                        <!-- Patient Files Section -->
+                                    <div class="row">
+                                        <!-- Patient File Selection -->
                                         <div class="col-md-4">
-                                            <div class="border rounded p-3 h-100">
-                                                <div class="d-flex align-items-center mb-3">
+                                            <div class="mb-3">
+                                                <label for="editorPatientFileSelect" class="form-label">
                                                     <i class="fas fa-user-injured text-primary me-2"></i>
-                                                    <h6 class="mb-0">Patient Data Files</h6>
-                                                </div>
-                                                <div id="patientFilesSelection">
-                                                    <div class="text-center py-3">
-                                                        <i class="fas fa-upload fa-2x text-muted mb-2"></i>
-                                                        <p class="text-muted small mb-0">No patient files uploaded yet</p>
-                                                        <small class="text-muted">Upload files in the Files tab first</small>
-                                                    </div>
-                                                </div>
+                                                    Patient Data File
+                                                </label>
+                                                <select class="form-select" id="editorPatientFileSelect" onchange="validateAnalysisEditor()">
+                                                    <option value="">Select patient file...</option>
+                                                    <!-- Options will be populated dynamically -->
+                                                </select>
+                                                <div class="form-text">Choose the patient metadata file for analysis</div>
                                             </div>
                                         </div>
 
-                                        <!-- Taxonomy Files Section -->
+                                        <!-- Taxonomy File Selection -->
                                         <div class="col-md-4">
-                                            <div class="border rounded p-3 h-100">
-                                                <div class="d-flex align-items-center mb-3">
+                                            <div class="mb-3">
+                                                <label for="editorTaxonomyFileSelect" class="form-label">
                                                     <i class="fas fa-sitemap text-info me-2"></i>
-                                                    <h6 class="mb-0">Taxonomy Data Files</h6>
-                                                </div>
-                                                <div id="taxonomyFilesSelection">
-                                                    <div class="text-center py-3">
-                                                        <i class="fas fa-upload fa-2x text-muted mb-2"></i>
-                                                        <p class="text-muted small mb-0">No taxonomy files uploaded yet</p>
-                                                        <small class="text-muted">Upload files in the Files tab first</small>
-                                                    </div>
-                                                </div>
+                                                    Taxonomy Data File
+                                                </label>
+                                                <select class="form-select" id="editorTaxonomyFileSelect" onchange="validateAnalysisEditor()">
+                                                    <option value="">Select taxonomy file...</option>
+                                                    <!-- Options will be populated dynamically -->
+                                                </select>
+                                                <div class="form-text">Choose the taxonomy reference file</div>
                                             </div>
                                         </div>
 
-                                        <!-- Bracken Files Section -->
+                                        <!-- Bracken File Selection -->
                                         <div class="col-md-4">
-                                            <div class="border rounded p-3 h-100">
-                                                <div class="d-flex align-items-center mb-3">
+                                            <div class="mb-3">
+                                                <label for="editorBrackenFileSelect" class="form-label">
                                                     <i class="fas fa-chart-bar text-success me-2"></i>
-                                                    <h6 class="mb-0">Bracken Result Files</h6>
+                                                    Bracken Results File
+                                                </label>
+                                                <select class="form-select" id="editorBrackenFileSelect" onchange="validateAnalysisEditor()">
+                                                    <option value="">Select bracken file...</option>
+                                                    <!-- Options will be populated dynamically -->
+                                                </select>
+                                                <div class="form-text">Choose the bracken abundance data file</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column Groups Selection Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-layer-group me-2"></i>
+                                            Patient Data Column Groups
+                                        </h6>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-primary" onclick="selectAllColumnGroups()">
+                                                <i class="fas fa-check-all me-1"></i>Select All
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="clearAllColumnGroups()">
+                                                <i class="fas fa-times me-1"></i>Clear All
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted mb-3">Select which groups of patient data columns to include in your analysis:</p>
+                                    <div class="row" id="columnGroupsContainer">
+                                        <!-- Column groups will be dynamically populated here -->
+                                    </div>
+                                    
+                                    <!-- Selection Summary -->
+                                    <div class="mt-3 p-3 bg-light rounded">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-8">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-info-circle text-primary me-2"></i>
+                                                    <span id="selectionSummary">No column groups selected</span>
                                                 </div>
-                                                <div id="brackenFilesSelection">
-                                                    <div class="text-center py-3">
-                                                        <i class="fas fa-upload fa-2x text-muted mb-2"></i>
-                                                        <p class="text-muted small mb-0">No bracken files uploaded yet</p>
-                                                        <small class="text-muted">Upload files in the Files tab first</small>
+                                            </div>
+                                            <div class="col-md-4 text-end">
+                                                <span class="badge bg-primary" id="totalColumnsCount">0 total columns</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                            <!-- Bracken Time Point Selection -->
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <label for="editorBrackenTimePointSelect" class="form-label">
+                                                        <i class="fas fa-timeline text-warning me-2"></i>
+                                                        Bracken Time Point
+                                                    </label>
+                                                    <select class="form-select" id="editorBrackenTimePointSelect" onchange="updateTimePointDescription()">
+                                                        <option value="">Choose time point...</option>
+                                                        <!-- Options will be populated dynamically -->
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Run Analysis</label>
+                                                    <div>
+                                                        <button type="button" class="btn btn-primary w-100" onclick="runAnalysisFromEditor()">
+                                                            <i class="fas fa-play me-1"></i>Run Analysis
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Analysis Config Editor Tab -->
+                                        <div class="tab-pane fade" id="config-editor" role="tabpanel">
+                                            <!-- Analysis Configuration Content -->
+                                            <div class="row mb-3">
+                                                <div class="col-12">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-flask me-2"></i>
+                                                        Analysis Type
+                                                    </h6>
+                                                    <div class="row">
+                                                        <div class="col-md-4">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="editorAnalysisType" id="editorAlphaDiv" value="alpha_diversity" checked>
+                                                                <label class="form-check-label" for="editorAlphaDiv">
+                                                                    <strong>Alpha Diversity</strong><br>
+                                                                    <small class="text-muted">Within-sample diversity analysis</small>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="editorAnalysisType" id="editorBetaDiv" value="beta_diversity">
+                                                                <label class="form-check-label" for="editorBetaDiv">
+                                                                    <strong>Beta Diversity</strong><br>
+                                                                    <small class="text-muted">Between-sample diversity analysis</small>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="editorAnalysisType" id="editorDiffAbund" value="differential_abundance">
+                                                                <label class="form-check-label" for="editorDiffAbund">
+                                                                    <strong>Differential Abundance</strong><br>
+                                                                    <small class="text-muted">Compare abundances between groups</small>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Analysis Parameters -->
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-cogs me-2"></i>
+                                                        General Parameters
+                                                    </h6>
+                                                    <div class="mb-3">
+                                                        <label for="editorTaxonomicLevel" class="form-label">Taxonomic Level</label>
+                                                        <select class="form-select" id="editorTaxonomicLevel">
+                                                            <option value="species" selected>Species</option>
+                                                            <option value="genus">Genus</option>
+                                                            <option value="family">Family</option>
+                                                            <option value="order">Order</option>
+                                                            <option value="class">Class</option>
+                                                            <option value="phylum">Phylum</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="editorMinAbundance" class="form-label">Minimum Abundance Threshold</label>
+                                                        <div class="input-group">
+                                                            <input type="number" class="form-control" id="editorMinAbundance" value="0.001" step="0.001" min="0" max="1">
+                                                            <span class="input-group-text">%</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-chart-bar me-2"></i>
+                                                        Statistical Parameters
+                                                    </h6>
+                                                    <div class="mb-3">
+                                                        <label for="editorStatisticalMethod" class="form-label">Statistical Method</label>
+                                                        <select class="form-select" id="editorStatisticalMethod">
+                                                            <option value="wilcoxon" selected>Wilcoxon Rank-Sum Test</option>
+                                                            <option value="ttest">T-Test</option>
+                                                            <option value="kruskal">Kruskal-Wallis Test</option>
+                                                            <option value="anova">ANOVA</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="editorPValueCorrection" class="form-label">P-value Correction</label>
+                                                        <select class="form-select" id="editorPValueCorrection">
+                                                            <option value="fdr_bh" selected>Benjamini-Hochberg (FDR)</option>
+                                                            <option value="bonferroni">Bonferroni</option>
+                                                            <option value="holm">Holm-Sidak</option>
+                                                            <option value="none">None</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Reports Config Editor Tab -->
+                                        <div class="tab-pane fade" id="reports-config" role="tabpanel">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-file-pdf me-2"></i>
+                                                        Report Format
+                                                    </h6>
+                                                    <div class="mb-3">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="reportPDF" checked>
+                                                            <label class="form-check-label" for="reportPDF">
+                                                                PDF Report
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="reportHTML">
+                                                            <label class="form-check-label" for="reportHTML">
+                                                                HTML Report
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="reportCSV">
+                                                            <label class="form-check-label" for="reportCSV">
+                                                                CSV Data Export
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-chart-pie me-2"></i>
+                                                        Report Content
+                                                    </h6>
+                                                    <div class="mb-3">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="includeSummary" checked>
+                                                            <label class="form-check-label" for="includeSummary">
+                                                                Summary Statistics
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="includePlots" checked>
+                                                            <label class="form-check-label" for="includePlots">
+                                                                Visualization Plots
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="includeRawData">
+                                                            <label class="form-check-label" for="includeRawData">
+                                                                Raw Data Tables
+                                                            </label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Data Groups Selection Section -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-filter me-2"></i>
-                                        Data Groups & Filters
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <!-- Patient Groups -->
-                                        <div class="col-md-6">
-                                            <div class="border rounded p-3">
-                                                <h6 class="mb-3">
-                                                    <i class="fas fa-users text-primary me-2"></i>
-                                                    Patient Groups
-                                                </h6>
-                                                <div id="patientGroupsContainer">
-                                                    <div class="alert alert-light text-center">
-                                                        <i class="fas fa-info-circle text-muted me-2"></i>
-                                                        Patient groups will appear here after uploading and processing patient data
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Taxonomic Groups -->
-                                        <div class="col-md-6">
-                                            <div class="border rounded p-3">
-                                                <h6 class="mb-3">
-                                                    <i class="fas fa-project-diagram text-info me-2"></i>
-                                                    Taxonomic Groups
-                                                </h6>
-                                                <div id="taxonomicGroupsContainer">
-                                                    <div class="alert alert-light text-center">
-                                                        <i class="fas fa-info-circle text-muted me-2"></i>
-                                                        Taxonomic groups will appear here after uploading and processing taxonomy data
-                                                    </div>
-                                                </div>
+                                    
+                                    <!-- Editor Action Buttons -->
+                                    <div class="border-top pt-3 mt-3">
+                                        <div class="d-flex justify-content-end">
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-outline-secondary" onclick="cancelAnalysisEdit()">
+                                                    <i class="fas fa-times me-1"></i>Cancel
+                                                </button>
+                                                <button type="button" class="btn btn-success" onclick="saveAnalysis()">
+                                                    <i class="fas fa-save me-1"></i>Save
+                                                </button>
+                                                <button type="button" class="btn btn-primary" onclick="runAnalysisFromEditor()">
+                                                    <i class="fas fa-play me-1"></i>Run Analysis
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Select your data sources and continue to Analysis Configuration
-                                </div>
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="goToTab('files-tab')">
-                                        <i class="fas fa-arrow-left me-1"></i>Back to Files
-                                    </button>
-                                    <button type="button" class="btn btn-primary" onclick="goToTab('analysis-config-tab')" disabled id="proceedToConfigBtn">
-                                        <i class="fas fa-arrow-right me-1"></i>Continue to Analysis Config
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Analysis Configuration Tab -->
-                <div class="tab-pane fade" id="analysis-config" role="tabpanel">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="d-flex align-items-center justify-content-between mb-4">
-                                <div>
-                                    <h5 class="mb-1">
-                                        <i class="fas fa-sliders-h me-2 text-success"></i>
-                                        Analysis Configuration
-                                    </h5>
-                                    <p class="text-muted mb-0">Configure parameters and settings for your microbiome analysis</p>
-                                </div>
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-outline-primary" disabled>
-                                        <i class="fas fa-upload me-1"></i>Load Preset
-                                    </button>
-                                    <button type="button" class="btn btn-outline-success" disabled>
-                                        <i class="fas fa-save me-1"></i>Save as Preset
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Analysis Type Selection -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-flask me-2"></i>
-                                        Analysis Type
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="analysisType" id="alphaDiv" value="alpha_diversity" checked>
-                                                <label class="form-check-label" for="alphaDiv">
-                                                    <strong>Alpha Diversity</strong><br>
-                                                    <small class="text-muted">Within-sample diversity analysis</small>
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="analysisType" id="betaDiv" value="beta_diversity">
-                                                <label class="form-check-label" for="betaDiv">
-                                                    <strong>Beta Diversity</strong><br>
-                                                    <small class="text-muted">Between-sample diversity analysis</small>
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="analysisType" id="diffAbund" value="differential_abundance">
-                                                <label class="form-check-label" for="diffAbund">
-                                                    <strong>Differential Abundance</strong><br>
-                                                    <small class="text-muted">Compare abundances between groups</small>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Analysis Parameters -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card h-100">
-                                <div class="card-header">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-cogs me-2"></i>
-                                        General Parameters
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-3">
-                                        <label for="taxonomicLevel" class="form-label">Taxonomic Level</label>
-                                        <select class="form-select" id="taxonomicLevel">
-                                            <option value="species" selected>Species</option>
-                                            <option value="genus">Genus</option>
-                                            <option value="family">Family</option>
-                                            <option value="order">Order</option>
-                                            <option value="class">Class</option>
-                                            <option value="phylum">Phylum</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="minAbundance" class="form-label">Minimum Abundance Threshold</label>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control" id="minAbundance" value="0.001" step="0.001" min="0" max="1">
-                                            <span class="input-group-text">%</span>
-                                        </div>
-                                        <div class="form-text">Filter out taxa below this abundance threshold</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="prevalenceFilter" class="form-label">Prevalence Filter</label>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control" id="prevalenceFilter" value="10" min="0" max="100">
-                                            <span class="input-group-text">%</span>
-                                        </div>
-                                        <div class="form-text">Taxa must be present in at least this percentage of samples</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card h-100">
-                                <div class="card-header">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-chart-bar me-2"></i>
-                                        Statistical Parameters
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-3">
-                                        <label for="statistical_method" class="form-label">Statistical Method</label>
-                                        <select class="form-select" id="statistical_method">
-                                            <option value="wilcoxon" selected>Wilcoxon Rank-Sum Test</option>
-                                            <option value="ttest">T-Test</option>
-                                            <option value="kruskal">Kruskal-Wallis Test</option>
-                                            <option value="anova">ANOVA</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="pValueCorrection" class="form-label">P-value Correction</label>
-                                        <select class="form-select" id="pValueCorrection">
-                                            <option value="fdr_bh" selected>Benjamini-Hochberg (FDR)</option>
-                                            <option value="bonferroni">Bonferroni</option>
-                                            <option value="holm">Holm-Sidak</option>
-                                            <option value="none">None</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="significanceLevel" class="form-label">Significance Level (α)</label>
-                                        <select class="form-select" id="significanceLevel">
-                                            <option value="0.05" selected>0.05</option>
-                                            <option value="0.01">0.01</option>
-                                            <option value="0.001">0.001</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Normalization and Transformation -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-balance-scale me-2"></i>
-                                        Normalization & Transformation
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label class="form-label">Normalization Method</label>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="normalization" id="relativeAbundance" value="relative" checked>
-                                                    <label class="form-check-label" for="relativeAbundance">
-                                                        Relative Abundance (proportion)
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="normalization" id="clr" value="clr">
-                                                    <label class="form-check-label" for="clr">
-                                                        Centered Log-Ratio (CLR)
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="normalization" id="tss" value="tss">
-                                                    <label class="form-check-label" for="tss">
-                                                        Total Sum Scaling (TSS)
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="mb-3">
-                                                <label class="form-label">Data Transformation</label>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="transformation" id="noTransform" value="none" checked>
-                                                    <label class="form-check-label" for="noTransform">
-                                                        None
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="transformation" id="logTransform" value="log">
-                                                    <label class="form-check-label" for="logTransform">
-                                                        Log transformation
-                                                    </label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="radio" name="transformation" id="sqrtTransform" value="sqrt">
-                                                    <label class="form-check-label" for="sqrtTransform">
-                                                        Square root transformation
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Configure your analysis parameters and proceed to run analysis
-                                </div>
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="goToTab('data-sources-tab')">
-                                        <i class="fas fa-arrow-left me-1"></i>Back to Data Sources
-                                    </button>
-                                    <button type="button" class="btn btn-success" onclick="goToTab('analysis-tab')" id="proceedToAnalysisBtn">
-                                        <i class="fas fa-play me-1"></i>Run Analysis
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Analysis Tab -->
-                <div class="tab-pane fade" id="analysis" role="tabpanel">
-                    <div class="text-center py-5">
-                        <i class="fas fa-flask fa-4x text-muted mb-3"></i>
-                        <h5 class="text-muted mb-3">Analysis Tools Coming Soon</h5>
-                        <p class="text-muted mb-4">
-                            Advanced statistical analysis tools will be available here.
-                        </p>
-                        <button type="button" class="btn btn-outline-primary" disabled>
-                            <i class="fas fa-play me-2"></i>
-                            Run Analysis
-                        </button>
                     </div>
                 </div>
 
@@ -867,7 +878,7 @@
                                         <div class="text-center py-5" id="noReportsState">
                                             <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
                                             <h5 class="text-muted mb-3">No Reports Generated Yet</h5>
-                                            <p class="text-muted mb-4">
+                        <p class="text-muted mb-4">
                                                 Once you run analyses, generated reports will appear here.<br>
                                                 You can download, view, or share your analysis results.
                                             </p>
@@ -896,7 +907,7 @@
                                                 </button>
                                                 <button type="button" class="btn btn-outline-secondary" onclick="goToTab('analysis-tab')">
                                                     <i class="fas fa-chart-line me-1"></i>Go to Analysis
-                                                </button>
+                        </button>
                                             </div>
                                         </div>
 
@@ -1397,9 +1408,31 @@ window.showDataStatsError = function(error) {
 
 // Main initialization
 document.addEventListener('DOMContentLoaded', function() {
+    // Load metadata first, then initialize everything else
+    loadAllMetadata().then(() => {
+        // Initialize UI components with loaded metadata
+        initializeColumnGroups();
+        initializeTimePoints();
+        
     // Load files and data stats on page load
     loadFiles();
     loadDataStats();
+        
+        // Load files for data sources dropdowns
+        loadFilesForDataSources();
+        
+        // Load analysis list
+        refreshAnalysisList();
+    }).catch(error => {
+        console.error('Error loading metadata:', error);
+        // Fallback: initialize with empty metadata
+        initializeColumnGroups();
+        initializeTimePoints();
+        loadFiles();
+        loadDataStats();
+        loadFilesForDataSources();
+        refreshAnalysisList();
+    });
     
     // Handle file uploads
     document.querySelectorAll('.upload-btn').forEach(btn => {
@@ -1463,6 +1496,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Refresh files immediately after successful upload
                 loadFiles();
+                
+                // Also refresh data sources dropdowns
+                loadFilesForDataSources();
             } else {
                 showAlert(data.message, 'danger');
             }
@@ -1596,6 +1632,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Files data received:', data);
                 updateFilesTable(data.files);
                 updateProgress(data.dataset_status);
+                
+                // Also update the data sources dropdowns
+                populateFileDropdowns(data.files);
             })
             .catch(error => {
                 console.error('Error loading files:', error);
@@ -1853,29 +1892,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetButton(btn) {
         const fileType = btn.dataset.fileType;
         btn.disabled = false;
+        if (fileType) {
         btn.innerHTML = `<i class="fas fa-upload me-2"></i>Upload ${fileType.charAt(0).toUpperCase() + fileType.slice(1)} Data`;
+        } else {
+            btn.innerHTML = `<i class="fas fa-upload me-2"></i>Upload Data`;
+        }
     }
     
-    function showAlert(message, type) {
-        // Create alert element
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        // Insert at the top of the content
-        const container = document.querySelector('.container');
-        container.insertBefore(alertDiv, container.firstChild);
-        
-        // Auto-dismiss after 5 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
-            }
-        }, 5000);
-    }
     
          // Global functions for file actions
      window.downloadFile = function(fileId) {
@@ -1966,6 +1989,9 @@ document.addEventListener('DOMContentLoaded', function() {
                      
                      // Refresh the files table
                      loadFiles();
+                    
+                    // Also refresh data sources dropdowns
+                    loadFilesForDataSources();
                      
                      // Check if we need to show upload sections again
                      console.log('Restoring upload sections...');
@@ -2028,6 +2054,9 @@ document.addEventListener('DOMContentLoaded', function() {
                      
                      // Refresh the files table
                      loadFiles();
+                    
+                    // Also refresh data sources dropdowns
+                    loadFilesForDataSources();
                      
                      // Check if we need to show upload sections again
                      console.log('Restoring upload sections...');
@@ -2357,6 +2386,744 @@ window.clearReportFilters = function() {
     document.getElementById('reportStatusFilter').value = 'all';
     // Trigger filter update if implemented
     // filterReports();
+};
+
+// Data Sources Tab Functions (removed - no longer needed after restructuring)
+
+// Dynamic metadata loading
+let COLUMN_GROUPS = {};
+let TIME_POINTS = {};
+let TIME_POINTS_ORDERED = []; // Store ordered time points
+let ANALYSIS_METHODS = {};
+let CLUSTERING_METHODS = {};
+
+// Load metadata dynamically from backend
+window.loadMetadata = function(metadataType) {
+    return fetch(`/metadata/${metadataType}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                return data;
+            } else {
+                console.error(`Error loading ${metadataType}:`, data.message);
+                return { success: false, data: {} };
+            }
+        })
+        .catch(error => {
+            console.error(`Error loading ${metadataType}:`, error);
+            return { success: false, data: {} };
+        });
+};
+
+// Load all metadata
+window.loadAllMetadata = function() {
+    return Promise.all([
+        loadMetadata('column_groups').then(response => { 
+            COLUMN_GROUPS = response.data; 
+            // Transform the data to include UI metadata
+            Object.keys(COLUMN_GROUPS).forEach(key => {
+                if (Array.isArray(COLUMN_GROUPS[key])) {
+                    COLUMN_GROUPS[key] = {
+                        'name': key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                        'icon': getColumnGroupIcon(key),
+                        'description': getColumnGroupDescription(key),
+                        'count': COLUMN_GROUPS[key].length,
+                        'columns': COLUMN_GROUPS[key]
+                    };
+                }
+            });
+        }),
+        loadMetadata('time_points').then(response => { 
+            if (response.is_ordered) {
+                // Store both ordered list and object
+                TIME_POINTS_ORDERED = response.data;
+                TIME_POINTS = {};
+                response.data.forEach(item => {
+                    TIME_POINTS[item.key] = item.value;
+                });
+            } else {
+                TIME_POINTS = response;
+                TIME_POINTS_ORDERED = Object.entries(response).map(([key, value]) => ({key, value}));
+            }
+        }),
+        loadMetadata('analysis_methods').then(response => { 
+            ANALYSIS_METHODS = response.data; 
+        }),
+        loadMetadata('clustering_methods').then(response => { 
+            CLUSTERING_METHODS = response.data; 
+        })
+    ]);
+};
+
+// Helper functions to generate UI metadata for column groups
+function getColumnGroupIcon(groupKey) {
+    const iconMap = {
+        'demographics': 'fas fa-users text-primary',
+        'disease_characteristics': 'fas fa-stethoscope text-danger',
+        'fish_indicators': 'fas fa-dna text-warning',
+        'treatment_and_transplantation': 'fas fa-procedures text-success',
+        'laboratory_values': 'fas fa-vial text-info',
+        'genomic_markers': 'fas fa-microscope text-purple',
+        'antiviral': 'fas fa-pills text-success',
+        'antibiotics': 'fas fa-capsules text-primary',
+        'antifungal': 'fas fa-leaf text-success',
+        'comorbidities': 'fas fa-heartbeat text-danger'
+    };
+    return iconMap[groupKey] || 'fas fa-list text-secondary';
+}
+
+function getColumnGroupDescription(groupKey) {
+    const descMap = {
+        'demographics': 'Age, gender, race, ethnicity, BMI, smoking status',
+        'disease_characteristics': 'IgG/IgA, mutations, staging, biomarkers',
+        'fish_indicators': 'Chromosomal abnormalities and translocations',
+        'treatment_and_transplantation': 'Therapy, transplant dates, survival outcomes',
+        'laboratory_values': 'Blood counts, biomarkers, clinical labs',
+        'genomic_markers': 'Mutations, deletions, rearrangements',
+        'antiviral': 'Acyclovir, valacyclovir',
+        'antibiotics': 'Various antibiotic treatments',
+        'antifungal': 'Fluconazole treatments',
+        'comorbidities': 'Engraftment syndrome indicators'
+    };
+    return descMap[groupKey] || 'Data group for analysis';
+}
+
+// Initialize column groups interface
+window.initializeColumnGroups = function() {
+    const container = document.getElementById('columnGroupsContainer');
+    if (!container) return;
+    
+    // Check if metadata is loaded
+    if (Object.keys(COLUMN_GROUPS).length === 0) {
+        container.innerHTML = '<div class="col-12"><div class="alert alert-info">Loading column groups...</div></div>';
+        return;
+    }
+    
+    let html = '';
+    Object.keys(COLUMN_GROUPS).forEach(groupKey => {
+        const group = COLUMN_GROUPS[groupKey];
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="form-check border rounded p-3 h-100">
+                    <input class="form-check-input" type="checkbox" value="${groupKey}" id="group_${groupKey}" onchange="updateColumnGroupSelection()">
+                    <label class="form-check-label w-100" for="group_${groupKey}">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="${group.icon} me-2"></i>
+                            <strong>${group.name}</strong>
+                        </div>
+                        <div class="small text-muted">
+                            ${group.description}
+                            <div class="mt-1">
+                                <span class="badge bg-light text-dark">${group.count} columns</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+};
+
+window.updateColumnGroupSelection = function() {
+    const checkboxes = document.querySelectorAll('#columnGroupsContainer input[type="checkbox"]');
+    const selectedGroups = [];
+    let totalColumns = 0;
+    
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            selectedGroups.push(checkbox.value);
+            totalColumns += COLUMN_GROUPS[checkbox.value].count;
+        }
+    });
+    
+    const summaryElement = document.getElementById('selectionSummary');
+    const countElement = document.getElementById('totalColumnsCount');
+    
+    if (selectedGroups.length === 0) {
+        summaryElement.textContent = 'No column groups selected';
+        countElement.textContent = '0 total columns';
+    } else {
+        summaryElement.textContent = `${selectedGroups.length} group${selectedGroups.length > 1 ? 's' : ''} selected: ${selectedGroups.map(g => COLUMN_GROUPS[g].name).join(', ')}`;
+        countElement.textContent = `${totalColumns} total columns`;
+    }
+};
+
+window.selectAllColumnGroups = function() {
+    const checkboxes = document.querySelectorAll('#columnGroupsContainer input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateColumnGroupSelection();
+};
+
+window.clearAllColumnGroups = function() {
+    const checkboxes = document.querySelectorAll('#columnGroupsContainer input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateColumnGroupSelection();
+};
+
+// Initialize time points dropdown
+window.initializeTimePoints = function() {
+    const select = document.getElementById('editorBrackenTimePointSelect');
+    if (!select) return;
+    
+    // Check if metadata is loaded
+    if (Object.keys(TIME_POINTS).length === 0) {
+        select.innerHTML = '<option value="">Loading time points...</option>';
+        return;
+    }
+    
+    // Clear existing options except the first one
+    while (select.children.length > 1) {
+        select.removeChild(select.lastChild);
+    }
+    
+    // Add options from metadata in the order they appear in the file
+    // Use the ordered list to guarantee order preservation
+    TIME_POINTS_ORDERED.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.key;
+        option.textContent = `${item.value.description} (${item.value.suffix})`;
+        select.appendChild(option);
+    });
+};
+
+window.updateTimePointDescription = function() {
+    const select = document.getElementById('editorBrackenTimePointSelect');
+    const descriptionDiv = document.getElementById('timePointDescription');
+    
+    if (select.value && TIME_POINTS[select.value]) {
+        const timePoint = TIME_POINTS[select.value];
+        descriptionDiv.innerHTML = `
+            <div class="mb-2">
+                <strong>Description:</strong> ${timePoint.description}
+            </div>
+            <div class="mb-2">
+                <strong>Suffix:</strong> <code>${timePoint.suffix || 'None'}</code>
+            </div>
+            <div class="mb-2">
+                <strong>Function:</strong> <code>${timePoint.function}</code>
+            </div>
+            <div>
+                <strong>Time Point:</strong> ${timePoint.timepoint}
+            </div>
+        `;
+    } else {
+        descriptionDiv.innerHTML = '<p class="mb-0">Select a time point to see detailed information about the sample timing and data processing.</p>';
+    }
+};
+
+// Global alert function
+window.showAlert = function(message, type) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Insert at the top of the content
+    const container = document.querySelector('.container');
+    if (container) {
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+};
+
+// Analysis Management Functions
+window.currentEditingAnalysisId = null;
+
+window.createNewAnalysis = function() {
+    currentEditingAnalysisId = null;
+    document.getElementById('editorTitle').textContent = 'New Analysis';
+    document.getElementById('analysisName').value = '';
+    document.getElementById('analysisDescription').value = '';
+    
+    // Reset all form fields to defaults
+    resetAnalysisEditor();
+    
+    // Show the editor section
+    document.getElementById('analysisEditorSection').style.display = 'block';
+    
+    // Populate file dropdowns in editor
+    loadFilesForDataSources();
+    initializeColumnGroups();
+    initializeTimePoints();
+    
+    // Make sure to populate editor dropdowns specifically
+    setTimeout(() => {
+        fetch(`/dataset/${datasetId}/files`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    populateFileDropdowns(data.files);
+                }
+            })
+            .catch(error => console.error('Error loading files for editor:', error));
+    }, 100);
+    
+    // Scroll to editor
+    document.getElementById('analysisEditorSection').scrollIntoView({ behavior: 'smooth' });
+};
+
+window.editAnalysis = function(analysisId) {
+    currentEditingAnalysisId = analysisId;
+    document.getElementById('editorTitle').textContent = 'Edit Analysis';
+    
+    // Load analysis data
+    fetch(`/dataset/${datasetId}/analysis/${analysisId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                populateAnalysisEditor(data.analysis);
+                document.getElementById('analysisEditorSection').style.display = 'block';
+                document.getElementById('analysisEditorSection').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading analysis:', error);
+            showAlert('Error loading analysis details', 'danger');
+        });
+};
+
+window.duplicateAnalysis = function(analysisId) {
+    if (!confirm('Create a copy of this analysis?')) return;
+    
+    fetch(`/dataset/${datasetId}/analysis/${analysisId}/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            refreshAnalysisList();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error duplicating analysis:', error);
+        showAlert('Error duplicating analysis', 'danger');
+    });
+};
+
+window.deleteAnalysis = function(analysisId) {
+    if (!confirm('Are you sure you want to delete this analysis? This action cannot be undone.')) return;
+    
+    fetch(`/dataset/${datasetId}/analysis/${analysisId}/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            refreshAnalysisList();
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting analysis:', error);
+        showAlert('Error deleting analysis', 'danger');
+    });
+};
+
+window.runAnalysis = function(analysisId) {
+    if (!confirm('Run this analysis? This may take several minutes.')) return;
+    
+    fetch(`/dataset/${datasetId}/analysis/${analysisId}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            refreshAnalysisList();
+            
+            // Optionally redirect to results page
+            if (data.results_url) {
+                setTimeout(() => {
+                    window.location.href = data.results_url;
+                }, 2000);
+            }
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error running analysis:', error);
+        showAlert('Error running analysis', 'danger');
+    });
+};
+
+window.runAnalysisFromEditor = function() {
+    if (!validateAnalysisEditor()) {
+        showAlert('Please fill in all required fields before running analysis', 'warning');
+        return;
+    }
+    
+    // Save first, then run
+    saveAnalysis(true); // true = run after save
+};
+
+window.saveAnalysis = function(runAfterSave = false) {
+    if (!validateAnalysisEditor()) {
+        showAlert('Please fill in all required fields', 'warning');
+        return;
+    }
+    
+    const analysisData = collectAnalysisData();
+    const isEdit = currentEditingAnalysisId !== null;
+    const url = isEdit ? 
+        `/dataset/${datasetId}/analysis/${currentEditingAnalysisId}` : 
+        `/dataset/${datasetId}/analysis`;
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(analysisData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            refreshAnalysisList();
+            
+            if (runAfterSave) {
+                // Run the analysis
+                const analysisId = data.analysis_id || currentEditingAnalysisId;
+                setTimeout(() => runAnalysis(analysisId), 1000);
+            } else {
+                cancelAnalysisEdit();
+            }
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving analysis:', error);
+        showAlert('Error saving analysis', 'danger');
+    });
+};
+
+window.cancelAnalysisEdit = function() {
+    document.getElementById('analysisEditorSection').style.display = 'none';
+    currentEditingAnalysisId = null;
+};
+
+window.refreshAnalysisList = function() {
+    // For now, just show empty state since backend endpoint doesn't exist yet
+    // This prevents the 404 error from appearing in console
+    populateAnalysisList([]);
+    
+    // TODO: Uncomment when backend endpoint is implemented
+    /*
+    fetch(`/dataset/${datasetId}/analyses`)
+        .then(response => {
+            if (response.status === 404) {
+                // Endpoint not implemented yet, show empty state
+                populateAnalysisList([]);
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.success) {
+                populateAnalysisList(data.analyses);
+            } else if (data) {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading analyses:', error);
+            // Show empty state on error instead of alert
+            populateAnalysisList([]);
+        });
+    */
+};
+
+window.populateAnalysisList = function(analyses) {
+    const noAnalysesState = document.getElementById('noAnalysesState');
+    const analysisTable = document.getElementById('analysisTable');
+    const tableBody = document.getElementById('analysisTableBody');
+    
+    if (analyses.length === 0) {
+        noAnalysesState.style.display = 'block';
+        analysisTable.style.display = 'none';
+    } else {
+        noAnalysesState.style.display = 'none';
+        analysisTable.style.display = 'block';
+        
+        tableBody.innerHTML = analyses.map(analysis => `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-chart-line text-primary me-2"></i>
+                        <div>
+                            <div class="fw-bold">${analysis.name}</div>
+                            ${analysis.description ? `<small class="text-muted">${analysis.description}</small>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>${new Date(analysis.created_at).toLocaleDateString()}</td>
+                <td>${new Date(analysis.modified_at).toLocaleDateString()}</td>
+                <td>${formatFileSize(analysis.size || 0)}</td>
+                <td>${analysis.last_run ? new Date(analysis.last_run).toLocaleDateString() : 'Never'}</td>
+                <td>${analysis.patient_count || 0}</td>
+                <td>
+                    <span class="badge bg-${getAnalysisStatusColor(analysis.status)}">${analysis.status}</span>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="editAnalysis(${analysis.id})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-success" onclick="duplicateAnalysis(${analysis.id})" title="Duplicate">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteAnalysis(${analysis.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button class="btn btn-primary" onclick="runAnalysis(${analysis.id})" title="Run Analysis">
+                            <i class="fas fa-play"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+};
+
+// Helper functions
+window.resetAnalysisEditor = function() {
+    // Reset all form fields
+    document.querySelectorAll('#analysisEditorSection input, #analysisEditorSection select').forEach(element => {
+        if (element.type === 'checkbox' || element.type === 'radio') {
+            element.checked = element.defaultChecked;
+        } else {
+            element.value = element.defaultValue || '';
+        }
+    });
+    
+    // Reset to first tab
+    const firstTab = document.querySelector('#analysisEditorTabs .nav-link');
+    if (firstTab) {
+        const tab = new bootstrap.Tab(firstTab);
+        tab.show();
+    }
+};
+
+window.validateAnalysisEditor = function() {
+    const name = document.getElementById('analysisName').value.trim();
+    const patientFile = document.getElementById('editorPatientFileSelect').value;
+    const taxonomyFile = document.getElementById('editorTaxonomyFileSelect').value;
+    const brackenFile = document.getElementById('editorBrackenFileSelect').value;
+    const timePoint = document.getElementById('editorBrackenTimePointSelect').value;
+    
+    return name && patientFile && taxonomyFile && brackenFile && timePoint;
+};
+
+window.collectAnalysisData = function() {
+    // Collect all form data
+    const selectedColumnGroups = [];
+    document.querySelectorAll('#columnGroupsContainer input[type="checkbox"]:checked').forEach(cb => {
+        selectedColumnGroups.push(cb.value);
+    });
+    
+    return {
+        name: document.getElementById('analysisName').value.trim(),
+        description: document.getElementById('analysisDescription').value.trim(),
+        patient_file_id: document.getElementById('editorPatientFileSelect').value,
+        taxonomy_file_id: document.getElementById('editorTaxonomyFileSelect').value,
+        bracken_file_id: document.getElementById('editorBrackenFileSelect').value,
+        time_point: document.getElementById('editorBrackenTimePointSelect').value,
+        column_groups: selectedColumnGroups,
+        analysis_type: document.querySelector('input[name="editorAnalysisType"]:checked').value,
+        taxonomic_level: document.getElementById('editorTaxonomicLevel').value,
+        min_abundance: parseFloat(document.getElementById('editorMinAbundance').value),
+        statistical_method: document.getElementById('editorStatisticalMethod').value,
+        p_value_correction: document.getElementById('editorPValueCorrection').value,
+        report_formats: {
+            pdf: document.getElementById('reportPDF').checked,
+            html: document.getElementById('reportHTML').checked,
+            csv: document.getElementById('reportCSV').checked
+        },
+        report_content: {
+            summary: document.getElementById('includeSummary').checked,
+            plots: document.getElementById('includePlots').checked,
+            raw_data: document.getElementById('includeRawData').checked
+        }
+    };
+};
+
+window.populateAnalysisEditor = function(analysis) {
+    document.getElementById('analysisName').value = analysis.name || '';
+    document.getElementById('analysisDescription').value = analysis.description || '';
+    
+    // Set file selections
+    if (analysis.patient_file_id) document.getElementById('editorPatientFileSelect').value = analysis.patient_file_id;
+    if (analysis.taxonomy_file_id) document.getElementById('editorTaxonomyFileSelect').value = analysis.taxonomy_file_id;
+    if (analysis.bracken_file_id) document.getElementById('editorBrackenFileSelect').value = analysis.bracken_file_id;
+    if (analysis.time_point) document.getElementById('editorBrackenTimePointSelect').value = analysis.time_point;
+    
+    // Set column groups
+    if (analysis.column_groups) {
+        document.querySelectorAll('#columnGroupsContainer input[type="checkbox"]').forEach(cb => {
+            cb.checked = analysis.column_groups.includes(cb.value);
+        });
+        updateColumnGroupSelection();
+    }
+    
+    // Set analysis configuration
+    if (analysis.analysis_type) {
+        const radio = document.querySelector(`input[name="editorAnalysisType"][value="${analysis.analysis_type}"]`);
+        if (radio) radio.checked = true;
+    }
+    
+    if (analysis.taxonomic_level) document.getElementById('editorTaxonomicLevel').value = analysis.taxonomic_level;
+    if (analysis.min_abundance) document.getElementById('editorMinAbundance').value = analysis.min_abundance;
+    if (analysis.statistical_method) document.getElementById('editorStatisticalMethod').value = analysis.statistical_method;
+    if (analysis.p_value_correction) document.getElementById('editorPValueCorrection').value = analysis.p_value_correction;
+    
+    // Set report configuration
+    if (analysis.report_formats) {
+        document.getElementById('reportPDF').checked = analysis.report_formats.pdf || false;
+        document.getElementById('reportHTML').checked = analysis.report_formats.html || false;
+        document.getElementById('reportCSV').checked = analysis.report_formats.csv || false;
+    }
+    
+    if (analysis.report_content) {
+        document.getElementById('includeSummary').checked = analysis.report_content.summary || false;
+        document.getElementById('includePlots').checked = analysis.report_content.plots || false;
+        document.getElementById('includeRawData').checked = analysis.report_content.raw_data || false;
+    }
+};
+
+window.getAnalysisStatusColor = function(status) {
+    const colors = {
+        'draft': 'secondary',
+        'ready': 'primary',
+        'running': 'warning',
+        'completed': 'success',
+        'failed': 'danger'
+    };
+    return colors[status] || 'secondary';
+};
+
+// Load files for data sources dropdowns
+window.loadFilesForDataSources = function() {
+    fetch(`/dataset/${datasetId}/files`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Files data for dropdowns:', data);
+            populateFileDropdowns(data.files);
+        })
+        .catch(error => {
+            console.error('Error loading files for data sources:', error);
+            // Show empty state in dropdowns
+            populateFileDropdowns([]);
+        });
+};
+
+// Populate the file selection dropdowns
+window.populateFileDropdowns = function(files) {
+    // Group files by type
+    const filesByType = {
+        patients: files.filter(file => file.file_type === 'patients'),
+        taxonomy: files.filter(file => file.file_type === 'taxonomy'),
+        bracken: files.filter(file => file.file_type === 'bracken')
+    };
+    
+    // Populate editor dropdowns
+    populateDropdown('editorPatientFileSelect', filesByType.patients, 'patient');
+    populateDropdown('editorTaxonomyFileSelect', filesByType.taxonomy, 'taxonomy');
+    populateDropdown('editorBrackenFileSelect', filesByType.bracken, 'bracken');
+};
+
+// Helper function to populate individual dropdown
+window.populateDropdown = function(selectId, files, fileType) {
+    const select = document.getElementById(selectId);
+    if (!select) {
+        // Don't show error for missing editor dropdowns when they're not visible
+        if (selectId.startsWith('editor') && document.getElementById('analysisEditorSection').style.display === 'none') {
+            return;
+        }
+        console.warn(`Dropdown ${selectId} not found`);
+        return;
+    }
+    
+    // Clear existing options except the first one
+    while (select.children.length > 1) {
+        select.removeChild(select.lastChild);
+    }
+    
+    if (files.length === 0) {
+        // Add a disabled option indicating no files
+        const noFilesOption = document.createElement('option');
+        noFilesOption.value = '';
+        noFilesOption.textContent = `No ${fileType} files uploaded`;
+        noFilesOption.disabled = true;
+        select.appendChild(noFilesOption);
+        
+        // Update the default option text
+        select.children[0].textContent = `No ${fileType} files available`;
+    } else {
+        // Reset the default option text
+        select.children[0].textContent = `Select ${fileType} file...`;
+        
+        // Add file options
+        files.forEach(file => {
+            const option = document.createElement('option');
+            option.value = file.id;
+            option.textContent = file.filename;
+            
+            // Add additional info as data attributes
+            option.dataset.fileSize = file.size;
+            option.dataset.fileType = file.file_type;
+            option.dataset.cureStatus = file.cure_status;
+            
+            // Add visual indicator for cure status
+            let statusIndicator = '';
+            if (file.cure_status === 'cured' && file.cure_validation_status === 'ok') {
+                statusIndicator = ' ✓';
+            } else if (file.cure_status === 'cured' && file.cure_validation_status === 'warnings') {
+                statusIndicator = ' ⚠';
+            } else if (file.cure_status === 'failed') {
+                statusIndicator = ' ✗';
+            } else if (file.cure_status === 'curing') {
+                statusIndicator = ' ⏳';
+            }
+            
+            option.textContent = file.filename + statusIndicator;
+            select.appendChild(option);
+        });
+        
+        // Auto-select if only one file available
+        if (files.length === 1) {
+            select.value = files[0].id;
+        }
+    }
 };
 
 // Add dashed border CSS class for the quick start guide

@@ -6,6 +6,8 @@ from ...file_utils import get_dataset_files_folder
 from datetime import datetime
 import os
 import shutil
+import importlib.util
+from collections import OrderedDict
 
 datasets_bp = Blueprint('datasets', __name__)
 
@@ -533,3 +535,118 @@ def sanitize_dataset_data(dataset_id):
         'success': False,
         'message': f'Error sanitizing data: {str(e)}'
     }), 500
+
+
+@datasets_bp.route('/metadata/<metadata_type>')
+@login_required
+def get_metadata(metadata_type):
+    """Get metadata configuration dynamically from metadata folder"""
+    try:
+        # Define the metadata folder path
+        metadata_folder = os.path.join(current_app.root_path, '..', 'metadata')
+        
+        # Map metadata types to their file names
+        metadata_files = {
+            'column_groups': 'column_groups.py',
+            'time_points': 'BRACKEN_TIME_POINTS.py', 
+            'analysis_methods': 'ANALYSIS_METHODS.py',
+            'clustering_methods': 'CLUSTERING_METHODS.py',
+            'grouping_strategies': 'GROUPING_STRATEGIES.py',
+            'grouping_analysis_methods': 'GROUPING_ANALYSIS_METHODS.py',
+            'kaplan_mayer_variables': 'KAPLAN_MAYER_VARIABLES.py',
+            'columns': 'COLUMNS.py'
+        }
+        
+        if metadata_type not in metadata_files:
+            return jsonify({
+                'success': False,
+                'message': f'Unknown metadata type: {metadata_type}'
+            }), 400
+        
+        file_path = os.path.join(metadata_folder, metadata_files[metadata_type])
+        
+        if not os.path.exists(file_path):
+            return jsonify({
+                'success': False,
+                'message': f'Metadata file not found: {metadata_files[metadata_type]}'
+            }), 404
+        
+        # Dynamically import the metadata module
+        spec = importlib.util.spec_from_file_location(metadata_type, file_path)
+        metadata_module = importlib.util.module_from_spec(spec)
+        
+        try:
+            spec.loader.exec_module(metadata_module)
+        except SyntaxError as e:
+            return jsonify({
+                'success': False,
+                'message': f'Syntax error in {metadata_files[metadata_type]}: {str(e)}'
+            }), 500
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error executing {metadata_files[metadata_type]}: {str(e)}'
+            }), 500
+        
+        # Get the main data structure (usually the same name as the file without .py)
+        data_key = metadata_files[metadata_type].replace('.py', '').upper()
+        metadata_data = getattr(metadata_module, data_key, None)
+        
+        if metadata_data is None:
+            return jsonify({
+                'success': False,
+                'message': f'Could not find data structure {data_key} in {metadata_files[metadata_type]}'
+            }), 500
+        
+        # For time_points, return as ordered list to preserve order
+        if metadata_type == 'time_points':
+            # Read the file content to extract keys in order
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Extract dictionary keys in the order they appear in the file
+            import re
+            # Find all dictionary keys (quoted strings followed by colon)
+            key_pattern = r"'([^']+)'\s*:"
+            keys_in_order = re.findall(key_pattern, content)
+            
+            # Filter out nested keys (like 'suffix', 'description', etc.) and keep only top-level keys
+            # Top-level keys are those that appear at the start of a line (with proper indentation)
+            top_level_keys = []
+            lines = content.split('\n')
+            for line in lines:
+                # Look for lines that start with 4 spaces and have a quoted key followed by colon
+                if re.match(r'^\s{4}\'([^\']+)\'\s*:\s*\{', line):
+                    match = re.search(r"'([^']+)'\s*:", line)
+                    if match:
+                        key = match.group(1)
+                        if key not in top_level_keys:
+                            top_level_keys.append(key)
+            
+            keys_in_order = top_level_keys
+            
+            # Create ordered data using the keys in file order
+            ordered_data = []
+            for key in keys_in_order:
+                if key in metadata_data:
+                    ordered_data.append({
+                        'key': key,
+                        'value': metadata_data[key]
+                    })
+            return jsonify({
+                'success': True,
+                'data': ordered_data,
+                'is_ordered': True
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': metadata_data
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'Error loading metadata {metadata_type}: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': f'Error loading metadata: {str(e)}'
+        }), 500
