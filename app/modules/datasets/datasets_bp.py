@@ -831,6 +831,49 @@ def sanitize_dataset_data(dataset_id):
     }), 500
 
 
+@datasets_bp.route('/dataset/<int:dataset_id>/file/<int:file_id>/patient-count')
+@login_required
+def get_patient_count(dataset_id, file_id):
+  """Get patient count from a specific file"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+  
+  try:
+    import pandas as pd
+    import os
+    
+    # Log file information for debugging
+    print(f"File ID: {file_id}, File Path: {file.file_path}, Show Filename: {file.show_filename}")
+    
+    # Read the file to get patient count
+    if not os.path.exists(file.file_path):
+        return jsonify({
+            'success': False,
+            'error': f'File not found at path: {file.file_path}'
+        }), 404
+    
+    # Read the CSV file
+    df = pd.read_csv(file.file_path)
+    
+    # Get patient count (assuming first column or a specific patient ID column)
+    patient_count = len(df)
+    
+    return jsonify({
+        'success': True,
+        'patient_count': patient_count,
+        'file_name': file.show_filename
+    })
+  except Exception as e:
+    print(f"Error in get_patient_count: {str(e)}")
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
 @datasets_bp.route('/metadata/<metadata_type>')
 @login_required
 def get_metadata(metadata_type):

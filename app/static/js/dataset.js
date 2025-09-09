@@ -1081,6 +1081,15 @@ function showClusteringInfo() {
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('clusteringInfoModal'));
     modal.show();
+    
+    // Remove modal from DOM when hidden and fix focus
+    document.getElementById('clusteringInfoModal').addEventListener('hidden.bs.modal', function() {
+        // Remove focus from any focused elements before removing modal
+        if (document.activeElement && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
+        this.remove();
+    });
 }
 
 function showClusteringError(error) {
@@ -1350,8 +1359,12 @@ function showClusterRepresentativeInfoModal(method) {
     const modal = new bootstrap.Modal(document.getElementById('clusterRepInfoModal'));
     modal.show();
     
-    // Remove modal from DOM when hidden
+    // Remove modal from DOM when hidden and fix focus
     document.getElementById('clusterRepInfoModal').addEventListener('hidden.bs.modal', function() {
+        // Remove focus from any focused elements before removing modal
+        if (document.activeElement && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
         this.remove();
     });
 }
@@ -1513,6 +1526,15 @@ function showBrackenTimePointInfo() {
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('brackenTimePointInfoModal'));
     modal.show();
+    
+    // Remove modal from DOM when hidden and fix focus
+    document.getElementById('brackenTimePointInfoModal').addEventListener('hidden.bs.modal', function() {
+        // Remove focus from any focused elements before removing modal
+        if (document.activeElement && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
+        this.remove();
+    });
 }
 
 function updateTimePointDescription() {
@@ -1583,6 +1605,155 @@ function setupAnalysisEditor() {
     
     // Load cluster representative methods for the cluster representative container
     loadClusterRepresentativeMethods();
+}
+
+// Extreme Time Point Functions
+function updateTopPercentage(value) {
+    const topPercentageValue = document.getElementById('topPercentageValue');
+    const linkCheckbox = document.getElementById('linkPercentages');
+    
+    if (topPercentageValue) {
+        topPercentageValue.textContent = value + '%';
+    }
+    
+    // If linked, update bottom percentage to match
+    if (linkCheckbox && linkCheckbox.checked) {
+        const bottomPercentage = document.getElementById('bottomPercentage');
+        const bottomPercentageValue = document.getElementById('bottomPercentageValue');
+        if (bottomPercentage && bottomPercentageValue) {
+            bottomPercentage.value = value;
+            bottomPercentageValue.textContent = value + '%';
+        }
+    }
+    
+    updateExtremeTimePointSummary();
+}
+
+function updateBottomPercentage(value) {
+    const bottomPercentageValue = document.getElementById('bottomPercentageValue');
+    const linkCheckbox = document.getElementById('linkPercentages');
+    
+    if (bottomPercentageValue) {
+        bottomPercentageValue.textContent = value + '%';
+    }
+    
+    // If linked, update top percentage to match
+    if (linkCheckbox && linkCheckbox.checked) {
+        const topPercentage = document.getElementById('topPercentage');
+        const topPercentageValue = document.getElementById('topPercentageValue');
+        if (topPercentage && topPercentageValue) {
+            topPercentage.value = value;
+            topPercentageValue.textContent = value + '%';
+        }
+    }
+    
+    updateExtremeTimePointSummary();
+}
+
+function toggleLinkedPercentages() {
+    const linkCheckbox = document.getElementById('linkPercentages');
+    const topPercentage = document.getElementById('topPercentage');
+    const bottomPercentage = document.getElementById('bottomPercentage');
+    
+    if (linkCheckbox && linkCheckbox.checked) {
+        // Link them by setting bottom to match top
+        if (topPercentage && bottomPercentage) {
+            bottomPercentage.value = topPercentage.value;
+            updateBottomPercentage(topPercentage.value);
+        }
+    }
+}
+
+function updateExtremeTimePointSummary() {
+    const topPercentage = document.getElementById('topPercentage');
+    const bottomPercentage = document.getElementById('bottomPercentage');
+    const summaryText = document.getElementById('extremeTimePointSummaryText');
+    const topPatientsCount = document.getElementById('topPatientsCount');
+    const bottomPatientsCount = document.getElementById('bottomPatientsCount');
+    const totalPatientsCount = document.getElementById('totalPatientsCount');
+    
+    if (!topPercentage || !bottomPercentage || !summaryText) return;
+    
+    const topPercent = parseInt(topPercentage.value);
+    const bottomPercent = parseInt(bottomPercentage.value);
+    
+    // Get total patient count from the selected patient file
+    const patientFileSelect = document.getElementById('editorPatientFileSelect');
+    
+    if (patientFileSelect && patientFileSelect.value) {
+        // Fetch actual patient count from API
+        fetch(`/dataset/${datasetId}/file/${patientFileSelect.value}/patient-count`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const totalPatients = data.patient_count;
+                    const topPatients = Math.round((topPercent / 100) * totalPatients);
+                    const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
+                    
+                    // Update summary text
+                    summaryText.textContent = `Selecting ${topPercent}% top and ${bottomPercent}% bottom patients for extreme time point analysis`;
+                    
+                    // Update patient count badges
+                    if (topPatientsCount) {
+                        topPatientsCount.textContent = `${topPatients} patients`;
+                    }
+                    if (bottomPatientsCount) {
+                        bottomPatientsCount.textContent = `${bottomPatients} patients`;
+                    }
+                    if (totalPatientsCount) {
+                        totalPatientsCount.textContent = `${totalPatients} total`;
+                    }
+                } else {
+                    console.error('Error loading patient count:', data.error);
+                    updateExtremeTimePointSummaryFallback();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading patient count:', error);
+                updateExtremeTimePointSummaryFallback();
+            });
+    } else {
+        updateExtremeTimePointSummaryFallback();
+    }
+}
+
+function updateExtremeTimePointSummaryFallback() {
+    const topPercentage = document.getElementById('topPercentage');
+    const bottomPercentage = document.getElementById('bottomPercentage');
+    const summaryText = document.getElementById('extremeTimePointSummaryText');
+    const topPatientsCount = document.getElementById('topPatientsCount');
+    const bottomPatientsCount = document.getElementById('bottomPatientsCount');
+    const totalPatientsCount = document.getElementById('totalPatientsCount');
+    
+    if (!topPercentage || !bottomPercentage || !summaryText) return;
+    
+    const topPercent = parseInt(topPercentage.value);
+    const bottomPercent = parseInt(bottomPercentage.value);
+    
+    // Fallback when no file is selected
+    summaryText.textContent = 'Select data files to see patient counts';
+    
+    if (topPatientsCount) {
+        topPatientsCount.textContent = '0 patients';
+    }
+    if (bottomPatientsCount) {
+        bottomPatientsCount.textContent = '0 patients';
+    }
+    if (totalPatientsCount) {
+        totalPatientsCount.textContent = '0 total';
+    }
+}
+
+function loadPatientCount() {
+    // This function should be called when a patient file is selected
+    // to fetch the actual patient count from the server
+    const patientFileSelect = document.getElementById('editorPatientFileSelect');
+    
+    if (patientFileSelect && patientFileSelect.value) {
+        // TODO: Implement API call to get patient count
+        // For now, using placeholder
+        updateExtremeTimePointSummary();
+    }
 }
 
 // Column Groups Functions
@@ -1660,6 +1831,9 @@ function validateAnalysisEditor() {
     if (runButton) {
         runButton.disabled = !isValid;
     }
+    
+    // Update extreme time point summary when patient file changes
+    updateExtremeTimePointSummary();
     
     return isValid;
 }
