@@ -12,18 +12,20 @@ from collections import OrderedDict
 
 datasets_bp = Blueprint('datasets', __name__)
 
+
 def load_metadata_module(module_name):
-    """Helper function to load metadata modules from the project root"""
-    import sys
-    import os
-    # Add the project root to the Python path
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    # Import the metadata module
-    module = __import__(f'metadata.{module_name}', fromlist=[module_name])
-    return getattr(module, module_name)
+  """Helper function to load metadata modules from the project root"""
+  import sys
+  import os
+  # Add the project root to the Python path
+  project_root = os.path.dirname(os.path.dirname(
+      os.path.dirname(os.path.dirname(__file__))))
+  if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+  # Import the metadata module
+  module = __import__(f'metadata.{module_name}', fromlist=[module_name])
+  return getattr(module, module_name)
 
 
 @datasets_bp.route('/dataset/new', methods=['GET', 'POST'])
@@ -66,20 +68,20 @@ def view_dataset(dataset_id, tab='files'):
   """View a specific dataset with optional tab parameter"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   # Validate tab parameter
   valid_tabs = ['files', 'analysis', 'reports', 'settings']
   if tab not in valid_tabs:
     tab = 'files'
-  
+
   # Determine which template to render
   template_map = {
-    'files': 'dataset/files_tab.html',
-    'analysis': 'dataset/analysis_tab.html', 
-    'reports': 'dataset/reports_tab.html',
-    'settings': 'dataset/settings_tab.html'
+      'files': 'dataset/files_tab.html',
+      'analysis': 'dataset/analysis_tab.html',
+      'reports': 'dataset/reports_tab.html',
+      'settings': 'dataset/settings_tab.html'
   }
-  
+
   return render_template(template_map[tab], dataset=dataset, active_tab=tab)
 
 
@@ -328,19 +330,19 @@ def get_column_groups(dataset_id):
   """Get column groups metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   try:
     COLUMN_GROUPS = load_metadata_module('COLUMN_GROUPS')
-    
+
     # Convert to ordered list to preserve the order from the metadata file
     # Python 3.7+ dictionaries maintain insertion order
     ordered_groups = []
     for group_name, columns in COLUMN_GROUPS.items():
-        ordered_groups.append({
-            'name': group_name,
-            'columns': columns
-        })
-    
+      ordered_groups.append({
+          'name': group_name,
+          'columns': columns
+      })
+
     return jsonify({
         'success': True,
         'column_groups': ordered_groups
@@ -358,32 +360,34 @@ def get_bracken_time_points(dataset_id):
   """Get bracken time points metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   try:
     BRACKEN_TIME_POINTS = load_metadata_module('BRACKEN_TIME_POINTS')
-    
+
     # Convert to ordered list to preserve the order from the metadata file
     # Python 3.7+ dictionaries maintain insertion order
     ordered_time_points = []
     for time_point_key, time_point_data in BRACKEN_TIME_POINTS.items():
-        ordered_time_points.append({
-            'key': time_point_key,
-            'suffix': time_point_data['suffix'],
-            'description': time_point_data['description'],
-            'timepoint': time_point_data['timepoint'],
-            'function': time_point_data['function']
-        })
-    
+      ordered_time_points.append({
+          'key': time_point_key,
+          'suffix': time_point_data['suffix'],
+          'description': time_point_data['description'],
+          'timepoint': time_point_data['timepoint'],
+          'function': time_point_data['function']
+      })
+
     # Get default time point from the module
     import sys
     import os
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    project_root = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.dirname(__file__))))
     if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    bracken_module = __import__('metadata.BRACKEN_TIME_POINTS', fromlist=['BRACKEN_TIME_POINTS'])
+      sys.path.insert(0, project_root)
+
+    bracken_module = __import__(
+        'metadata.BRACKEN_TIME_POINTS', fromlist=['BRACKEN_TIME_POINTS'])
     default_time_point = getattr(bracken_module, 'DEFAULT_TIME_POINT', None)
-    
+
     return jsonify({
         'success': True,
         'time_points': ordered_time_points,
@@ -402,44 +406,44 @@ def get_stratifications(dataset_id):
   """Get stratifications metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   try:
     STRATIFICATIONS = load_metadata_module('STRATIFICATIONS')
-    
+
     # Convert to ordered list to preserve the order from the metadata file
     ordered_stratifications = []
     for group_name, group_stratifications in STRATIFICATIONS.items():
-        group_data = {
-            'group_name': group_name,
-            'group_label': format_group_name(group_name),
-            'stratifications': []
+      group_data = {
+          'group_name': group_name,
+          'group_label': format_group_name(group_name),
+          'stratifications': []
+      }
+
+      for strat_name, strat_data in group_stratifications.items():
+        strat_info = {
+            'name': strat_name,
+            'label': format_stratification_name(strat_name),
+            'type': strat_data['type'],
+            'method': strat_data['method'],
+            'groups': []
         }
-        
-        for strat_name, strat_data in group_stratifications.items():
-            strat_info = {
-                'name': strat_name,
-                'label': format_stratification_name(strat_name),
-                'type': strat_data['type'],
-                'method': strat_data['method'],
-                'groups': []
-            }
-            
-            # Add groups information
-            if 'groups' in strat_data:
-                for group_key, group_info in strat_data['groups'].items():
-                    strat_info['groups'].append({
-                        'key': group_key,
-                        'label': group_info['label']
-                    })
-            
-            # Add parameters for composite stratifications
-            if 'parameters' in strat_data:
-                strat_info['parameters'] = strat_data['parameters']
-            
-            group_data['stratifications'].append(strat_info)
-        
-        ordered_stratifications.append(group_data)
-    
+
+        # Add groups information
+        if 'groups' in strat_data:
+          for group_key, group_info in strat_data['groups'].items():
+            strat_info['groups'].append({
+                'key': group_key,
+                'label': group_info['label']
+            })
+
+        # Add parameters for composite stratifications
+        if 'parameters' in strat_data:
+          strat_info['parameters'] = strat_data['parameters']
+
+        group_data['stratifications'].append(strat_info)
+
+      ordered_stratifications.append(group_data)
+
     return jsonify({
         'success': True,
         'stratifications': ordered_stratifications
@@ -457,23 +461,18 @@ def get_clustering_methods(dataset_id):
   """Get clustering methods metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   try:
-    CLUSTERING_METHODS = load_metadata_module('CLUSTERING_METHODS')
-    
-    # Get default method from the module
-    import sys
-    import os
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    clustering_module = __import__('metadata.CLUSTERING_METHODS', fromlist=['CLUSTERING_METHODS'])
-    default_method = getattr(clustering_module, 'DEFAULT_CLUSTERING_METHOD', None)
-    
+    # Load clustering methods from metadata
+    import importlib
+    clustering_module = importlib.import_module('metadata.CLUSTERING_METHODS')
+    CLUSTERING_METHODS = getattr(clustering_module, 'CLUSTERING_METHODS', {})
+    default_method = getattr(
+        clustering_module, 'DEFAULT_CLUSTERING_METHOD', 'kmeans')
+
     return jsonify({
         'success': True,
-        'clustering_methods': CLUSTERING_METHODS,
+        'methods': CLUSTERING_METHODS,
         'default_method': default_method
     })
   except Exception as e:
@@ -489,18 +488,18 @@ def get_clustering_method(dataset_id, method_name):
   """Get specific clustering method metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   try:
     CLUSTERING_METHODS = load_metadata_module('CLUSTERING_METHODS')
-    
+
     if method_name not in CLUSTERING_METHODS:
-        return jsonify({
-            'success': False,
-            'error': f'Clustering method "{method_name}" not found'
-        }), 404
-    
+      return jsonify({
+          'success': False,
+          'error': f'Clustering method "{method_name}" not found'
+      }), 404
+
     method_data = CLUSTERING_METHODS[method_name]
-    
+
     return jsonify({
         'success': True,
         'method': method_data
@@ -518,18 +517,23 @@ def get_cluster_representative_methods(dataset_id):
   """Get cluster representative methods metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   try:
-    import sys, os
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    import sys
+    import os
+    project_root = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.dirname(__file__))))
     if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    cluster_rep_module = __import__('metadata.CLUSTER_REPRESENTATIVE', fromlist=['CLUSTER_REPRESENTATIVE_METHODS'])
-    CLUSTER_REPRESENTATIVE_METHODS = getattr(cluster_rep_module, 'CLUSTER_REPRESENTATIVE_METHODS', {})
-    default_method = getattr(cluster_rep_module, 'DEFAULT_REPRESENTATIVE_METHOD', None)
+      sys.path.insert(0, project_root)
+
+    cluster_rep_module = __import__('metadata.CLUSTER_REPRESENTATIVE', fromlist=[
+                                    'CLUSTER_REPRESENTATIVE_METHODS'])
+    CLUSTER_REPRESENTATIVE_METHODS = getattr(
+        cluster_rep_module, 'CLUSTER_REPRESENTATIVE_METHODS', {})
+    default_method = getattr(
+        cluster_rep_module, 'DEFAULT_REPRESENTATIVE_METHOD', None)
     method_categories = getattr(cluster_rep_module, 'METHOD_CATEGORIES', {})
-    
+
     return jsonify({
         'success': True,
         'cluster_representative_methods': CLUSTER_REPRESENTATIVE_METHODS,
@@ -549,24 +553,28 @@ def get_cluster_representative_method(dataset_id, method_name):
   """Get specific cluster representative method metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
-  
+
   try:
-    import sys, os
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    import sys
+    import os
+    project_root = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.dirname(__file__))))
     if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    cluster_rep_module = __import__('metadata.CLUSTER_REPRESENTATIVE', fromlist=['CLUSTER_REPRESENTATIVE_METHODS'])
-    CLUSTER_REPRESENTATIVE_METHODS = getattr(cluster_rep_module, 'CLUSTER_REPRESENTATIVE_METHODS', {})
-    
+      sys.path.insert(0, project_root)
+
+    cluster_rep_module = __import__('metadata.CLUSTER_REPRESENTATIVE', fromlist=[
+                                    'CLUSTER_REPRESENTATIVE_METHODS'])
+    CLUSTER_REPRESENTATIVE_METHODS = getattr(
+        cluster_rep_module, 'CLUSTER_REPRESENTATIVE_METHODS', {})
+
     if method_name not in CLUSTER_REPRESENTATIVE_METHODS:
-        return jsonify({
-            'success': False,
-            'error': f'Cluster representative method "{method_name}" not found'
-        }), 404
-    
+      return jsonify({
+          'success': False,
+          'error': f'Cluster representative method "{method_name}" not found'
+      }), 404
+
     method_data = CLUSTER_REPRESENTATIVE_METHODS[method_name]
-    
+
     return jsonify({
         'success': True,
         'method': method_data
@@ -579,13 +587,13 @@ def get_cluster_representative_method(dataset_id, method_name):
 
 
 def format_group_name(group_name):
-    """Format group name for display"""
-    return group_name.replace('_', ' ').title()
+  """Format group name for display"""
+  return group_name.replace('_', ' ').title()
 
 
 def format_stratification_name(strat_name):
-    """Format stratification name for display"""
-    return strat_name.replace('_', ' ').title()
+  """Format stratification name for display"""
+  return strat_name.replace('_', ' ').title()
 
 
 @datasets_bp.route('/dataset/<int:dataset_id>/data-stats')
@@ -835,303 +843,619 @@ def sanitize_dataset_data(dataset_id):
 @datasets_bp.route('/dataset/<int:dataset_id>/file/<int:file_id>/patient-count')
 @login_required
 def get_patient_count(dataset_id, file_id):
-    """Get patient count from a specific file"""
-    dataset = Dataset.query.filter_by(
-        id=dataset_id, user_id=current_user.id).first_or_404()
-    
-    file = DatasetFile.query.filter_by(
-        id=file_id, dataset_id=dataset_id).first_or_404()
-    
-    try:
-        import pandas as pd
-        import os
-        
-        # Log file information for debugging
-        print(f"File ID: {file_id}, File Path: {file.file_path}, Show Filename: {file.show_filename}")
-        
-        # Read the file to get patient count
-        if not os.path.exists(file.file_path):
-            return jsonify({
-                'success': False,
-                'error': f'File not found at path: {file.file_path}'
-            }), 404
-        
-        # Read the CSV file
-        df = pd.read_csv(file.file_path)
-        
-        # Get patient count (assuming first column or a specific patient ID column)
-        patient_count = len(df)
-        
-        return jsonify({
-            'success': True,
-            'patient_count': patient_count,
-            'file_name': file.show_filename
-        })
-    except Exception as e:
-        print(f"Error in get_patient_count: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+  """Get patient count from a specific file"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+
+  try:
+    import pandas as pd
+    import os
+
+    # Log file information for debugging
+    print(
+        f"File ID: {file_id}, File Path: {file.file_path}, Show Filename: {file.show_filename}")
+
+    # Read the file to get patient count
+    if not os.path.exists(file.file_path):
+      return jsonify({
+          'success': False,
+          'error': f'File not found at path: {file.file_path}'
+      }), 404
+
+    # Read the CSV file
+    df = pd.read_csv(file.file_path)
+
+    # Get patient count (assuming first column or a specific patient ID column)
+    patient_count = len(df)
+
+    return jsonify({
+        'success': True,
+        'patient_count': patient_count,
+        'file_name': file.show_filename
+    })
+  except Exception as e:
+    print(f"Error in get_patient_count: {str(e)}")
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
 
 @datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods')
 @login_required
 def get_analysis_methods(dataset_id):
-    """Get all analysis methods and default method"""
-    dataset = Dataset.query.filter_by(
-        id=dataset_id, user_id=current_user.id).first_or_404()
-    
-    try:
-        # Load analysis methods from metadata
-        analysis_methods = load_metadata_module('ANALYSIS_METHODS')
-        
-        # Get default method and categories
-        import importlib
-        analysis_module = importlib.import_module('metadata.ANALYSIS_METHODS')
-        default_method = getattr(analysis_module, 'DEFAULT_ANALYSIS_METHOD', 'cox_proportional_hazards')
-        method_categories = getattr(analysis_module, 'METHOD_CATEGORIES', {})
-        method_descriptions = getattr(analysis_module, 'METHOD_DESCRIPTIONS', {})
-        
-        return jsonify({
-            'success': True,
-            'methods': analysis_methods,
-            'default_method': default_method,
-            'categories': method_categories,
-            'descriptions': method_descriptions
-        })
-    except Exception as e:
-        print(f"Error loading analysis methods: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+  """Get all analysis methods and default method"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    # Load analysis methods from metadata
+    analysis_methods = load_metadata_module('ANALYSIS_METHODS')
+
+    # Get default method and categories
+    import importlib
+    analysis_module = importlib.import_module('metadata.ANALYSIS_METHODS')
+    default_method = getattr(
+        analysis_module, 'DEFAULT_ANALYSIS_METHOD', 'cox_proportional_hazards')
+    method_categories = getattr(analysis_module, 'METHOD_CATEGORIES', {})
+    method_descriptions = getattr(analysis_module, 'METHOD_DESCRIPTIONS', {})
+
+    return jsonify({
+        'success': True,
+        'methods': analysis_methods,
+        'default_method': default_method,
+        'categories': method_categories,
+        'descriptions': method_descriptions
+    })
+  except Exception as e:
+    print(f"Error loading analysis methods: {str(e)}")
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
 
 @datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods/<method_name>')
 @login_required
 def get_analysis_method(dataset_id, method_name):
-    """Get details for a specific analysis method"""
-    dataset = Dataset.query.filter_by(
-        id=dataset_id, user_id=current_user.id).first_or_404()
-    
-    try:
-        # Load analysis methods from metadata
-        analysis_methods = load_metadata_module('ANALYSIS_METHODS')
-        
-        if method_name not in analysis_methods:
-            return jsonify({
-                'success': False,
-                'error': f'Analysis method "{method_name}" not found'
-            }), 404
-        
-        method_details = analysis_methods[method_name]
-        
-        return jsonify({
-            'success': True,
-            'method': method_details
-        })
-    except Exception as e:
-        print(f"Error loading analysis method {method_name}: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+  """Get details for a specific analysis method"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    # Load analysis methods from metadata
+    analysis_methods = load_metadata_module('ANALYSIS_METHODS')
+
+    if method_name not in analysis_methods:
+      return jsonify({
+          'success': False,
+          'error': f'Analysis method "{method_name}" not found'
+      }), 404
+
+    method_details = analysis_methods[method_name]
+
+    return jsonify({
+        'success': True,
+        'method': method_details
+    })
+  except Exception as e:
+    print(f"Error loading analysis method {method_name}: {str(e)}")
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
 
 
 @datasets_bp.route('/metadata/<metadata_type>')
 @login_required
 def get_metadata(metadata_type):
-    """Get metadata configuration dynamically from metadata folder"""
+  """Get metadata configuration dynamically from metadata folder"""
+  try:
+    # Define the metadata folder path
+    metadata_folder = os.path.join(current_app.root_path, '..', 'metadata')
+
+    # Map metadata types to their file names
+    metadata_files = {
+        'column_groups': 'column_groups.py',
+        'time_points': 'BRACKEN_TIME_POINTS.py',
+        'analysis_methods': 'ANALYSIS_METHODS.py',
+        'clustering_methods': 'CLUSTERING_METHODS.py',
+        'grouping_strategies': 'GROUPING_STRATEGIES.py',
+        'grouping_analysis_methods': 'GROUPING_ANALYSIS_METHODS.py',
+        'kaplan_mayer_variables': 'KAPLAN_MAYER_VARIABLES.py',
+        'columns': 'COLUMNS.py'
+    }
+
+    if metadata_type not in metadata_files:
+      return jsonify({
+          'success': False,
+          'message': f'Unknown metadata type: {metadata_type}'
+      }), 400
+
+    file_path = os.path.join(metadata_folder, metadata_files[metadata_type])
+
+    if not os.path.exists(file_path):
+      return jsonify({
+          'success': False,
+          'message': f'Metadata file not found: {metadata_files[metadata_type]}'
+      }), 404
+
+    # Dynamically import the metadata module
+    spec = importlib.util.spec_from_file_location(metadata_type, file_path)
+    metadata_module = importlib.util.module_from_spec(spec)
+
     try:
-        # Define the metadata folder path
-        metadata_folder = os.path.join(current_app.root_path, '..', 'metadata')
-        
-        # Map metadata types to their file names
-        metadata_files = {
-            'column_groups': 'column_groups.py',
-            'time_points': 'BRACKEN_TIME_POINTS.py', 
-            'analysis_methods': 'ANALYSIS_METHODS.py',
-            'clustering_methods': 'CLUSTERING_METHODS.py',
-            'grouping_strategies': 'GROUPING_STRATEGIES.py',
-            'grouping_analysis_methods': 'GROUPING_ANALYSIS_METHODS.py',
-            'kaplan_mayer_variables': 'KAPLAN_MAYER_VARIABLES.py',
-            'columns': 'COLUMNS.py'
-        }
-        
-        if metadata_type not in metadata_files:
-            return jsonify({
-                'success': False,
-                'message': f'Unknown metadata type: {metadata_type}'
-            }), 400
-        
-        file_path = os.path.join(metadata_folder, metadata_files[metadata_type])
-        
-        if not os.path.exists(file_path):
-            return jsonify({
-                'success': False,
-                'message': f'Metadata file not found: {metadata_files[metadata_type]}'
-            }), 404
-        
-        # Dynamically import the metadata module
-        spec = importlib.util.spec_from_file_location(metadata_type, file_path)
-        metadata_module = importlib.util.module_from_spec(spec)
-        
-        try:
-            spec.loader.exec_module(metadata_module)
-        except SyntaxError as e:
-            return jsonify({
-                'success': False,
-                'message': f'Syntax error in {metadata_files[metadata_type]}: {str(e)}'
-            }), 500
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': f'Error executing {metadata_files[metadata_type]}: {str(e)}'
-            }), 500
-        
-        # Get the main data structure (usually the same name as the file without .py)
-        data_key = metadata_files[metadata_type].replace('.py', '').upper()
-        metadata_data = getattr(metadata_module, data_key, None)
-        
-        if metadata_data is None:
-            return jsonify({
-                'success': False,
-                'message': f'Could not find data structure {data_key} in {metadata_files[metadata_type]}'
-            }), 500
-        
-        # For time_points, return as ordered list to preserve order
-        if metadata_type == 'time_points':
-            # Read the file content to extract keys in order
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # Extract dictionary keys in the order they appear in the file
-            import re
-            # Find all dictionary keys (quoted strings followed by colon)
-            key_pattern = r"'([^']+)'\s*:"
-            keys_in_order = re.findall(key_pattern, content)
-            
-            # Filter out nested keys (like 'suffix', 'description', etc.) and keep only top-level keys
-            # Top-level keys are those that appear at the start of a line (with proper indentation)
-            top_level_keys = []
-            lines = content.split('\n')
-            for line in lines:
-                # Look for lines that start with 4 spaces and have a quoted key followed by colon
-                if re.match(r'^\s{4}\'([^\']+)\'\s*:\s*\{', line):
-                    match = re.search(r"'([^']+)'\s*:", line)
-                    if match:
-                        key = match.group(1)
-                        if key not in top_level_keys:
-                            top_level_keys.append(key)
-            
-            keys_in_order = top_level_keys
-            
-            # Create ordered data using the keys in file order
-            ordered_data = []
-            for key in keys_in_order:
-                if key in metadata_data:
-                    ordered_data.append({
-                        'key': key,
-                        'value': metadata_data[key]
-                    })
-            return jsonify({
-                'success': True,
-                'data': ordered_data,
-                'is_ordered': True
-            })
-        
-        return jsonify({
-            'success': True,
-            'data': metadata_data
-        })
-        
+      spec.loader.exec_module(metadata_module)
+    except SyntaxError as e:
+      return jsonify({
+          'success': False,
+          'message': f'Syntax error in {metadata_files[metadata_type]}: {str(e)}'
+      }), 500
     except Exception as e:
-        current_app.logger.error(f'Error loading metadata {metadata_type}: {str(e)}')
-        return jsonify({
-            'success': False,
-            'message': f'Error loading metadata: {str(e)}'
-        }), 500
+      return jsonify({
+          'success': False,
+          'message': f'Error executing {metadata_files[metadata_type]}: {str(e)}'
+      }), 500
+
+    # Get the main data structure (usually the same name as the file without .py)
+    data_key = metadata_files[metadata_type].replace('.py', '').upper()
+    metadata_data = getattr(metadata_module, data_key, None)
+
+    if metadata_data is None:
+      return jsonify({
+          'success': False,
+          'message': f'Could not find data structure {data_key} in {metadata_files[metadata_type]}'
+      }), 500
+
+    # For time_points, return as ordered list to preserve order
+    if metadata_type == 'time_points':
+      # Read the file content to extract keys in order
+      with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+      # Extract dictionary keys in the order they appear in the file
+      import re
+      # Find all dictionary keys (quoted strings followed by colon)
+      key_pattern = r"'([^']+)'\s*:"
+      keys_in_order = re.findall(key_pattern, content)
+
+      # Filter out nested keys (like 'suffix', 'description', etc.) and keep only top-level keys
+      # Top-level keys are those that appear at the start of a line (with proper indentation)
+      top_level_keys = []
+      lines = content.split('\n')
+      for line in lines:
+        # Look for lines that start with 4 spaces and have a quoted key followed by colon
+        if re.match(r'^\s{4}\'([^\']+)\'\s*:\s*\{', line):
+          match = re.search(r"'([^']+)'\s*:", line)
+          if match:
+            key = match.group(1)
+            if key not in top_level_keys:
+              top_level_keys.append(key)
+
+      keys_in_order = top_level_keys
+
+      # Create ordered data using the keys in file order
+      ordered_data = []
+      for key in keys_in_order:
+        if key in metadata_data:
+          ordered_data.append({
+              'key': key,
+              'value': metadata_data[key]
+          })
+      return jsonify({
+          'success': True,
+          'data': ordered_data,
+          'is_ordered': True
+      })
+
+    return jsonify({
+        'success': True,
+        'data': metadata_data
+    })
+
+  except Exception as e:
+    current_app.logger.error(
+        f'Error loading metadata {metadata_type}: {str(e)}')
+    return jsonify({
+        'success': False,
+        'message': f'Error loading metadata: {str(e)}'
+    }), 500
 
 
 @datasets_bp.route('/dataset/<int:dataset_id>/analysis/save', methods=['POST'])
 @login_required
 def save_analysis_configuration(dataset_id):
-    """Save analysis configuration to JSON file"""
-    dataset = Dataset.query.filter_by(
-        id=dataset_id, user_id=current_user.id).first_or_404()
-    
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'No data received'}), 400
-        
-        analysis_name = data.get('analysis_name', '').strip()
-        analysis_description = data.get('analysis_description', '').strip()
-        configuration = data.get('configuration', {})
-        
-        if not analysis_name:
-            return jsonify({'success': False, 'message': 'Analysis name is required'}), 400
-        
-        # Sanitize analysis name for filename
-        import re
-        safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', analysis_name)
-        safe_name = re.sub(r'_+', '_', safe_name)  # Replace multiple underscores with single
-        safe_name = safe_name.strip('_')  # Remove leading/trailing underscores
-        
-        if not safe_name:
-            return jsonify({'success': False, 'message': 'Invalid analysis name'}), 400
-        
-        # Create analysis folder structure
-        user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
-        analysis_folder = os.path.join(current_app.instance_path, 'users', user_email, 'analysis')
-        os.makedirs(analysis_folder, exist_ok=True)
-        
-        # Create analysis configuration object
-        analysis_config = {
-            'analysis_name': analysis_name,
-            'analysis_description': analysis_description,
+  """Save analysis configuration to JSON file"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    data = request.get_json()
+    if not data:
+      return jsonify({'success': False, 'message': 'No data received'}), 400
+
+    analysis_name = data.get('analysis_name', '').strip()
+    analysis_description = data.get('analysis_description', '').strip()
+    configuration = data.get('configuration', {})
+
+    if not analysis_name:
+      return jsonify({'success': False, 'message': 'Analysis name is required'}), 400
+
+    # Sanitize analysis name for filename
+    import re
+    safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', analysis_name)
+    # Replace multiple underscores with single
+    safe_name = re.sub(r'_+', '_', safe_name)
+    safe_name = safe_name.strip('_')  # Remove leading/trailing underscores
+
+    if not safe_name:
+      return jsonify({'success': False, 'message': 'Invalid analysis name'}), 400
+
+    # Create analysis folder structure
+    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
+    analysis_folder = os.path.join(
+        current_app.instance_path, 'users', user_email, 'analysis')
+    os.makedirs(analysis_folder, exist_ok=True)
+
+    # Create analysis configuration object
+    analysis_config = {
+        'analysis_name': analysis_name,
+        'analysis_description': analysis_description,
+        'dataset_id': dataset_id,
+        'dataset_name': dataset.name,
+        'created_at': datetime.utcnow().isoformat(),
+        'created_by': current_user.email,
+        'configuration': configuration
+    }
+
+    # Save to JSON file
+    filename = f"{safe_name}.json"
+    filepath = os.path.join(analysis_folder, filename)
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+      json.dump(analysis_config, f, indent=2, ensure_ascii=False)
+
+    # Log the action
+    log_user_action(
+        "analysis_configuration_saved",
+        f"Analysis: {analysis_name} (Dataset: {dataset.name})",
+        success=True
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Analysis configuration saved successfully',
+        'filename': filename,
+        'filepath': filepath
+    })
+
+  except Exception as e:
+    ErrorLogger.log_exception(
+        e,
+        context=f"Saving analysis configuration for dataset {dataset_id}",
+        user_action=f"User trying to save analysis '{analysis_name}'",
+        extra_data={
             'dataset_id': dataset_id,
-            'dataset_name': dataset.name,
-            'created_at': datetime.utcnow().isoformat(),
-            'created_by': current_user.email,
-            'configuration': configuration
+            'analysis_name': analysis_name,
+            'user_email': current_user.email
         }
-        
-        # Save to JSON file
-        filename = f"{safe_name}.json"
-        filepath = os.path.join(analysis_folder, filename)
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(analysis_config, f, indent=2, ensure_ascii=False)
-        
-        # Log the action
-        log_user_action(
-            "analysis_configuration_saved",
-            f"Analysis: {analysis_name} (Dataset: {dataset.name})",
-            success=True
-        )
-        
-        return jsonify({
-            'success': True,
-            'message': f'Analysis configuration saved successfully',
+    )
+    log_user_action("analysis_configuration_save_failed",
+                    f"Analysis: {analysis_name}", success=False)
+
+    return jsonify({
+        'success': False,
+        'message': f'Error saving analysis configuration: {str(e)}'
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/analysis/list', methods=['GET'])
+@login_required
+def list_saved_analyses(dataset_id):
+  """List all saved analysis configurations for a dataset"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    # Debug log
+    print(f"DEBUG: list_saved_analyses called with dataset_id: {dataset_id}")
+
+    # Get user's analysis directory
+    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
+    analysis_folder = os.path.join(
+        current_app.instance_path, 'users', user_email, 'analysis')
+
+    analyses = []
+
+    if os.path.exists(analysis_folder):
+      # Scan for JSON files in the analysis directory
+      for filename in os.listdir(analysis_folder):
+        if filename.endswith('.json'):
+          filepath = os.path.join(analysis_folder, filename)
+          try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+              analysis_data = json.load(f)
+
+            # Only include analyses for this dataset
+            if analysis_data.get('dataset_id') == dataset_id:
+              # Get file stats
+              stat = os.stat(filepath)
+
+              analysis_info = {
+                  'name': analysis_data.get('analysis_name', 'Unknown'),
+                  'description': analysis_data.get('analysis_description', ''),
+                  'filename': filename,
+                  'created_at': analysis_data.get('created_at', ''),
+                  'modified_at': analysis_data.get('modified_at', datetime.fromtimestamp(stat.st_mtime).isoformat()),
+                  'size': stat.st_size,
+                  'dataset_name': dataset.name,
+                  'created_by': current_user.email
+              }
+              analyses.append(analysis_info)
+
+          except (json.JSONDecodeError, IOError) as e:
+            print(f"Error reading analysis file {filename}: {e}")
+            continue
+
+    # Sort analyses by modified time (most recent first)
+    analyses.sort(key=lambda x: x['modified_at'], reverse=True)
+
+    return jsonify({
+        'success': True,
+        'analyses': analyses,
+        'total': len(analyses)
+    })
+
+  except Exception as e:
+    ErrorLogger.log_exception(
+        e,
+        context=f"Listing analyses for dataset {dataset_id}",
+        user_action="User trying to list saved analyses"
+    )
+
+    return jsonify({
+        'success': False,
+        'message': f'Error listing analyses: {str(e)}',
+        'analyses': [],
+        'total': 0
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/analysis/delete', methods=['POST'])
+@login_required
+def delete_analysis(dataset_id):
+  """Delete a saved analysis configuration"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    data = request.get_json()
+    if not data or 'filename' not in data:
+      return jsonify({'success': False, 'message': 'Filename is required'}), 400
+
+    filename = data['filename']
+
+    # Validate filename (prevent directory traversal)
+    if '..' in filename or '/' in filename or '\\' in filename:
+      return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+
+    # Get user's analysis directory
+    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
+    analysis_folder = os.path.join(
+        current_app.instance_path, 'users', user_email, 'analysis')
+    filepath = os.path.join(analysis_folder, filename)
+
+    # Check if file exists
+    if not os.path.exists(filepath):
+      return jsonify({'success': False, 'message': 'Analysis file not found'}), 404
+
+    # Delete the file
+    os.remove(filepath)
+
+    # Log the action
+    log_user_action(
+        "analysis_configuration_deleted",
+        f"Analysis file: {filename} (Dataset: {dataset.name})",
+        success=True
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Analysis "{filename}" deleted successfully'
+    })
+
+  except Exception as e:
+    ErrorLogger.log_exception(
+        e,
+        context=f"Deleting analysis for dataset {dataset_id}",
+        user_action=f"User trying to delete analysis '{filename}'",
+        extra_data={
+            'dataset_id': dataset_id,
             'filename': filename,
-            'filepath': filepath
-        })
-        
-    except Exception as e:
-        ErrorLogger.log_exception(
-            e,
-            context=f"Saving analysis configuration for dataset {dataset_id}",
-            user_action=f"User trying to save analysis '{analysis_name}'",
-            extra_data={
-                'dataset_id': dataset_id,
-                'analysis_name': analysis_name,
-                'user_email': current_user.email
-            }
-        )
-        log_user_action("analysis_configuration_save_failed",
-                        f"Analysis: {analysis_name}", success=False)
-        
-        return jsonify({
-            'success': False,
-            'message': f'Error saving analysis configuration: {str(e)}'
-        }), 500
+            'user_email': current_user.email
+        }
+    )
+    log_user_action("analysis_configuration_delete_failed",
+                    f"Analysis file: {filename}", success=False)
+
+    return jsonify({
+        'success': False,
+        'message': f'Error deleting analysis: {str(e)}'
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/analysis/duplicate', methods=['POST'])
+@login_required
+def duplicate_analysis(dataset_id):
+  """Duplicate a saved analysis configuration"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    data = request.get_json()
+    if not data or 'filename' not in data:
+      return jsonify({'success': False, 'message': 'Filename is required'}), 400
+
+    filename = data['filename']
+
+    # Validate filename (prevent directory traversal)
+    if '..' in filename or '/' in filename or '\\' in filename:
+      return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+
+    # Get user's analysis directory
+    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
+    analysis_folder = os.path.join(
+        current_app.instance_path, 'users', user_email, 'analysis')
+    original_filepath = os.path.join(analysis_folder, filename)
+
+    # Check if original file exists
+    if not os.path.exists(original_filepath):
+      return jsonify({'success': False, 'message': 'Analysis file not found'}), 404
+
+    # Create new filename with "_c" suffix
+    name_without_ext = filename.replace('.json', '')
+    new_filename = f"{name_without_ext}_c.json"
+    new_filepath = os.path.join(analysis_folder, new_filename)
+
+    # Ensure the new filename doesn't already exist (add number if needed)
+    counter = 1
+    while os.path.exists(new_filepath):
+      new_filename = f"{name_without_ext}_c{counter}.json"
+      new_filepath = os.path.join(analysis_folder, new_filename)
+      counter += 1
+
+    # Read original file content
+    with open(original_filepath, 'r', encoding='utf-8') as f:
+      content = f.read()
+
+    # Write to new file
+    with open(new_filepath, 'w', encoding='utf-8') as f:
+      f.write(content)
+
+    # Log the action
+    log_user_action(
+        "analysis_configuration_duplicated",
+        f"Original: {filename}, Duplicate: {new_filename} (Dataset: {dataset.name})",
+        success=True
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Analysis duplicated successfully',
+        'new_filename': new_filename
+    })
+
+  except Exception as e:
+    ErrorLogger.log_exception(
+        e,
+        context=f"Duplicating analysis for dataset {dataset_id}",
+        user_action=f"User trying to duplicate analysis '{filename}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'filename': filename,
+            'user_email': current_user.email
+        }
+    )
+    log_user_action("analysis_configuration_duplicate_failed",
+                    f"Analysis file: {filename}", success=False)
+
+    return jsonify({
+        'success': False,
+        'message': f'Error duplicating analysis: {str(e)}'
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/analysis/rename', methods=['POST'])
+@login_required
+def rename_analysis(dataset_id):
+  """Rename a saved analysis configuration (updates the name property, not filename)"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    data = request.get_json()
+    if not data or 'filename' not in data or 'new_name' not in data:
+      return jsonify({'success': False, 'message': 'Filename and new_name are required'}), 400
+
+    filename = data['filename']
+    new_name = data['new_name'].strip()
+
+    if not new_name:
+      return jsonify({'success': False, 'message': 'New name cannot be empty'}), 400
+
+    # Validate filename (prevent directory traversal)
+    if '..' in filename or '/' in filename or '\\' in filename:
+      return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+
+    # Get user's analysis directory
+    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
+    analysis_folder = os.path.join(
+        current_app.instance_path, 'users', user_email, 'analysis')
+    filepath = os.path.join(analysis_folder, filename)
+
+    # Check if file exists
+    if not os.path.exists(filepath):
+      return jsonify({'success': False, 'message': 'Analysis file not found'}), 404
+
+    # Read the JSON file
+    with open(filepath, 'r', encoding='utf-8') as f:
+      analysis_data = json.load(f)
+
+    # Update the name property (analysis_name field in JSON)
+    old_name = analysis_data.get('analysis_name', '')
+    analysis_data['analysis_name'] = new_name
+
+    # Remove any duplicate 'name' field if it exists (cleanup from previous versions)
+    if 'name' in analysis_data:
+      del analysis_data['name']
+
+    # Update the modified timestamp
+    from datetime import datetime
+    analysis_data['modified_at'] = datetime.now().isoformat()
+
+    # Write the updated JSON back to the file
+    with open(filepath, 'w', encoding='utf-8') as f:
+      json.dump(analysis_data, f, indent=2, ensure_ascii=False)
+
+    # Log the action
+    log_user_action(
+        "analysis_configuration_renamed",
+        f"Analysis file: {filename}, Name: '{old_name}' → '{new_name}' (Dataset: {dataset.name})",
+        success=True
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Analysis renamed successfully',
+        'old_name': old_name,
+        'new_name': new_name
+    })
+
+  except json.JSONDecodeError as e:
+    return jsonify({
+        'success': False,
+        'message': f'Invalid JSON format in analysis file: {str(e)}'
+    }), 400
+
+  except Exception as e:
+    ErrorLogger.log_exception(
+        e,
+        context=f"Renaming analysis for dataset {dataset_id}",
+        user_action=f"User trying to rename analysis '{filename}' to '{new_name}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'filename': filename,
+            'new_name': new_name,
+            'user_email': current_user.email
+        }
+    )
+    log_user_action("analysis_configuration_rename_failed",
+                    f"Analysis file: {filename}", success=False)
+
+    return jsonify({
+        'success': False,
+        'message': f'Error renaming analysis: {str(e)}'
+    }), 500
