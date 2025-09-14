@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 import shutil
 import importlib.util
+import json
 from collections import OrderedDict
 
 datasets_bp = Blueprint('datasets', __name__)
@@ -1048,4 +1049,89 @@ def get_metadata(metadata_type):
         return jsonify({
             'success': False,
             'message': f'Error loading metadata: {str(e)}'
+        }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/analysis/save', methods=['POST'])
+@login_required
+def save_analysis_configuration(dataset_id):
+    """Save analysis configuration to JSON file"""
+    dataset = Dataset.query.filter_by(
+        id=dataset_id, user_id=current_user.id).first_or_404()
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data received'}), 400
+        
+        analysis_name = data.get('analysis_name', '').strip()
+        analysis_description = data.get('analysis_description', '').strip()
+        configuration = data.get('configuration', {})
+        
+        if not analysis_name:
+            return jsonify({'success': False, 'message': 'Analysis name is required'}), 400
+        
+        # Sanitize analysis name for filename
+        import re
+        safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', analysis_name)
+        safe_name = re.sub(r'_+', '_', safe_name)  # Replace multiple underscores with single
+        safe_name = safe_name.strip('_')  # Remove leading/trailing underscores
+        
+        if not safe_name:
+            return jsonify({'success': False, 'message': 'Invalid analysis name'}), 400
+        
+        # Create analysis folder structure
+        user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
+        analysis_folder = os.path.join(current_app.instance_path, 'users', user_email, 'analysis')
+        os.makedirs(analysis_folder, exist_ok=True)
+        
+        # Create analysis configuration object
+        analysis_config = {
+            'analysis_name': analysis_name,
+            'analysis_description': analysis_description,
+            'dataset_id': dataset_id,
+            'dataset_name': dataset.name,
+            'created_at': datetime.utcnow().isoformat(),
+            'created_by': current_user.email,
+            'configuration': configuration
+        }
+        
+        # Save to JSON file
+        filename = f"{safe_name}.json"
+        filepath = os.path.join(analysis_folder, filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(analysis_config, f, indent=2, ensure_ascii=False)
+        
+        # Log the action
+        log_user_action(
+            "analysis_configuration_saved",
+            f"Analysis: {analysis_name} (Dataset: {dataset.name})",
+            success=True
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Analysis configuration saved successfully',
+            'filename': filename,
+            'filepath': filepath
+        })
+        
+    except Exception as e:
+        ErrorLogger.log_exception(
+            e,
+            context=f"Saving analysis configuration for dataset {dataset_id}",
+            user_action=f"User trying to save analysis '{analysis_name}'",
+            extra_data={
+                'dataset_id': dataset_id,
+                'analysis_name': analysis_name,
+                'user_email': current_user.email
+            }
+        )
+        log_user_action("analysis_configuration_save_failed",
+                        f"Analysis: {analysis_name}", success=False)
+        
+        return jsonify({
+            'success': False,
+            'message': f'Error saving analysis configuration: {str(e)}'
         }), 500

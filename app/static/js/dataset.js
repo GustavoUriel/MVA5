@@ -98,11 +98,12 @@ function displayFilesTable(files, datasetStatus) {
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th>File Name</th>
+                        <th>Name</th>
                         <th>Type</th>
                         <th>Size</th>
-                        <th>Status</th>
+                        <th>Cure Status</th>
                         <th>Uploaded</th>
+                        <th>Modified</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -111,14 +112,15 @@ function displayFilesTable(files, datasetStatus) {
     
     files.forEach(file => {
         const sizeFormatted = formatFileSize(file.size);
-        const statusBadge = getStatusBadge(file.cure_status, file.cure_validation_status);
+        const cureStatusIcon = getCureStatusIcon(file.cure_status, file.cure_validation_status);
         const uploadedDate = new Date(file.uploaded_at).toLocaleDateString();
+        const modifiedDate = new Date(file.modified_at).toLocaleDateString();
         
         html += `
             <tr>
                 <td>
-                    <i class="fas fa-file me-2 text-muted"></i>
-                    ${file.filename}
+                    <i class="fas fa-file-csv me-2 text-primary"></i>
+                    ${file.filename.replace(/\.csv$/i, '')}
                 </td>
                 <td>
                     <span class="badge bg-${getFileTypeColor(file.file_type)}">
@@ -126,17 +128,31 @@ function displayFilesTable(files, datasetStatus) {
                     </span>
                 </td>
                 <td>${sizeFormatted}</td>
-                <td>${statusBadge}</td>
+                <td>${cureStatusIcon}</td>
                 <td>${uploadedDate}</td>
+                <td>${modifiedDate}</td>
                 <td>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="viewFile(${file.id})">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteFile(${file.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+                    <button class="btn btn-sm btn-outline-info me-1" onclick="renameFile(${file.id}, '${file.filename}', '${file.file_type}')" title="Rename File">
+                        <i class="fas fa-i-cursor"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning me-1" onclick="editTable(${file.id})" title="Edit Table">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success me-1" onclick="duplicateFile(${file.id})" title="Duplicate File">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadFile(${file.id})" title="Download File">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-sm ${file.cure_status === 'cured' && file.cure_validation_status === 'ok' ? 'btn-success disabled' : 'btn-outline-secondary'}" 
+                            onclick="cureData(${file.id})" 
+                            ${file.cure_status === 'cured' && file.cure_validation_status === 'ok' ? 'disabled' : ''} 
+                            title="Cure Data">
+                        <i class="fas fa-magic"></i> Cure
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteFile(${file.id})" title="Delete File">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             </tr>
         `;
@@ -179,6 +195,24 @@ function getStatusBadge(cureStatus, validationStatus) {
         return '<span class="badge bg-warning">Cured</span>';
     } else {
         return '<span class="badge bg-secondary">Pending</span>';
+    }
+}
+
+function getCureStatusIcon(cureStatus, validationStatus) {
+    if (cureStatus === 'cured') {
+        if (validationStatus === 'ok') {
+            return '<i class="fas fa-check-circle text-success" title="Cured and validation OK"></i>';
+        } else if (validationStatus === 'warnings') {
+            return '<i class="fas fa-exclamation-triangle text-warning" title="Cured with warnings"></i>';
+        } else if (validationStatus === 'errors') {
+            return '<i class="fas fa-times-circle text-danger" title="Cured with errors"></i>';
+        }
+    } else if (cureStatus === 'curing') {
+        return '<i class="fas fa-spinner fa-spin text-info" title="Curing in progress"></i>';
+    } else if (cureStatus === 'failed') {
+        return '<i class="fas fa-times-circle text-danger" title="Cure failed"></i>';
+    } else {
+        return '<i class="fas fa-clock text-muted" title="Not yet cured"></i>';
     }
 }
 
@@ -383,6 +417,7 @@ function cancelAnalysisEdit() {
     }
 }
 
+
 function saveAnalysis() {
     console.log('Saving analysis...');
     
@@ -390,15 +425,205 @@ function saveAnalysis() {
     const analysisDescription = document.getElementById('analysisDescription')?.value;
     
     if (!analysisName) {
-        alert('Please enter an analysis name');
+        showAlert('Please enter an analysis name', 'warning');
         return;
     }
     
-    // TODO: Implement actual save functionality
-    console.log('Saving analysis:', { name: analysisName, description: analysisDescription });
+    // Collect all form data from the three tabs
+    const analysisConfig = collectAnalysisConfiguration();
     
-    // For now, just show success message
-    alert('Analysis saved successfully!');
+    // Send to backend to save as JSON file
+    fetch(`/dataset/${datasetId}/analysis/save`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            analysis_name: analysisName,
+            analysis_description: analysisDescription,
+            configuration: analysisConfig
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(`Analysis "${analysisName}" saved successfully!`, 'success');
+        } else {
+            showAlert(data.error || 'Failed to save analysis', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving analysis:', error);
+        showAlert('Failed to save analysis', 'danger');
+    });
+}
+
+function collectAnalysisConfiguration() {
+    const config = {
+        data_sources: {},
+        analysis_config: {},
+        report_config: {}
+    };
+    
+    // Data Sources Tab
+    config.data_sources = {
+        patient_file: document.getElementById('editorPatientFileSelect')?.value || '',
+        taxonomy_file: document.getElementById('editorTaxonomyFileSelect')?.value || '',
+        bracken_file: document.getElementById('editorBrackenFileSelect')?.value || '',
+        selection_mode: document.getElementById('selectionModeToggle')?.checked || false,
+        top_percentage: document.getElementById('topPercentage')?.value || '',
+        bottom_percentage: document.getElementById('bottomPercentage')?.value || '',
+        // Patient Data Column Groups
+        column_groups: collectColumnGroups(),
+        // Bracken Time Point Selection
+        bracken_time_point: document.getElementById('editorBrackenTimePointSelect')?.value || '',
+        // Population Stratification
+        population_stratifications: collectPopulationStratifications()
+    };
+    
+    // Analysis Config Tab
+    config.analysis_config = {
+        clustering_method: document.getElementById('clusteringMethodSelect')?.value || '',
+        clustering_parameters: collectClusteringParameters(),
+        cluster_representative: document.getElementById('clusterRepresentativeSelect')?.value || '',
+        cluster_representative_parameters: collectClusterRepresentativeParameters(),
+        analysis_methods: collectAnalysisMethods(),
+        stratification_methods: collectStratificationMethods(),
+        // Cluster Representative Selection
+        cluster_representative_method: document.getElementById('clusterRepresentativeMethod')?.value || '',
+        cluster_representative_details: collectClusterRepresentativeDetails(),
+        // Analysis Type
+        analysis_type_method: document.getElementById('analysisMethodSelect')?.value || '',
+        analysis_type_parameters: collectAnalysisTypeParameters()
+    };
+    
+    // Report Config Tab
+    config.report_config = {
+        report_formats: {
+            pdf: document.getElementById('reportPDF')?.checked || false,
+            html: document.getElementById('reportHTML')?.checked || false,
+            csv: document.getElementById('reportCSV')?.checked || false
+        },
+        report_content: {
+            summary: document.getElementById('includeSummary')?.checked || false,
+            plots: document.getElementById('includePlots')?.checked || false,
+            raw_data: document.getElementById('includeRawData')?.checked || false
+        }
+    };
+    
+    return config;
+}
+
+function collectClusteringParameters() {
+    const parameters = {};
+    const container = document.getElementById('clusteringParametersForm');
+    if (container) {
+        const inputs = container.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.id && input.value !== '') {
+                parameters[input.id] = input.type === 'checkbox' ? input.checked : input.value;
+            }
+        });
+    }
+    return parameters;
+}
+
+function collectClusterRepresentativeParameters() {
+    const parameters = {};
+    const container = document.getElementById('clusterRepresentativeParametersForm');
+    if (container) {
+        const inputs = container.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.id && input.value !== '') {
+                parameters[input.id] = input.type === 'checkbox' ? input.checked : input.value;
+            }
+        });
+    }
+    return parameters;
+}
+
+function collectAnalysisMethods() {
+    const methods = [];
+    const container = document.getElementById('analysisMethodsContainer');
+    if (container) {
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+        checkboxes.forEach(checkbox => {
+            methods.push(checkbox.value);
+        });
+    }
+    return methods;
+}
+
+function collectStratificationMethods() {
+    const methods = [];
+    const container = document.getElementById('stratificationMethodsContainer');
+    if (container) {
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+        checkboxes.forEach(checkbox => {
+            methods.push(checkbox.value);
+        });
+    }
+    return methods;
+}
+
+function collectColumnGroups() {
+    const columnGroups = [];
+    const container = document.getElementById('columnGroupsContainer');
+    if (container) {
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            columnGroups.push({
+                group_name: checkbox.value,
+                group_id: checkbox.id,
+                is_checked: checkbox.checked
+            });
+        });
+    }
+    return columnGroups;
+}
+
+function collectPopulationStratifications() {
+    const stratifications = [];
+    const container = document.getElementById('stratificationContainer');
+    if (container) {
+        const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            stratifications.push({
+                stratification_name: checkbox.value,
+                stratification_id: checkbox.id,
+                is_checked: checkbox.checked
+            });
+        });
+    }
+    return stratifications;
+}
+
+function collectClusterRepresentativeDetails() {
+    const details = {};
+    const container = document.getElementById('clusterRepresentativeDetails');
+    if (container) {
+        const inputs = container.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.id && input.value !== '') {
+                details[input.id] = input.type === 'checkbox' ? input.checked : input.value;
+            }
+        });
+    }
+    return details;
+}
+
+function collectAnalysisTypeParameters() {
+    const parameters = {};
+    const container = document.getElementById('analysisMethodParametersForm');
+    if (container) {
+        const inputs = container.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.id && input.value !== '') {
+                parameters[input.id] = input.type === 'checkbox' ? input.checked : input.value;
+            }
+        });
+    }
+    return parameters;
 }
 
 function runAnalysisFromEditor() {
@@ -2314,3 +2539,421 @@ function loadSettingsTab() {
     // TODO: Implement settings tab loading
     console.log('Loading settings tab');
 }
+
+// Utility Functions
+window.showAlert = function(message, type) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add to body
+    document.body.appendChild(alertDiv);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+};
+
+// File Action Functions
+window.downloadFile = function(fileId) {
+    // Show loading state
+    const downloadBtn = document.querySelector(`button[onclick="downloadFile(${fileId})"]`);
+    const originalContent = downloadBtn.innerHTML;
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    // Fetch both file data and schema to preserve column order
+    Promise.all([
+        fetch(`/file/${fileId}/data`).then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        }),
+        fetch(`/file/${fileId}/schema`).then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+    ])
+    .then(([data, schema]) => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        if (schema.error) {
+            throw new Error(schema.error);
+        }
+        
+        // Generate Excel file with proper column order
+        generateExcelFileWithSchema(data, schema, fileId);
+        showAlert('File downloaded successfully', 'success');
+    })
+    .catch(error => {
+        console.error('Error downloading file:', error);
+        showAlert(`Failed to download file: ${error.message}`, 'danger');
+    })
+    .finally(() => {
+        // Reset button state
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = originalContent;
+    });
+};
+
+function generateExcelFileWithSchema(data, schema, fileId) {
+    try {
+        // Get file info for naming
+        const row = document.querySelector(`button[onclick="downloadFile(${fileId})"]`).closest('tr');
+        const fileName = row.querySelector('td:first-child').textContent.trim();
+        
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        
+        // Get column order from schema (preserves original CSV order)
+        const columnOrder = schema.columns.map(col => col.field);
+        
+        // Convert data to worksheet with proper column order
+        if (Array.isArray(data)) {
+            // Data is directly an array of records (most common case)
+            if (data.length === 0) {
+                throw new Error('No data to export');
+            }
+            
+            // Use schema column order instead of Object.keys()
+            const headers = columnOrder;
+            
+            // Convert array of objects to array of arrays for Excel
+            // Maintain the exact column order from the schema
+            const rows = data.map(record => 
+                headers.map(header => record[header] !== null ? record[header] : '')
+            );
+            
+            // Add headers as first row
+            const worksheetData = [headers, ...rows];
+            
+            const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+            
+            // Auto-size columns
+            const colWidths = headers.map(header => 
+                Math.max(header.length, ...rows.map(row => 
+                    String(row[headers.indexOf(header)] || '').length
+                )) + 2
+            );
+            ws['!cols'] = colWidths.map(width => ({ wch: Math.min(width, 50) }));
+            
+            wb.SheetNames.push('Data');
+            wb.Sheets['Data'] = ws;
+            
+        } else {
+            throw new Error('Unexpected data format');
+        }
+        
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        const excelFileName = `${fileName}_${timestamp}.xlsx`;
+        
+        // Write and download file
+        XLSX.writeFile(wb, excelFileName);
+        
+    } catch (error) {
+        console.error('Error generating Excel file:', error);
+        showAlert(`Error generating Excel file: ${error.message}`, 'danger');
+    }
+}
+
+function generateExcelFile(data, fileId) {
+    try {
+        // Get file info for naming
+        const row = document.querySelector(`button[onclick="downloadFile(${fileId})"]`).closest('tr');
+        const fileName = row.querySelector('td:first-child').textContent.trim();
+        
+        // Note: This function is kept for backward compatibility
+        // The new generateExcelFileWithSchema function should be used instead
+        
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        
+        // Convert data to worksheet
+        if (Array.isArray(data)) {
+            // Data is directly an array of records (most common case)
+            if (data.length === 0) {
+                throw new Error('No data to export');
+            }
+            
+            // Preserve column order by using the order from the first record
+            // Object.keys() maintains insertion order in modern JavaScript
+            const headers = Object.keys(data[0]);
+            
+            // Convert array of objects to array of arrays for Excel
+            // Maintain the exact column order from the original CSV
+            const rows = data.map(record => 
+                headers.map(header => record[header] !== null ? record[header] : '')
+            );
+            
+            // Add headers as first row
+            const worksheetData = [headers, ...rows];
+            
+            const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+            
+            // Auto-size columns
+            const colWidths = headers.map(header => 
+                Math.max(header.length, ...rows.map(row => 
+                    String(row[headers.indexOf(header)] || '').length
+                )) + 2
+            );
+            ws['!cols'] = colWidths.map(width => ({ wch: Math.min(width, 50) }));
+            
+            wb.SheetNames.push('Data');
+            wb.Sheets['Data'] = ws;
+            
+        } else if (data.data && Array.isArray(data.data)) {
+            // If data has a 'data' property with array of rows
+            // Check if it's array of objects or array of arrays
+            if (data.data.length > 0 && typeof data.data[0] === 'object' && !Array.isArray(data.data[0])) {
+                // Array of objects - preserve column order
+                const headers = Object.keys(data.data[0]);
+                const rows = data.data.map(record => 
+                    headers.map(header => record[header] !== null ? record[header] : '')
+                );
+                const worksheetData = [headers, ...rows];
+                const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+                wb.SheetNames.push('Data');
+                wb.Sheets['Data'] = ws;
+            } else {
+                // Array of arrays - use as is
+                const ws = XLSX.utils.aoa_to_sheet(data.data);
+                wb.SheetNames.push('Data');
+                wb.Sheets['Data'] = ws;
+            }
+        } else {
+            // If data is an object, try to find array properties
+            const dataKeys = Object.keys(data);
+            let foundArray = false;
+            
+            for (const key of dataKeys) {
+                if (Array.isArray(data[key])) {
+                    // Check if it's array of objects or array of arrays
+                    if (data[key].length > 0 && typeof data[key][0] === 'object' && !Array.isArray(data[key][0])) {
+                        // Array of objects - preserve column order
+                        const headers = Object.keys(data[key][0]);
+                        const rows = data[key].map(record => 
+                            headers.map(header => record[header] !== null ? record[header] : '')
+                        );
+                        const worksheetData = [headers, ...rows];
+                        const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+                        wb.SheetNames.push(key);
+                        wb.Sheets[key] = ws;
+                    } else {
+                        // Array of arrays - use as is
+                        const ws = XLSX.utils.aoa_to_sheet(data[key]);
+                        wb.SheetNames.push(key);
+                        wb.Sheets[key] = ws;
+                    }
+                    foundArray = true;
+                }
+            }
+            
+            if (!foundArray) {
+                throw new Error('No array data found to export');
+            }
+        }
+        
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        const excelFileName = `${fileName}_${timestamp}.xlsx`;
+        
+        // Write and download file
+        XLSX.writeFile(wb, excelFileName);
+        
+    } catch (error) {
+        console.error('Error generating Excel file:', error);
+        showAlert(`Error generating Excel file: ${error.message}`, 'danger');
+    }
+}
+
+window.duplicateFile = function(fileId) {
+    // Show confirmation dialog
+    if (confirm('Are you sure you want to duplicate this file? A copy will be created with "_copy" appended to the filename.')) {
+        // Find the row to get file info for better user feedback
+        const row = document.querySelector(`button[onclick="duplicateFile(${fileId})"]`).closest('tr');
+        const fileName = row.querySelector('td:first-child').textContent.trim();
+        
+        // Show loading state
+        const duplicateBtn = document.querySelector(`button[onclick="duplicateFile(${fileId})"]`);
+        const originalContent = duplicateBtn.innerHTML;
+        duplicateBtn.disabled = true;
+        duplicateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        // Send duplicate request
+        fetch(`/dataset/${datasetId}/files/${fileId}/duplicate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(`File "${fileName}" duplicated successfully`, 'success');
+                // Refresh the files table
+                loadFilesTable();
+            } else {
+                showAlert(data.error || 'Failed to duplicate file', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error duplicating file:', error);
+            showAlert('Failed to duplicate file', 'danger');
+        })
+        .finally(() => {
+            // Reset button state
+            duplicateBtn.disabled = false;
+            duplicateBtn.innerHTML = originalContent;
+        });
+    }
+};
+
+window.renameFile = function(fileId, currentName, fileType) {
+    // Extract the base name without extension for better UX
+    const lastDotIndex = currentName.lastIndexOf('.');
+    const baseName = lastDotIndex !== -1 ? currentName.substring(0, lastDotIndex) : currentName;
+    const extension = lastDotIndex !== -1 ? currentName.substring(lastDotIndex) : '';
+    
+    const newName = prompt(`Enter new name for ${fileType} file:`, baseName);
+    if (!newName || newName.trim() === '') {
+        return;
+    }
+    
+    const finalName = newName.trim() + extension;
+    
+    // Show loading state
+    const renameBtn = document.querySelector(`button[onclick="renameFile(${fileId}, '${currentName}', '${fileType}')"]`);
+    const originalContent = renameBtn.innerHTML;
+    renameBtn.disabled = true;
+    renameBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    // Send rename request
+    fetch(`/dataset/${datasetId}/files/${fileId}/rename`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            new_filename: finalName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(`File renamed to "${finalName}"`, 'success');
+            // Refresh the files table
+            loadFilesTable();
+        } else {
+            showAlert(data.error || 'Failed to rename file', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error renaming file:', error);
+        showAlert('Failed to rename file', 'danger');
+    })
+    .finally(() => {
+        // Reset button state
+        renameBtn.disabled = false;
+        renameBtn.innerHTML = originalContent;
+    });
+};
+
+window.editTable = function(fileId) {
+    // Navigate to the edit table page
+    window.location.href = `/file/${fileId}`;
+};
+
+window.cureData = function(fileId) {
+    // Show confirmation dialog
+    if (!confirm('Are you sure you want to cure this data? This will process and validate the file.')) {
+        return;
+    }
+    
+    // Find the button and show loading state
+    const cureBtn = document.querySelector(`button[onclick="cureData(${fileId})"]`);
+    const originalContent = cureBtn.innerHTML;
+    cureBtn.disabled = true;
+    cureBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Curing...';
+    
+    // Send cure request
+    fetch(`/dataset/${datasetId}/files/${fileId}/cure`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Data curing started successfully', 'success');
+            // Refresh the files table to show updated status
+            loadFilesTable();
+        } else {
+            showAlert(data.error || 'Failed to start data curing', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error curing data:', error);
+        showAlert('Failed to start data curing', 'danger');
+    })
+    .finally(() => {
+        // Reset button state
+        cureBtn.disabled = false;
+        cureBtn.innerHTML = originalContent;
+    });
+};
+
+window.deleteFile = function(fileId) {
+    // Show confirmation dialog
+    if (confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+        // Find the row to get file info for better user feedback
+        const row = document.querySelector(`button[onclick="deleteFile(${fileId})"]`).closest('tr');
+        const fileName = row.querySelector('td:first-child').textContent.trim();
+        
+        // Show loading state
+        const deleteBtn = document.querySelector(`button[onclick="deleteFile(${fileId})"]`);
+        const originalContent = deleteBtn.innerHTML;
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        // Send delete request
+        fetch(`/dataset/${datasetId}/files/${fileId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(`File "${fileName}" deleted successfully`, 'success');
+                // Refresh the files table
+                loadFilesTable();
+            } else {
+                showAlert(data.error || 'Failed to delete file', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting file:', error);
+            showAlert('Failed to delete file', 'danger');
+        })
+        .finally(() => {
+            // Reset button state
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = originalContent;
+        });
+    }
+};
