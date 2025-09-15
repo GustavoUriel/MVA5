@@ -769,10 +769,15 @@ class DatasetAnalysisManager {
 
     const linkCheckbox = document.getElementById("linkPercentages");
     if (linkCheckbox && linkCheckbox.checked) {
+      // When linked, update the other input and its display directly to avoid
+      // calling the counterpart function which would create a recursive loop.
       const bottomPercentage = document.getElementById("bottomPercentage");
-      if (bottomPercentage && bottomPercentageValue) {
+      const bottomPercentageValue = document.getElementById("bottomPercentageValue");
+      if (bottomPercentage) {
         bottomPercentage.value = value;
-        this.updateBottomPercentage(value);
+      }
+      if (bottomPercentageValue) {
+        bottomPercentageValue.textContent = value + "%";
       }
     }
 
@@ -788,10 +793,15 @@ class DatasetAnalysisManager {
 
     const linkCheckbox = document.getElementById("linkPercentages");
     if (linkCheckbox && linkCheckbox.checked) {
+      // When linked, update the other input and its display directly to avoid
+      // calling the counterpart function which would create a recursive loop.
       const topPercentage = document.getElementById("topPercentage");
-      if (topPercentage && topPercentageValue) {
+      const topPercentageValue = document.getElementById("topPercentageValue");
+      if (topPercentage) {
         topPercentage.value = value;
-        this.updateTopPercentage(value);
+      }
+      if (topPercentageValue) {
+        topPercentageValue.textContent = value + "%";
       }
     }
 

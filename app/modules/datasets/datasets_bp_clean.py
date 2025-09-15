@@ -70,14 +70,13 @@ def view_dataset(dataset_id, tab='files'):
       id=dataset_id, user_id=current_user.id).first_or_404()
 
   # Validate tab parameter
-  valid_tabs = ['files', 'analysis', 'reports', 'settings']
+  valid_tabs = ['files', 'reports', 'settings']
   if tab not in valid_tabs:
     tab = 'files'
 
   # Determine which template to render
   template_map = {
       'files': 'dataset/files_tab.html',
-      'analysis': 'dataset/analysis_tab.html',
       'reports': 'dataset/reports_tab.html',
       'settings': 'dataset/settings_tab.html'
   }
@@ -599,7 +598,7 @@ def format_stratification_name(strat_name):
 @datasets_bp.route('/dataset/<int:dataset_id>/data-stats')
 @login_required
 def get_dataset_data_stats(dataset_id):
-  """Get data statistics and analysis for a dataset"""
+  """Get data statistics for a dataset"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
 
@@ -854,36 +853,19 @@ def get_patient_count(dataset_id, file_id):
     import pandas as pd
     import os
 
-    # Log file information for debugging (show both original and processed paths)
-    current_app.logger.debug(
-        f"File ID: {file_id}, File Path: {file.file_path}, Processed Path: {getattr(file, 'processed_file_path', None)}, Show Filename: {file.show_filename}")
-
-    # Prefer processed file path when available (some workflows write a processed file)
-    file_path_to_use = file.processed_file_path if getattr(
-        file, 'processed_file_path', None) else file.file_path
+    # Log file information for debugging
+    print(
+        f"File ID: {file_id}, File Path: {file.file_path}, Show Filename: {file.show_filename}")
 
     # Read the file to get patient count
-    if not os.path.exists(file_path_to_use):
-      # Try fallback: the DB may have stored a path with an old base; construct
-      # the expected path under the app instance using get_dataset_files_folder
-      fallback_dir = get_dataset_files_folder(current_user.email, dataset_id)
-      fallback_path = os.path.join(fallback_dir, os.path.basename(
-          file_path_to_use)) if fallback_dir else None
-
-      if fallback_path and os.path.exists(fallback_path):
-        current_app.logger.info(
-            f"Using fallback path for patient-count: {fallback_path}")
-        file_path_to_use = fallback_path
-      else:
-        current_app.logger.warning(
-            f"Patient count file not found. Tried: {file_path_to_use} and fallback: {fallback_path}")
-        return jsonify({
-            'success': False,
-            'error': f'File not found at path: {file_path_to_use}'
-        }), 404
+    if not os.path.exists(file.file_path):
+      return jsonify({
+          'success': False,
+          'error': f'File not found at path: {file.file_path}'
+      }), 404
 
     # Read the CSV file
-    df = pd.read_csv(file_path_to_use)
+    df = pd.read_csv(file.file_path)
 
     # Get patient count (assuming first column or a specific patient ID column)
     patient_count = len(df)
@@ -894,73 +876,7 @@ def get_patient_count(dataset_id, file_id):
         'file_name': file.show_filename
     })
   except Exception as e:
-    current_app.logger.exception(f"Error in get_patient_count: {str(e)}")
-    return jsonify({
-        'success': False,
-        'error': str(e)
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods')
-@login_required
-def get_analysis_methods(dataset_id):
-  """Get all analysis methods and default method"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    # Load analysis methods from metadata
-    analysis_methods = load_metadata_module('ANALYSIS_METHODS')
-
-    # Get default method and categories
-    import importlib
-    analysis_module = importlib.import_module('metadata.ANALYSIS_METHODS')
-    default_method = getattr(
-        analysis_module, 'DEFAULT_ANALYSIS_METHOD', 'cox_proportional_hazards')
-    method_categories = getattr(analysis_module, 'METHOD_CATEGORIES', {})
-    method_descriptions = getattr(analysis_module, 'METHOD_DESCRIPTIONS', {})
-
-    return jsonify({
-        'success': True,
-        'methods': analysis_methods,
-        'default_method': default_method,
-        'categories': method_categories,
-        'descriptions': method_descriptions
-    })
-  except Exception as e:
-    current_app.logger.exception(f"Error loading analysis methods: {str(e)}")
-    return jsonify({
-        'success': False,
-        'error': str(e)
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods/<method_name>')
-@login_required
-def get_analysis_method(dataset_id, method_name):
-  """Get details for a specific analysis method"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    # Load analysis methods from metadata
-    analysis_methods = load_metadata_module('ANALYSIS_METHODS')
-
-    if method_name not in analysis_methods:
-      return jsonify({
-          'success': False,
-          'error': f'Analysis method "{method_name}" not found'
-      }), 404
-
-    method_details = analysis_methods[method_name]
-
-    return jsonify({
-        'success': True,
-        'method': method_details
-    })
-  except Exception as e:
-    current_app.logger.exception(
-        f"Error loading analysis method {method_name}: {str(e)}")
+    print(f"Error in get_patient_count: {str(e)}")
     return jsonify({
         'success': False,
         'error': str(e)
@@ -979,7 +895,6 @@ def get_metadata(metadata_type):
     metadata_files = {
         'column_groups': 'column_groups.py',
         'time_points': 'BRACKEN_TIME_POINTS.py',
-        'analysis_methods': 'ANALYSIS_METHODS.py',
         'clustering_methods': 'CLUSTERING_METHODS.py',
         'grouping_strategies': 'GROUPING_STRATEGIES.py',
         'grouping_analysis_methods': 'GROUPING_ANALYSIS_METHODS.py',
@@ -1080,425 +995,4 @@ def get_metadata(metadata_type):
     return jsonify({
         'success': False,
         'message': f'Error loading metadata: {str(e)}'
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/analysis/save', methods=['POST'])
-@login_required
-def save_analysis_configuration(dataset_id):
-  """Save analysis configuration to JSON file"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    data = request.get_json()
-    if not data:
-      return jsonify({'success': False, 'message': 'No data received'}), 400
-
-    analysis_name = data.get('analysis_name', '').strip()
-    analysis_description = data.get('analysis_description', '').strip()
-    configuration = data.get('configuration', {})
-
-    if not analysis_name:
-      return jsonify({'success': False, 'message': 'Analysis name is required'}), 400
-
-    # Sanitize analysis name for filename
-    import re
-    safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', analysis_name)
-    # Replace multiple underscores with single
-    safe_name = re.sub(r'_+', '_', safe_name)
-    safe_name = safe_name.strip('_')  # Remove leading/trailing underscores
-
-    if not safe_name:
-      return jsonify({'success': False, 'message': 'Invalid analysis name'}), 400
-
-    # Create analysis folder structure
-    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
-    analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
-    os.makedirs(analysis_folder, exist_ok=True)
-
-    # Create analysis configuration object
-    analysis_config = {
-        'analysis_name': analysis_name,
-        'analysis_description': analysis_description,
-        'dataset_id': dataset_id,
-        'dataset_name': dataset.name,
-        'created_at': datetime.utcnow().isoformat(),
-        # relative path from instance (use a stable, portable relative path)
-        'relative_path': f"users/{user_email}/analysis/{safe_name}.json",
-        # last_run is null until the analysis is executed; run_status is null when never run
-        'last_run': None,
-        'run_status': None,
-        'created_by': current_user.email,
-        'configuration': configuration
-    }
-
-    # Save to JSON file
-    filename = f"{safe_name}.json"
-    filepath = os.path.join(analysis_folder, filename)
-
-    with open(filepath, 'w', encoding='utf-8') as f:
-      json.dump(analysis_config, f, indent=2, ensure_ascii=False)
-
-    # Log the action
-    log_user_action(
-        "analysis_configuration_saved",
-        f"Analysis: {analysis_name} (Dataset: {dataset.name})",
-        success=True
-    )
-
-    return jsonify({
-        'success': True,
-        'message': f'Analysis configuration saved successfully',
-        'filename': filename,
-        'filepath': filepath
-    })
-
-  except Exception as e:
-    ErrorLogger.log_exception(
-        e,
-        context=f"Saving analysis configuration for dataset {dataset_id}",
-        user_action=f"User trying to save analysis '{analysis_name}'",
-        extra_data={
-            'dataset_id': dataset_id,
-            'analysis_name': analysis_name,
-            'user_email': current_user.email
-        }
-    )
-    log_user_action("analysis_configuration_save_failed",
-                    f"Analysis: {analysis_name}", success=False)
-
-    return jsonify({
-        'success': False,
-        'message': f'Error saving analysis configuration: {str(e)}'
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/analysis/list', methods=['GET'])
-@login_required
-def list_saved_analyses(dataset_id):
-  """List all saved analysis configurations for a dataset"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    # Debug log
-    current_app.logger.debug(
-        f"DEBUG: list_saved_analyses called with dataset_id: {dataset_id}")
-
-    # Get user's analysis directory
-    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
-    analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
-
-    analyses = []
-
-    if os.path.exists(analysis_folder):
-      # Scan for JSON files in the analysis directory
-      for filename in os.listdir(analysis_folder):
-        if filename.endswith('.json'):
-          filepath = os.path.join(analysis_folder, filename)
-          try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-              analysis_data = json.load(f)
-
-            # Only include analyses for this dataset
-            if analysis_data.get('dataset_id') == dataset_id:
-              # Get file stats
-              stat = os.stat(filepath)
-
-              analysis_info = {
-                  'name': analysis_data.get('analysis_name', 'Unknown'),
-                  'description': analysis_data.get('analysis_description', ''),
-                  'relative_path': analysis_data.get('relative_path', None),
-                  'last_run': analysis_data.get('last_run', None),
-                  'run_status': analysis_data.get('run_status', None),
-                  'filename': filename,
-                  'created_at': analysis_data.get('created_at', ''),
-                  'modified_at': analysis_data.get('modified_at', datetime.fromtimestamp(stat.st_mtime).isoformat()),
-                  'size': stat.st_size,
-                  'dataset_name': dataset.name,
-                  'created_by': current_user.email
-              }
-              analyses.append(analysis_info)
-
-          except (json.JSONDecodeError, IOError) as e:
-            current_app.logger.warning(
-                f"Error reading analysis file {filename}: {e}")
-            continue
-
-    # Sort analyses by modified time (most recent first)
-    analyses.sort(key=lambda x: x['modified_at'], reverse=True)
-
-    return jsonify({
-        'success': True,
-        'analyses': analyses,
-        'total': len(analyses)
-    })
-
-  except Exception as e:
-    ErrorLogger.log_exception(
-        e,
-        context=f"Listing analyses for dataset {dataset_id}",
-        user_action="User trying to list saved analyses"
-    )
-
-    return jsonify({
-        'success': False,
-        'message': f'Error listing analyses: {str(e)}',
-        'analyses': [],
-        'total': 0
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/analysis/delete', methods=['POST'])
-@login_required
-def delete_analysis(dataset_id):
-  """Delete a saved analysis configuration"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    data = request.get_json()
-    if not data or 'filename' not in data:
-      return jsonify({'success': False, 'message': 'Filename is required'}), 400
-
-    filename = data['filename']
-
-    # Validate filename (prevent directory traversal)
-    if '..' in filename or '/' in filename or '\\' in filename:
-      return jsonify({'success': False, 'message': 'Invalid filename'}), 400
-
-    # Get user's analysis directory
-    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
-    analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
-    filepath = os.path.join(analysis_folder, filename)
-
-    # Check if file exists
-    if not os.path.exists(filepath):
-      return jsonify({'success': False, 'message': 'Analysis file not found'}), 404
-
-    # Delete the file
-    os.remove(filepath)
-
-    # Log the action
-    log_user_action(
-        "analysis_configuration_deleted",
-        f"Analysis file: {filename} (Dataset: {dataset.name})",
-        success=True
-    )
-
-    return jsonify({
-        'success': True,
-        'message': f'Analysis "{filename}" deleted successfully'
-    })
-
-  except Exception as e:
-    ErrorLogger.log_exception(
-        e,
-        context=f"Deleting analysis for dataset {dataset_id}",
-        user_action=f"User trying to delete analysis '{filename}'",
-        extra_data={
-            'dataset_id': dataset_id,
-            'filename': filename,
-            'user_email': current_user.email
-        }
-    )
-    log_user_action("analysis_configuration_delete_failed",
-                    f"Analysis file: {filename}", success=False)
-
-    return jsonify({
-        'success': False,
-        'message': f'Error deleting analysis: {str(e)}'
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/analysis/duplicate', methods=['POST'])
-@login_required
-def duplicate_analysis(dataset_id):
-  """Duplicate a saved analysis configuration"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    data = request.get_json()
-    if not data or 'filename' not in data:
-      return jsonify({'success': False, 'message': 'Filename is required'}), 400
-
-    filename = data['filename']
-
-    # Validate filename (prevent directory traversal)
-    if '..' in filename or '/' in filename or '\\' in filename:
-      return jsonify({'success': False, 'message': 'Invalid filename'}), 400
-
-    # Get user's analysis directory
-    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
-    analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
-    original_filepath = os.path.join(analysis_folder, filename)
-
-    # Check if original file exists
-    if not os.path.exists(original_filepath):
-      return jsonify({'success': False, 'message': 'Analysis file not found'}), 404
-
-    # Create new filename with "_c" suffix
-    name_without_ext = filename.replace('.json', '')
-    new_filename = f"{name_without_ext}_c.json"
-    new_filepath = os.path.join(analysis_folder, new_filename)
-
-    # Ensure the new filename doesn't already exist (add number if needed)
-    counter = 1
-    while os.path.exists(new_filepath):
-      new_filename = f"{name_without_ext}_c{counter}.json"
-      new_filepath = os.path.join(analysis_folder, new_filename)
-      counter += 1
-
-    # Read original file content and update fields for duplicate
-    with open(original_filepath, 'r', encoding='utf-8') as f:
-      try:
-        original_data = json.load(f)
-      except Exception:
-        # Fallback: copy raw content if JSON parse fails
-        f.seek(0)
-        content = f.read()
-        with open(new_filepath, 'w', encoding='utf-8') as out_f:
-          out_f.write(content)
-      else:
-        # Reset run state for duplicate and update created_at/created_by/relative_path
-        original_data['created_at'] = datetime.utcnow().isoformat()
-        original_data['created_by'] = current_user.email
-        original_data['modified_at'] = datetime.utcnow().isoformat()
-        original_data['last_run'] = None
-        original_data['run_status'] = None
-        original_data['dataset_id'] = dataset_id
-        # Update the relative_path to the new filename
-        original_data['relative_path'] = f"users/{user_email}/analysis/{new_filename}"
-        with open(new_filepath, 'w', encoding='utf-8') as out_f:
-          json.dump(original_data, out_f, indent=2, ensure_ascii=False)
-
-    # Log the action
-    log_user_action(
-        "analysis_configuration_duplicated",
-        f"Original: {filename}, Duplicate: {new_filename} (Dataset: {dataset.name})",
-        success=True
-    )
-
-    return jsonify({
-        'success': True,
-        'message': f'Analysis duplicated successfully',
-        'new_filename': new_filename
-    })
-
-  except Exception as e:
-    ErrorLogger.log_exception(
-        e,
-        context=f"Duplicating analysis for dataset {dataset_id}",
-        user_action=f"User trying to duplicate analysis '{filename}'",
-        extra_data={
-            'dataset_id': dataset_id,
-            'filename': filename,
-            'user_email': current_user.email
-        }
-    )
-    log_user_action("analysis_configuration_duplicate_failed",
-                    f"Analysis file: {filename}", success=False)
-
-    return jsonify({
-        'success': False,
-        'message': f'Error duplicating analysis: {str(e)}'
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/analysis/rename', methods=['POST'])
-@login_required
-def rename_analysis(dataset_id):
-  """Rename a saved analysis configuration (updates the name property, not filename)"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    data = request.get_json()
-    if not data or 'filename' not in data or 'new_name' not in data:
-      return jsonify({'success': False, 'message': 'Filename and new_name are required'}), 400
-
-    filename = data['filename']
-    new_name = data['new_name'].strip()
-
-    if not new_name:
-      return jsonify({'success': False, 'message': 'New name cannot be empty'}), 400
-
-    # Validate filename (prevent directory traversal)
-    if '..' in filename or '/' in filename or '\\' in filename:
-      return jsonify({'success': False, 'message': 'Invalid filename'}), 400
-
-    # Get user's analysis directory
-    user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
-    analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
-    filepath = os.path.join(analysis_folder, filename)
-
-    # Check if file exists
-    if not os.path.exists(filepath):
-      return jsonify({'success': False, 'message': 'Analysis file not found'}), 404
-
-    # Read the JSON file
-    with open(filepath, 'r', encoding='utf-8') as f:
-      analysis_data = json.load(f)
-
-    # Update the name property (analysis_name field in JSON)
-    old_name = analysis_data.get('analysis_name', '')
-    analysis_data['analysis_name'] = new_name
-
-    # Remove any duplicate 'name' field if it exists (cleanup from previous versions)
-    if 'name' in analysis_data:
-      del analysis_data['name']
-
-    # Update the modified timestamp (do not change run_status/last_run)
-    from datetime import datetime
-    analysis_data['modified_at'] = datetime.now().isoformat()
-
-    # Write the updated JSON back to the file
-    with open(filepath, 'w', encoding='utf-8') as f:
-      json.dump(analysis_data, f, indent=2, ensure_ascii=False)
-
-    # Log the action
-    log_user_action(
-        "analysis_configuration_renamed",
-        f"Analysis file: {filename}, Name: '{old_name}' → '{new_name}' (Dataset: {dataset.name})",
-        success=True
-    )
-
-    return jsonify({
-        'success': True,
-        'message': f'Analysis renamed successfully',
-        'old_name': old_name,
-        'new_name': new_name
-    })
-
-  except json.JSONDecodeError as e:
-    return jsonify({
-        'success': False,
-        'message': f'Invalid JSON format in analysis file: {str(e)}'
-    }), 400
-
-  except Exception as e:
-    ErrorLogger.log_exception(
-        e,
-        context=f"Renaming analysis for dataset {dataset_id}",
-        user_action=f"User trying to rename analysis '{filename}' to '{new_name}'",
-        extra_data={
-            'dataset_id': dataset_id,
-            'filename': filename,
-            'new_name': new_name,
-            'user_email': current_user.email
-        }
-    )
-    log_user_action("analysis_configuration_rename_failed",
-                    f"Analysis file: {filename}", success=False)
-
-    return jsonify({
-        'success': False,
-        'message': f'Error renaming analysis: {str(e)}'
     }), 500

@@ -70,14 +70,13 @@ def view_dataset(dataset_id, tab='files'):
       id=dataset_id, user_id=current_user.id).first_or_404()
 
   # Validate tab parameter
-  valid_tabs = ['files', 'analysis', 'reports', 'settings']
+  valid_tabs = ['files', 'reports', 'settings']
   if tab not in valid_tabs:
     tab = 'files'
 
   # Determine which template to render
   template_map = {
       'files': 'dataset/files_tab.html',
-      'analysis': 'dataset/analysis_tab.html',
       'reports': 'dataset/reports_tab.html',
       'settings': 'dataset/settings_tab.html'
   }
@@ -854,36 +853,19 @@ def get_patient_count(dataset_id, file_id):
     import pandas as pd
     import os
 
-    # Log file information for debugging (show both original and processed paths)
-    current_app.logger.debug(
-        f"File ID: {file_id}, File Path: {file.file_path}, Processed Path: {getattr(file, 'processed_file_path', None)}, Show Filename: {file.show_filename}")
-
-    # Prefer processed file path when available (some workflows write a processed file)
-    file_path_to_use = file.processed_file_path if getattr(
-        file, 'processed_file_path', None) else file.file_path
+    # Log file information for debugging
+    print(
+        f"File ID: {file_id}, File Path: {file.file_path}, Show Filename: {file.show_filename}")
 
     # Read the file to get patient count
-    if not os.path.exists(file_path_to_use):
-      # Try fallback: the DB may have stored a path with an old base; construct
-      # the expected path under the app instance using get_dataset_files_folder
-      fallback_dir = get_dataset_files_folder(current_user.email, dataset_id)
-      fallback_path = os.path.join(fallback_dir, os.path.basename(
-          file_path_to_use)) if fallback_dir else None
-
-      if fallback_path and os.path.exists(fallback_path):
-        current_app.logger.info(
-            f"Using fallback path for patient-count: {fallback_path}")
-        file_path_to_use = fallback_path
-      else:
-        current_app.logger.warning(
-            f"Patient count file not found. Tried: {file_path_to_use} and fallback: {fallback_path}")
-        return jsonify({
-            'success': False,
-            'error': f'File not found at path: {file_path_to_use}'
-        }), 404
+    if not os.path.exists(file.file_path):
+      return jsonify({
+          'success': False,
+          'error': f'File not found at path: {file.file_path}'
+      }), 404
 
     # Read the CSV file
-    df = pd.read_csv(file_path_to_use)
+    df = pd.read_csv(file.file_path)
 
     # Get patient count (assuming first column or a specific patient ID column)
     patient_count = len(df)
@@ -894,77 +876,13 @@ def get_patient_count(dataset_id, file_id):
         'file_name': file.show_filename
     })
   except Exception as e:
-    current_app.logger.exception(f"Error in get_patient_count: {str(e)}")
+    print(f"Error in get_patient_count: {str(e)}")
     return jsonify({
         'success': False,
         'error': str(e)
     }), 500
 
 
-@datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods')
-@login_required
-def get_analysis_methods(dataset_id):
-  """Get all analysis methods and default method"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    # Load analysis methods from metadata
-    analysis_methods = load_metadata_module('ANALYSIS_METHODS')
-
-    # Get default method and categories
-    import importlib
-    analysis_module = importlib.import_module('metadata.ANALYSIS_METHODS')
-    default_method = getattr(
-        analysis_module, 'DEFAULT_ANALYSIS_METHOD', 'cox_proportional_hazards')
-    method_categories = getattr(analysis_module, 'METHOD_CATEGORIES', {})
-    method_descriptions = getattr(analysis_module, 'METHOD_DESCRIPTIONS', {})
-
-    return jsonify({
-        'success': True,
-        'methods': analysis_methods,
-        'default_method': default_method,
-        'categories': method_categories,
-        'descriptions': method_descriptions
-    })
-  except Exception as e:
-    current_app.logger.exception(f"Error loading analysis methods: {str(e)}")
-    return jsonify({
-        'success': False,
-        'error': str(e)
-    }), 500
-
-
-@datasets_bp.route('/dataset/<int:dataset_id>/metadata/analysis-methods/<method_name>')
-@login_required
-def get_analysis_method(dataset_id, method_name):
-  """Get details for a specific analysis method"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
-  try:
-    # Load analysis methods from metadata
-    analysis_methods = load_metadata_module('ANALYSIS_METHODS')
-
-    if method_name not in analysis_methods:
-      return jsonify({
-          'success': False,
-          'error': f'Analysis method "{method_name}" not found'
-      }), 404
-
-    method_details = analysis_methods[method_name]
-
-    return jsonify({
-        'success': True,
-        'method': method_details
-    })
-  except Exception as e:
-    current_app.logger.exception(
-        f"Error loading analysis method {method_name}: {str(e)}")
-    return jsonify({
-        'success': False,
-        'error': str(e)
-    }), 500
 
 
 @datasets_bp.route('/metadata/<metadata_type>')
@@ -1125,11 +1043,6 @@ def save_analysis_configuration(dataset_id):
         'dataset_id': dataset_id,
         'dataset_name': dataset.name,
         'created_at': datetime.utcnow().isoformat(),
-        # relative path from instance (use a stable, portable relative path)
-        'relative_path': f"users/{user_email}/analysis/{safe_name}.json",
-        # last_run is null until the analysis is executed; run_status is null when never run
-        'last_run': None,
-        'run_status': None,
         'created_by': current_user.email,
         'configuration': configuration
     }
@@ -1184,8 +1097,7 @@ def list_saved_analyses(dataset_id):
 
   try:
     # Debug log
-    current_app.logger.debug(
-        f"DEBUG: list_saved_analyses called with dataset_id: {dataset_id}")
+    print(f"DEBUG: list_saved_analyses called with dataset_id: {dataset_id}")
 
     # Get user's analysis directory
     user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
@@ -1211,9 +1123,6 @@ def list_saved_analyses(dataset_id):
               analysis_info = {
                   'name': analysis_data.get('analysis_name', 'Unknown'),
                   'description': analysis_data.get('analysis_description', ''),
-                  'relative_path': analysis_data.get('relative_path', None),
-                  'last_run': analysis_data.get('last_run', None),
-                  'run_status': analysis_data.get('run_status', None),
                   'filename': filename,
                   'created_at': analysis_data.get('created_at', ''),
                   'modified_at': analysis_data.get('modified_at', datetime.fromtimestamp(stat.st_mtime).isoformat()),
@@ -1224,8 +1133,7 @@ def list_saved_analyses(dataset_id):
               analyses.append(analysis_info)
 
           except (json.JSONDecodeError, IOError) as e:
-            current_app.logger.warning(
-                f"Error reading analysis file {filename}: {e}")
+            print(f"Error reading analysis file {filename}: {e}")
             continue
 
     # Sort analyses by modified time (most recent first)
@@ -1355,28 +1263,13 @@ def duplicate_analysis(dataset_id):
       new_filepath = os.path.join(analysis_folder, new_filename)
       counter += 1
 
-    # Read original file content and update fields for duplicate
+    # Read original file content
     with open(original_filepath, 'r', encoding='utf-8') as f:
-      try:
-        original_data = json.load(f)
-      except Exception:
-        # Fallback: copy raw content if JSON parse fails
-        f.seek(0)
-        content = f.read()
-        with open(new_filepath, 'w', encoding='utf-8') as out_f:
-          out_f.write(content)
-      else:
-        # Reset run state for duplicate and update created_at/created_by/relative_path
-        original_data['created_at'] = datetime.utcnow().isoformat()
-        original_data['created_by'] = current_user.email
-        original_data['modified_at'] = datetime.utcnow().isoformat()
-        original_data['last_run'] = None
-        original_data['run_status'] = None
-        original_data['dataset_id'] = dataset_id
-        # Update the relative_path to the new filename
-        original_data['relative_path'] = f"users/{user_email}/analysis/{new_filename}"
-        with open(new_filepath, 'w', encoding='utf-8') as out_f:
-          json.dump(original_data, out_f, indent=2, ensure_ascii=False)
+      content = f.read()
+
+    # Write to new file
+    with open(new_filepath, 'w', encoding='utf-8') as f:
+      f.write(content)
 
     # Log the action
     log_user_action(
@@ -1455,7 +1348,7 @@ def rename_analysis(dataset_id):
     if 'name' in analysis_data:
       del analysis_data['name']
 
-    # Update the modified timestamp (do not change run_status/last_run)
+    # Update the modified timestamp
     from datetime import datetime
     analysis_data['modified_at'] = datetime.now().isoformat()
 
