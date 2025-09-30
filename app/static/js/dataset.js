@@ -38,6 +38,190 @@ function initializeDatasetPage() {
 function loadFilesTab() {
   loadDataStats();
   loadFilesTable();
+  setupUploadHandlers();
+  loadProgressIndicator();
+}
+
+// Upload functionality
+function setupUploadHandlers() {
+  // Add event listeners to all upload buttons
+  const uploadButtons = document.querySelectorAll('.upload-btn');
+  uploadButtons.forEach(button => {
+    button.addEventListener('click', handleUpload);
+  });
+}
+
+function handleUpload(event) {
+  const button = event.target.closest('.upload-btn');
+  const fileType = button.getAttribute('data-file-type');
+  const uploadSection = button.closest('.upload-section');
+  const fileInput = uploadSection.querySelector('input[type="file"]');
+  
+  if (!fileInput.files.length) {
+    showToast('Please select a file to upload', 'warning');
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  
+  // Validate file type
+  const allowedExtensions = ['.csv', '.tsv', '.txt'];
+  const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+  if (!allowedExtensions.includes(fileExtension)) {
+    showToast('Please select a valid file (CSV, TSV, or TXT)', 'error');
+    return;
+  }
+  
+  // Show loading state
+  button.disabled = true;
+  button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+  
+  // Create form data
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('file_type', fileType);
+  
+  // Upload file
+  fetch(`/dataset/${datasetId}/upload`, {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast(data.message, 'success');
+      
+      // Update status display
+      updateUploadStatus(fileType, 'success', data.message);
+      
+      // Reload files table, data stats, and progress indicator
+      loadFilesTable();
+      loadDataStats();
+      loadProgressIndicator();
+      
+      // Clear file input
+      fileInput.value = '';
+    } else {
+      showToast(data.message, 'error');
+      updateUploadStatus(fileType, 'error', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Upload error:', error);
+    showToast('Upload failed. Please try again.', 'error');
+    updateUploadStatus(fileType, 'error', 'Upload failed');
+  })
+  .finally(() => {
+    // Reset button state
+    button.disabled = false;
+    button.innerHTML = `<i class="fas fa-upload me-2"></i>Upload ${fileType.charAt(0).toUpperCase() + fileType.slice(1)} Data`;
+  });
+}
+
+function updateUploadStatus(fileType, status, message) {
+  const statusElement = document.getElementById(`${fileType}-status`);
+  if (!statusElement) return;
+  
+  let iconClass, textClass, text;
+  
+  switch(status) {
+    case 'success':
+      iconClass = 'fas fa-check-circle text-success';
+      textClass = 'text-success';
+      text = `<strong>${message}</strong>`;
+      break;
+    case 'error':
+      iconClass = 'fas fa-exclamation-triangle text-danger';
+      textClass = 'text-danger';
+      text = `<strong>${message}</strong>`;
+      break;
+    case 'uploading':
+      iconClass = 'fas fa-spinner fa-spin text-info';
+      textClass = 'text-info';
+      text = 'Uploading...';
+      break;
+    default:
+      iconClass = 'fas fa-info-circle text-muted';
+      textClass = 'text-muted';
+      text = 'No actions yet';
+  }
+  
+  statusElement.innerHTML = `
+    <i class="${iconClass} me-2"></i>
+    <span class="${textClass}">${text}</span>
+  `;
+}
+
+function loadProgressIndicator() {
+  // Fetch updated dataset status from the server
+  fetch(`/dataset/${datasetId}/processing-status`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        updateProgressIndicator(data.dataset_status);
+      }
+    })
+    .catch(error => {
+      console.error('Error loading progress indicator:', error);
+    });
+}
+
+function updateProgressIndicator(datasetStatus) {
+  // Update completion percentage badge
+  const badges = document.querySelectorAll('.badge');
+  let completionBadge = null;
+  badges.forEach(badge => {
+    if (badge.textContent.includes('Complete') || badge.textContent.includes('%')) {
+      completionBadge = badge;
+    }
+  });
+  
+  if (completionBadge) {
+    completionBadge.textContent = `${datasetStatus.completion_percentage}% Complete`;
+    completionBadge.className = `badge bg-${datasetStatus.is_complete ? 'success' : 'warning'}`;
+  }
+  
+  // Update progress bar
+  const progressBar = document.querySelector('.progress-bar');
+  if (progressBar) {
+    progressBar.style.width = `${datasetStatus.completion_percentage}%`;
+    progressBar.className = `progress-bar bg-${datasetStatus.is_complete ? 'success' : 'warning'}`;
+  }
+  
+  // Update individual file type indicators
+  updateFileTypeIndicator('patients', datasetStatus.patients_uploaded);
+  updateFileTypeIndicator('taxonomy', datasetStatus.taxonomy_uploaded);
+  updateFileTypeIndicator('bracken', datasetStatus.bracken_uploaded);
+}
+
+function updateFileTypeIndicator(fileType, isUploaded) {
+  // Find the file type indicator by looking for the text content
+  const indicators = document.querySelectorAll('.row.text-center .col-md-4');
+  indicators.forEach(indicator => {
+    const text = indicator.textContent.trim();
+    if (text.includes('Patients Data') && fileType === 'patients') {
+      updateIndicatorIcon(indicator, isUploaded);
+    } else if (text.includes('Taxonomy Data') && fileType === 'taxonomy') {
+      updateIndicatorIcon(indicator, isUploaded);
+    } else if (text.includes('Bracken Results') && fileType === 'bracken') {
+      updateIndicatorIcon(indicator, isUploaded);
+    }
+  });
+}
+
+function updateIndicatorIcon(container, isUploaded) {
+  const icon = container.querySelector('i');
+  const text = container.querySelector('span');
+  
+  if (icon && text) {
+    if (isUploaded) {
+      icon.className = 'fas fa-check-circle text-success me-2';
+      text.className = 'text-success';
+    } else {
+      icon.className = 'fas fa-times-circle text-muted me-2';
+      text.className = 'text-muted';
+    }
+  }
 }
 
 function loadDataStats() {
@@ -346,8 +530,30 @@ function viewFile(fileId) {
 
 function deleteFile(fileId) {
   if (confirm("Are you sure you want to delete this file?")) {
-    // TODO: Implement file deletion
-    console.log("Delete file:", fileId);
+    // Send delete request
+    fetch(`/dataset/${datasetId}/file/${fileId}/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showToast(data.message, 'success');
+        
+        // Reload files table, data stats, and progress indicator
+        loadFilesTable();
+        loadDataStats();
+        loadProgressIndicator();
+      } else {
+        showToast(data.message, 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Delete file error:', error);
+      showToast('Error deleting file. Please try again.', 'error');
+    });
   }
 }
 

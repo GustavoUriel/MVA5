@@ -31,11 +31,45 @@ class Dataset(db.Model):
 
   @property
   def completion_percentage(self):
-    total_files = 3  # patients, taxonomy, bracken
-    uploaded = sum([self.patients_file_uploaded,
-                   self.taxonomy_file_uploaded, self.bracken_file_uploaded])
-    return int((uploaded / total_files) * 100)
+    # Check actual files in database instead of relying on boolean flags
+    total_file_types = 3  # patients, taxonomy, bracken
+    
+    # Get unique file types that have at least one file
+    uploaded_file_types = set()
+    for file in self.files:
+      if file.file_type in ['patients', 'taxonomy', 'bracken']:
+        uploaded_file_types.add(file.file_type)
+    
+    # Each file type represents 33.33% (100/3)
+    percentage_per_type = 100 / total_file_types
+    completion = len(uploaded_file_types) * percentage_per_type
+    
+    return int(completion)
 
   @property
   def is_complete(self):
-    return self.patients_file_uploaded and self.taxonomy_file_uploaded and self.bracken_file_uploaded
+    # Check if all three required file types have at least one file
+    required_file_types = {'patients', 'taxonomy', 'bracken'}
+    uploaded_file_types = set()
+    
+    for file in self.files:
+      if file.file_type in required_file_types:
+        uploaded_file_types.add(file.file_type)
+    
+    return len(uploaded_file_types) == len(required_file_types)
+
+  def update_file_status_flags(self):
+    """Update the boolean flags based on actual files in the database"""
+    # Reset all flags
+    self.patients_file_uploaded = False
+    self.taxonomy_file_uploaded = False
+    self.bracken_file_uploaded = False
+    
+    # Set flags based on actual files
+    for file in self.files:
+      if file.file_type == 'patients':
+        self.patients_file_uploaded = True
+      elif file.file_type == 'taxonomy':
+        self.taxonomy_file_uploaded = True
+      elif file.file_type == 'bracken':
+        self.bracken_file_uploaded = True

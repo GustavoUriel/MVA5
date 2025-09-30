@@ -144,13 +144,8 @@ def upload_dataset_file(dataset_id):
     )
     db.session.add(dataset_file)
 
-    # Update dataset status - check if any files of this type exist
-    if file_type == 'patients':
-      dataset.patients_file_uploaded = True
-    elif file_type == 'taxonomy':
-      dataset.taxonomy_file_uploaded = True
-    elif file_type == 'bracken':
-      dataset.bracken_file_uploaded = True
+    # Update dataset status flags based on actual files
+    dataset.update_file_status_flags()
 
     dataset.file_count = DatasetFile.query.filter_by(
         dataset_id=dataset_id).count() + 1
@@ -224,6 +219,79 @@ def get_processing_status(dataset_id):
           'total_size': dataset.total_size
       }
   })
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/file/<int:file_id>/delete', methods=['POST'])
+@login_required
+def delete_dataset_file(dataset_id, file_id):
+  """Delete a specific file from a dataset"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+  
+  try:
+    # Get file info for logging
+    filename = file.show_filename
+    file_type = file.file_type
+    file_size = file.file_size
+    
+    # Delete file from filesystem
+    if os.path.exists(file.file_path):
+      try:
+        os.remove(file.file_path)
+      except OSError as e:
+        ErrorLogger.log_warning(
+            f"Could not delete file {file.file_path}: {e}",
+            context="File deletion",
+            user_action=f"User deleting file '{filename}' from dataset '{dataset.name}'",
+            extra_data={'file_path': file.file_path, 'error': str(e)}
+        )
+    
+    # Delete file from database
+    db.session.delete(file)
+    
+    # Update dataset status flags based on remaining files
+    dataset.update_file_status_flags()
+    
+    # Update dataset file count and total size
+    dataset.file_count = DatasetFile.query.filter_by(dataset_id=dataset_id).count()
+    dataset.total_size = sum(f.file_size for f in dataset.files)
+    dataset.updated_at = datetime.utcnow()
+    
+    db.session.commit()
+    
+    log_user_action(
+        "file_deleted",
+        f"File: {filename} ({file_type}) from dataset '{dataset.name}'",
+        success=True
+    )
+    
+    return jsonify({
+        'success': True,
+        'message': f'File "{filename}" deleted successfully'
+    })
+    
+  except Exception as e:
+    db.session.rollback()
+    ErrorLogger.log_exception(
+        e,
+        context=f"Deleting file {file_id} from dataset {dataset_id}",
+        user_action=f"User trying to delete file '{file.show_filename}' from dataset '{dataset.name}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'file_id': file_id,
+            'filename': file.show_filename
+        }
+    )
+    log_user_action("file_deletion_failed",
+                    f"File: {file.show_filename} from dataset '{dataset.name}'", success=False)
+    
+    return jsonify({
+        'success': False,
+        'message': f'Error deleting file: {str(e)}'
+    }), 500
 
 
 @datasets_bp.route('/dataset/<int:dataset_id>/delete', methods=['POST'])
