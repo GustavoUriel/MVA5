@@ -15,10 +15,14 @@
             'First time login' }}
           </p>
         </div>
-        <div>
+        <div class="btn-group">
           <a href="{{ url_for('datasets.new_dataset') }}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>
             New Dataset
+          </a>
+          <a href="{{ url_for('analysis.new_analysis') }}" class="btn btn-success" {% if not datasets or not datasets|selectattr('is_complete')|list %}disabled{% endif %}>
+            <i class="fas fa-chart-line me-2"></i>
+            New Analysis
           </a>
         </div>
       </div>
@@ -27,7 +31,7 @@
 
   <!-- Stats Cards -->
   <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card bg-primary text-white">
         <div class="card-body">
           <div class="d-flex align-items-center">
@@ -47,7 +51,7 @@
       </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card bg-success text-white">
         <div class="card-body">
           <div class="d-flex align-items-center">
@@ -63,7 +67,7 @@
       </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card bg-info text-white">
         <div class="card-body">
           <div class="d-flex align-items-center">
@@ -73,6 +77,25 @@
             </div>
             <div class="ms-3">
               <i class="fas fa-spinner fa-2x opacity-75"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card bg-warning text-white">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h5 class="card-title mb-1">Total Analyses</h5>
+              <h2 class="mb-0">{{ analyses|length }}</h2>
+              <small class="opacity-75">
+                {{ analyses|selectattr('status', 'equalto', 'completed')|list|length }} completed
+              </small>
+            </div>
+            <div class="ms-3">
+              <i class="fas fa-chart-line fa-2x opacity-75"></i>
             </div>
           </div>
         </div>
@@ -244,6 +267,166 @@
       </div>
     </div>
   </div>
+
+  <!-- Analyses Section -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+              <i class="fas fa-chart-line me-2"></i>
+              Your Analyses
+            </h5>
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-outline-secondary btn-sm active" id="analysisGridView">
+                <i class="fas fa-th"></i>
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="analysisListView">
+                <i class="fas fa-list"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if analyses %}
+          <!-- Grid View -->
+          <div id="analysis-grid-container" class="row g-3">
+            {% for analysis in analyses %}
+            <div class="col-md-6 col-lg-4">
+              <div class="card h-100 analysis-card" data-analysis-id="{{ analysis.id }}">
+                <div class="card-body">
+                  <div class="d-flex align-items-start justify-content-between mb-2">
+                    <h6 class="card-title mb-0">{{ analysis.name }}</h6>
+                    <span class="badge bg-{{ 'success' if analysis.status == 'completed' else 'warning' if analysis.status == 'running' else 'danger' if analysis.status == 'failed' else 'secondary' }}">
+                      {{ analysis.status.title() }}
+                    </span>
+                  </div>
+                  <p class="card-text text-muted small mb-2">{{ analysis.analysis_type.replace('_', ' ').title() }}</p>
+                  <p class="card-text small text-muted mb-3">
+                    <i class="fas fa-database me-1"></i>{{ analysis.dataset.name }}
+                  </p>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">{{ analysis.updated_at.strftime('%m/%d/%Y') }}</small>
+                    <div class="btn-group btn-group-sm">
+                      <a href="{{ url_for('analysis.view_analysis', analysis_id=analysis.id) }}" class="btn btn-outline-primary" title="View">
+                        <i class="fas fa-eye"></i>
+                      </a>
+                      {% if analysis.can_run %}
+                      <button class="btn btn-outline-success" onclick="runAnalysis({{ analysis.id }})" title="Run">
+                        <i class="fas fa-play"></i>
+                      </button>
+                      {% endif %}
+                      {% if analysis.can_view_report %}
+                      <a href="{{ url_for('analysis.view_report', analysis_id=analysis.id) }}" class="btn btn-outline-info" title="Report">
+                        <i class="fas fa-file-alt"></i>
+                      </a>
+                      {% endif %}
+                      <button class="btn btn-outline-danger" onclick="showDeleteAnalysisConfirmation({{ analysis.id }}, '{{ analysis.name }}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- List View -->
+          <div id="analysis-list-container" class="d-none">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Dataset</th>
+                    <th>Type</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for analysis in analyses %}
+                  <tr>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <i class="fas fa-chart-line me-2 text-primary"></i>
+                        <strong>{{ analysis.name }}</strong>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge bg-{{ 'success' if analysis.status == 'completed' else 'warning' if analysis.status == 'running' else 'danger' if analysis.status == 'failed' else 'secondary' }}">
+                        {{ analysis.status.title() }}
+                      </span>
+                    </td>
+                    <td>{{ analysis.dataset.name }}</td>
+                    <td>{{ analysis.analysis_type.replace('_', ' ').title() }}</td>
+                    <td>{{ analysis.created_at.strftime('%m/%d/%Y') }}</td>
+                    <td>{{ analysis.updated_at.strftime('%m/%d/%Y') }}</td>
+                    <td>
+                      <div class="btn-group btn-group-sm">
+                        <a href="{{ url_for('analysis.view_analysis', analysis_id=analysis.id) }}" class="btn btn-outline-primary" title="View">
+                          <i class="fas fa-eye"></i>
+                        </a>
+                        {% if analysis.can_run %}
+                        <button class="btn btn-outline-success" onclick="runAnalysis({{ analysis.id }})" title="Run">
+                          <i class="fas fa-play"></i>
+                        </button>
+                        {% endif %}
+                        {% if analysis.can_view_report %}
+                        <a href="{{ url_for('analysis.view_report', analysis_id=analysis.id) }}" class="btn btn-outline-info" title="Report">
+                          <i class="fas fa-file-alt"></i>
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-outline-danger" onclick="showDeleteAnalysisConfirmation({{ analysis.id }}, '{{ analysis.name }}')" title="Delete">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% else %}
+          <!-- Empty State -->
+          <div class="text-center py-5">
+            <div class="mb-3">
+              <i class="fas fa-chart-line fa-4x text-muted"></i>
+            </div>
+            <h5 class="text-muted mb-3">No analyses yet</h5>
+            <p class="text-muted mb-4">
+              {% if datasets %}
+                {% if datasets|selectattr('is_complete')|list %}
+                  Create your first analysis to start exploring your data.
+                {% else %}
+                  You need at least one complete dataset (with all required files uploaded) to create an analysis.
+                {% endif %}
+              {% else %}
+                You need at least one dataset to create an analysis.
+              {% endif %}
+            </p>
+            {% if datasets and datasets|selectattr('is_complete')|list %}
+            <a href="{{ url_for('analysis.new_analysis') }}" class="btn btn-success">
+              <i class="fas fa-plus me-2"></i>
+              Create Your First Analysis
+            </a>
+            {% else %}
+            <a href="{{ url_for('datasets.new_dataset') }}" class="btn btn-primary">
+              <i class="fas fa-plus me-2"></i>
+              Create Your First Dataset
+            </a>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Delete Dataset Confirmation Modal -->
@@ -295,6 +478,61 @@
         </button>
         <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled onclick="deleteDataset()">
           <i class="fas fa-trash me-1"></i>Delete Dataset
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Analysis Confirmation Modal -->
+<div
+  class="modal fade"
+  id="deleteAnalysisModal"
+  tabindex="-1"
+  aria-labelledby="deleteAnalysisModalLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteAnalysisModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Delete Analysis
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger">
+          <h6 class="alert-heading">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Warning: This action cannot be undone!
+          </h6>
+          <p class="mb-2">
+            You are about to delete the analysis <strong id="analysisNameToDelete"></strong> and all its associated data:
+          </p>
+          <ul class="mb-3" id="analysisDetailsToDelete">
+            <!-- Will be populated dynamically -->
+          </ul>
+          <p class="mb-0"><strong>This action is permanent and cannot be reversed.</strong></p>
+        </div>
+
+        <div class="mb-3">
+          <label for="deleteAnalysisConfirmation" class="form-label">
+            To confirm deletion, please type <code>delete</code> in the box below:
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="deleteAnalysisConfirmation"
+            placeholder="Type 'delete' to confirm"
+            oninput="checkDeleteAnalysisConfirmation()" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteAnalysisBtn" disabled onclick="deleteAnalysis()">
+          <i class="fas fa-trash me-1"></i>Delete Analysis
         </button>
       </div>
     </div>
@@ -477,6 +715,188 @@
           alertDiv.remove();
         }
       }, 5000);
+    }
+
+    // Analysis view controls
+    const analysisGridView = document.getElementById("analysisGridView");
+    const analysisListView = document.getElementById("analysisListView");
+    const analysisGridContainer = document.getElementById("analysis-grid-container");
+    const analysisListContainer = document.getElementById("analysis-list-container");
+
+    if (analysisGridView && analysisListView && analysisGridContainer && analysisListContainer) {
+      analysisGridView.addEventListener("click", function () {
+        analysisGridView.classList.add("active");
+        analysisListView.classList.remove("active");
+        analysisGridContainer.classList.remove("d-none");
+        analysisListContainer.classList.add("d-none");
+      });
+
+      analysisListView.addEventListener("click", function () {
+        analysisListView.classList.add("active");
+        analysisGridView.classList.remove("active");
+        analysisListContainer.classList.remove("d-none");
+        analysisGridContainer.classList.add("d-none");
+      });
+    }
+
+    // Global variables for analysis functionality
+    let analysisToDelete = null;
+
+    // Global functions for analysis operations
+    window.runAnalysis = function (analysisId) {
+      if (confirm('Are you sure you want to run this analysis?')) {
+        fetch(`/analysis/${analysisId}/run`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            showAlert(data.message, 'success');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            showAlert(data.message, 'danger');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showAlert('Error running analysis', 'danger');
+        });
+      }
+    };
+
+    window.showDeleteAnalysisConfirmation = function (analysisId, analysisName) {
+      analysisToDelete = { id: analysisId, name: analysisName };
+
+      // Update modal content
+      document.getElementById("analysisNameToDelete").textContent = analysisName;
+
+      // Get analysis details from the table row
+      const row = document
+        .querySelector(`button[onclick="showDeleteAnalysisConfirmation(${analysisId}, '${analysisName}')"]`)
+        .closest("tr");
+      
+      if (row) {
+        const dataset = row.querySelector("td:nth-child(3)").textContent;
+        const type = row.querySelector("td:nth-child(4)").textContent;
+        const status = row.querySelector("td:nth-child(2) .badge").textContent.trim();
+
+        // Populate analysis details
+        document.getElementById("analysisDetailsToDelete").innerHTML = `
+          <li><strong>Dataset:</strong> ${dataset}</li>
+          <li><strong>Type:</strong> ${type}</li>
+          <li><strong>Status:</strong> ${status}</li>
+          <li>All analysis results and reports</li>
+        `;
+      }
+
+      // Reset confirmation input
+      document.getElementById("deleteAnalysisConfirmation").value = "";
+      document.getElementById("confirmDeleteAnalysisBtn").disabled = true;
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById("deleteAnalysisModal"));
+      modal.show();
+    };
+
+    window.checkDeleteAnalysisConfirmation = function () {
+      const input = document.getElementById("deleteAnalysisConfirmation");
+      const confirmBtn = document.getElementById("confirmDeleteAnalysisBtn");
+
+      if (input.value.toLowerCase() === "delete") {
+        confirmBtn.disabled = false;
+      } else {
+        confirmBtn.disabled = true;
+      }
+    };
+
+    window.deleteAnalysis = function () {
+      if (!analysisToDelete) {
+        console.error("No analysis selected for deletion");
+        return;
+      }
+
+      const confirmBtn = document.getElementById("confirmDeleteAnalysisBtn");
+      const input = document.getElementById("deleteAnalysisConfirmation");
+
+      // Double-check confirmation
+      if (input.value.toLowerCase() !== "delete") {
+        showAlert('Please type "delete" to confirm deletion', "warning");
+        return;
+      }
+
+      // Disable button and show loading
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Deleting...';
+
+      // Send delete request
+      fetch(`/analysis/${analysisToDelete.id}/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            showAlert(data.message, "success");
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById("deleteAnalysisModal"));
+            modal.hide();
+
+            // Remove the row from the table
+            const row = document
+              .querySelector(
+                `button[onclick="showDeleteAnalysisConfirmation(${analysisToDelete.id}, '${analysisToDelete.name}')"]`
+              )
+              .closest("tr");
+            if (row) {
+              row.remove();
+            }
+
+            // Update the grid view if it exists
+            const gridCard = document.querySelector(`[data-analysis-id="${analysisToDelete.id}"]`);
+            if (gridCard) {
+              gridCard.remove();
+            }
+
+            // Update statistics
+            updateAnalysisStats();
+
+            // Redirect to dashboard after a short delay
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            showAlert(data.message, "danger");
+            resetDeleteAnalysisButton();
+          }
+        })
+        .catch((error) => {
+          console.error("Delete analysis error:", error);
+          showAlert("Error deleting analysis. Please try again.", "danger");
+          resetDeleteAnalysisButton();
+        });
+    };
+
+    function resetDeleteAnalysisButton() {
+      const confirmBtn = document.getElementById("confirmDeleteAnalysisBtn");
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Delete Analysis';
+    }
+
+    function updateAnalysisStats() {
+      // Update the total analyses count
+      const totalAnalysesCard = document.querySelector(".card.bg-warning .card-title + h2");
+      if (totalAnalysesCard) {
+        const currentCount = parseInt(totalAnalysesCard.textContent);
+        totalAnalysesCard.textContent = currentCount - 1;
+      }
     }
   });
 </script>

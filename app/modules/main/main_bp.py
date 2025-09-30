@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from flask_login import login_required, current_user
 from ...scripts.logging_config import log_user_action
 from ...database import db
-from .. import Dataset
+from .. import Dataset, Analysis
 
 main_bp = Blueprint('main', __name__)
 
@@ -20,7 +20,10 @@ def dashboard():
   # Fetch user's datasets
   datasets = Dataset.query.filter_by(user_id=current_user.id).all()
 
+  # Fetch user's analyses
+  analyses = Analysis.query.filter_by(user_id=current_user.id).order_by(Analysis.updated_at.desc()).all()
+
   # Calculate total size across all datasets
   total_size = sum(dataset.total_size or 0 for dataset in datasets)
 
-  return render_template('dashboard.html', datasets=datasets, total_size=total_size)
+  return render_template('dashboard.html', datasets=datasets, analyses=analyses, total_size=total_size)

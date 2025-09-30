@@ -21,13 +21,14 @@ from dotenv import load_dotenv
 from .scripts.logging_config import setup_logging, ErrorLogger, log_user_action, log_performance, PerformanceTracker
 from .scripts.smart_table import build_schema, build_table_data, save_table
 from .database import db
-from .modules import User, Dataset, DatasetFile
+from .modules import User, Dataset, DatasetFile, Analysis
 from .modules.main.main_bp import main_bp
 from .modules.auth.auth_bp import auth_bp
 from .modules.datasets.datasets_bp import datasets_bp
 from .modules.files.files_bp import files_bp
 from .modules.api.api_bp import api_bp
 from .modules.editor.editor_bp import editor_bp
+from .modules.analysis.analysis_bp import analysis_bp
 # Load environment variables
 load_dotenv()
 
@@ -123,6 +124,7 @@ def create_app():
   app.register_blueprint(files_bp)
   app.register_blueprint(api_bp)
   app.register_blueprint(editor_bp)
+  app.register_blueprint(analysis_bp)
 
   # User loader for Flask-Login
   @login_manager.user_loader

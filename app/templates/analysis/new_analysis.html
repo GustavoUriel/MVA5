@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}New Analysis{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-line me-2"></i>New Analysis</h2>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Analysis Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('analysis.create_analysis') }}">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Analysis Name *</label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                    <div class="form-text">Choose a descriptive name for your analysis</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                                    <div class="form-text">Optional description of what this analysis will do</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="dataset_id" class="form-label">Dataset *</label>
+                                    <select class="form-select" id="dataset_id" name="dataset_id" required>
+                                        <option value="">Select a dataset...</option>
+                                        {% for dataset in datasets %}
+                                        <option value="{{ dataset.id }}">{{ dataset.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Choose the dataset to analyze</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="analysis_type" class="form-label">Analysis Type</label>
+                                    <select class="form-select" id="analysis_type" name="analysis_type">
+                                        <option value="univariate_cox">Univariate Cox Regression</option>
+                                        <option value="multivariate_cox">Multivariate Cox Regression</option>
+                                        <option value="pls_da">PLS-DA</option>
+                                        <option value="xgboost">XGBoost</option>
+                                        <option value="mva_model">Multivariate Analysis Model</option>
+                                    </select>
+                                    <div class="form-text">Select the type of analysis to perform</div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus me-2"></i>Create Analysis
+                                    </button>
+                                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Available Datasets</h6>
+                        </div>
+                        <div class="card-body">
+                            {% if datasets %}
+                                {% for dataset in datasets %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-database text-primary me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ dataset.name }}</div>
+                                        <small class="text-muted">{{ dataset.file_count }} files</small>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">No datasets available for analysis.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
