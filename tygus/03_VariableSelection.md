@@ -1,0 +1,523 @@
+# 03_VariableSelection.md: Variable Selection/Discard Methods
+
+This document presents **variable selection and discard methods** to reduce dimensionality after microbial grouping, removing noise while preserving biologically relevant signals.
+
+---
+
+## 🎯 Phase 2 Overview
+
+**Goal:** Reduce the selected microbial taxa (potentially hundreds) to the most informative variables (10-50) for downstream analysis.
+
+**Why After Microbial Grouping:** Start with biologically relevant microbes, then refine based on data quality and statistical properties.
+
+---
+
+## 📊 Variable Selection/Discard Methods
+
+### **1. Prevalence Filtering - Remove Rare Taxa**
+**Description:** Discard taxa present in fewer than a specified percentage of samples, removing unreliable measurements.
+
+**Algorithm:**
+```
+For each taxon:
+    prevalence = (abundance > detection_threshold).sum() / total_samples
+    if prevalence < min_prevalence_threshold:
+        discard_taxon
+```
+
+**Parameters:**
+- Detection threshold (default: >0)
+- Minimum prevalence (default: 10% of samples)
+
+**Pros:**
+- ✅ **Data quality control** - Eliminates measurement artifacts and rare taxa
+- ✅ **Statistical reliability** - Focuses on consistently detectable microbes
+- ✅ **Computational efficiency** - Reduces dataset size significantly
+- ✅ **Reproducibility** - Removes taxa with unreliable abundance estimates
+- ✅ **Simple implementation** - Easy to understand and apply
+
+**Cons:**
+- ❌ **May discard important taxa** - Some biologically relevant microbes may be rare
+- ❌ **Arbitrary thresholds** - Prevalence cutoff is subjective
+- ❌ **Context dependence** - Optimal prevalence varies by study design and technology
+- ❌ **False negatives** - Rare pathogens or keystone species may be excluded
+
+**Limitations:**
+- Doesn't consider abundance levels, only presence/absence
+- May be too conservative for some research questions
+- Threshold selection requires biological knowledge
+
+**Why Choose:** Essential first step for data quality control in microbiome studies.
+
+**Expected Results:** Reduces taxa count by 20-60%, depending on threshold
+
+---
+
+### **2. Abundance Filtering - Remove Low-Abundance Taxa**
+**Description:** Discard taxa with consistently low abundance across samples, focusing on ecologically important microbes.
+
+**Algorithm:**
+```
+For each taxon:
+    mean_abundance = taxon_abundances.mean()
+    median_abundance = taxon_abundances.median()
+    max_abundance = taxon_abundances.max()
+
+    if mean_abundance < min_mean_threshold or median_abundance < min_median_threshold:
+        discard_taxon
+```
+
+**Parameters:**
+- Minimum mean abundance (default: 0.01% relative abundance)
+- Minimum median abundance (default: 0.005% relative abundance)
+- Optional maximum abundance filtering
+
+**Pros:**
+- ✅ **Ecological relevance** - Focuses on microbes that contribute meaningfully to community
+- ✅ **Measurement precision** - Removes taxa near detection limits
+- ✅ **Biological signal** - Prioritizes microbes with functional impact
+- ✅ **Data normalization** - Complements relative abundance transformations
+- ✅ **Statistical power** - Reduces noise in downstream analyses
+
+**Cons:**
+- ❌ **Context dependence** - Abundance thresholds vary by sample type and technology
+- ❌ **Functional bias** - May exclude important low-abundance functional specialists
+- ❌ **Normalization effects** - Results depend on abundance transformation method
+- ❌ **Sample variability** - Abundance distributions vary across studies
+
+**Limitations:**
+- Requires appropriate abundance normalization (relative abundance, CLR, etc.)
+- May miss conditionally abundant taxa (bloomers under specific conditions)
+- Thresholds need validation against biological knowledge
+
+**Why Choose:** Complements prevalence filtering by focusing on ecologically significant microbes.
+
+**Expected Results:** Further reduces taxa count by 10-40%, depending on thresholds
+
+---
+
+### **3. Variance-Based Selection - Keep Most Variable Taxa**
+**Description:** Select taxa with highest variance across samples, identifying microbes that differ between patients or conditions.
+
+**Algorithm:**
+```
+For each taxon:
+    variance = taxon_abundances.var()
+    coefficient_of_variation = variance / mean_abundance
+
+    rank_taxa_by_variance()
+    select_top_n_most_variable()
+```
+
+**Parameters:**
+- Number of taxa to select (default: 50)
+- Variance metric (total variance, coefficient of variation)
+- Optional weighting by mean abundance
+
+**Pros:**
+- ✅ **Biological heterogeneity** - Identifies taxa that vary between individuals
+- ✅ **Condition differences** - Captures microbes that change with disease states
+- ✅ **Data-driven** - No biological assumptions required
+- ✅ **Quality indicator** - High variance suggests reliable measurements
+- ✅ **Exploratory power** - Reveals major sources of microbiome variation
+
+**Cons:**
+- ❌ **No clinical relevance** - Doesn't consider relationship to outcomes
+- ❌ **Noise sensitivity** - Technical variation can inflate variance
+- ❌ **Scale dependence** - Affected by abundance transformations
+- ❌ **Arbitrary selection** - "Top N" is subjective
+- ❌ **Context ignorance** - May select taxa varying for non-biological reasons
+
+**Limitations:**
+- Doesn't distinguish biological from technical variation
+- Rare taxa may appear highly variable due to sparsity
+- Selection depends on study population characteristics
+
+**Why Choose:** Useful for exploratory analyses to identify the most dynamic microbial components.
+
+**Expected Results:** Selects 20-100 most variable taxa from the microbial group
+
+---
+
+### **4. Univariate PFS Screening - PFS-Relevant Taxa Only**
+**Description:** Test each taxon individually against PFS using statistical models, keeping only those showing significant associations.
+
+**Algorithm:**
+```
+For each taxon:
+    # Fit univariate model: PFS ~ taxon_abundance
+    model = fit_statistical_model(pfs_outcomes, taxon_abundance)
+
+    if p_value < significance_threshold:
+        keep_taxon
+    else:
+        discard_taxon
+```
+
+**Parameters:**
+- Statistical test (Cox regression, log-rank test, etc.)
+- Significance threshold (default: p < 0.05 or p < 0.2 for liberal screening)
+- Multiple testing correction (Bonferroni, FDR, etc.)
+
+**Pros:**
+- ✅ **Direct clinical relevance** - Only keeps taxa associated with outcomes
+- ✅ **Statistical rigor** - Formal hypothesis testing for each taxon
+- ✅ **Easy interpretation** - Clear inclusion criteria
+- ✅ **Biological insight** - Reveals which microbes matter for disease progression
+- ✅ **Flexible thresholds** - Can adjust stringency based on study goals
+
+**Cons:**
+- ❌ **Ignores interactions** - May miss taxa significant only in combination
+- ❌ **Multiple testing issues** - Risk of false positives without correction
+- ❌ **Conservative approach** - May exclude taxa with weak individual effects
+- ❌ **Sample size dependence** - Power varies with number of events
+- ❌ **Context independence** - Doesn't account for clinical covariates
+
+**Limitations:**
+- Requires sufficient PFS events for statistical power
+- May miss synergistic effects between taxa
+- Results sensitive to censoring patterns
+
+**Why Choose:** Essential for clinically focused analyses prioritizing outcome-relevant microbes.
+
+**Expected Results:** Retains 5-30% of taxa showing PFS associations
+
+---
+
+### **5. Multivariate PFS Screening - Context-Aware Selection**
+**Implementation:** Not yet implemented
+
+**Description:** Test taxa in multivariate models including clinical variables, selecting those significant after adjusting for confounders.
+
+**Algorithm:**
+```python
+# Fit full multivariate model: PFS ~ clinical_vars + all_taxa
+cph_full = CoxPHFitter(penalizer=0.1)  # Regularization for numerical stability
+cph_full.fit(combined_data, duration_col='time', event_col='event')
+
+# Extract significant taxa (p < 0.05 after clinical adjustment)
+taxa_p_values = cph_full.p_values_[taxa_columns]
+significant_taxa = taxa_p_values[taxa_p_values < 0.05].index.tolist()
+
+# Iterative refinement approach:
+# 1. Start with all taxa + clinical variables
+# 2. Remove non-significant taxa (p > 0.05)
+# 3. Refit model with remaining taxa + clinical variables
+# 4. Repeat until convergence or minimum taxa count
+```
+
+**Parameters:**
+- Model type (Cox regression for PFS, logistic regression for binary outcomes)
+- Significance threshold (default: p < 0.05, adjust for multiple testing)
+- Clinical covariates (age, ISS, treatment duration, comorbidities)
+- Regularization strength (default: 0.1 for numerical stability)
+- Maximum iterations (default: 10 for iterative refinement)
+- Minimum taxa to retain (default: 3-5 for model stability)
+
+**Pros:**
+- ✅ **Clinically realistic** - Considers clinical context and confounding
+- ✅ **Context-aware** - Identifies taxa significant beyond clinical factors
+- ✅ **Multivariate validity** - Accounts for taxon intercorrelations
+- ✅ **Clinical translation** - Results relevant for patient stratification
+- ✅ **Confounding control** - Adjusts for known clinical predictors
+
+**Cons:**
+- ❌ **Computational intensity** - Requires fitting large multivariate models
+- ❌ **Parameter instability** - Large models can be numerically unstable
+- ❌ **Clinical variable dependence** - Results depend on which covariates are included
+- ❌ **Overfitting risk** - Too many taxa relative to sample size
+- ❌ **Interpretation complexity** - Hard to attribute effects to individual taxa
+
+**Limitations:**
+- Requires sufficient sample size for multivariate model stability
+- Sensitive to multicollinearity between taxa and clinical variables
+- Clinical covariate selection affects which taxa appear significant
+
+**Why Choose:** Most clinically relevant approach for identifying microbes independently associated with PFS.
+
+**Expected Results:** Retains 3-15 taxa significant in multivariate clinical context
+
+---
+
+### **6. Stability Selection - Robust PFS Associations**
+**Description:** Use bootstrap resampling to identify taxa with consistently significant PFS associations across multiple subsamples.
+
+**Algorithm:**
+```
+stability_scores = {}
+n_bootstraps = 100
+
+for taxon in taxa:
+    significant_count = 0
+
+    for bootstrap_sample in generate_bootstraps(data, n_bootstraps):
+        model = fit_pfs_model(bootstrap_sample['pfs'], bootstrap_sample[taxon])
+        if model.p_value < 0.05:
+            significant_count += 1
+
+    stability_scores[taxon] = significant_count / n_bootstraps
+
+select_taxa_above_stability_threshold(stability_scores, threshold=0.7)
+```
+
+**Parameters:**
+- Number of bootstrap samples (default: 100-1000)
+- Stability threshold (default: 0.7 = significant in 70% of bootstraps)
+- Bootstrap sample size (default: 80% of original sample size)
+- Statistical test for each bootstrap
+
+**Pros:**
+- ✅ **Robust identification** - Finds consistently associated taxa
+- ✅ **Controls overfitting** - Reduces false positive selections
+- ✅ **Uncertainty quantification** - Provides confidence in selections
+- ✅ **Cross-validation built-in** - Bootstrap validation of associations
+- ✅ **Sample variability** - Accounts for population heterogeneity
+
+**Cons:**
+- ❌ **Computationally expensive** - Requires many model fits
+- ❌ **Time-intensive** - May take hours for large taxon sets
+- ❌ **Parameter dependence** - Stability threshold affects results
+- ❌ **Conservative bias** - May miss taxa with moderate associations
+
+**Limitations:**
+- Requires sufficient sample size for meaningful bootstrapping
+- Assumes bootstrap samples represent population characteristics
+- May be overly conservative for small datasets
+- Computational cost scales with number of taxa
+
+**Why Choose:** Essential for reproducible biomarker discovery with confidence measures.
+
+**Expected Results:** Identifies 5-20 taxa with high stability scores (70%+ consistency)
+
+---
+
+### **7. Information-Theoretic Selection - Mutual Information**
+**Description:** Select taxa based on mutual information with PFS outcomes, capturing non-linear and complex relationships.
+
+**Algorithm:**
+```
+For each taxon:
+    # Calculate mutual information I(taxon_abundance; pfs_outcome)
+    mi_score = mutual_information(taxon_abundance, pfs_outcome)
+
+    # Compare to null distribution (permuted PFS)
+    p_value = calculate_mi_significance(mi_score, permuted_distributions)
+
+select_taxa_with_significant_mi(p_values, threshold)
+```
+
+**Parameters:**
+- Mutual information estimator (histogram-based, k-nearest neighbors)
+- Number of permutations for significance testing (default: 1000)
+- Significance threshold (default: p < 0.05 after correction)
+
+**Pros:**
+- ✅ **Non-linear relationships** - Captures complex taxon-PFS associations
+- ✅ **No distribution assumptions** - Works with any abundance distribution
+- ✅ **Information-theoretic foundation** - Solid theoretical basis
+- ✅ **Model independence** - Doesn't assume specific relationship form
+- ✅ **Robust to outliers** - Less sensitive to extreme values
+
+**Cons:**
+- ❌ **Computational cost** - Especially for continuous variables
+- ❌ **Estimator sensitivity** - Results depend on binning or k parameter
+- ❌ **Limited interpretability** - MI scores don't indicate relationship direction
+- ❌ **Multiple testing** - Requires careful correction for many taxa
+
+**Limitations:**
+- Requires sufficient sample size for reliable MI estimation
+- Sensitive to discretization parameters for continuous variables
+- Doesn't provide effect size or relationship direction
+- May select redundant taxa with similar information content
+
+**Why Choose:** Excellent for discovering non-linear microbiome-PFS relationships that parametric methods might miss.
+
+**Expected Results:** Selects 10-40 taxa with significant information shared with PFS
+
+---
+
+### **8. Boruta Algorithm - All-Relevant Feature Selection**
+**Description:** Iterative algorithm using random forest to identify all features with predictive relevance, not just the strongest ones.
+
+**Algorithm:**
+```
+1. Add shadow features (randomized copies of real taxa)
+2. Train random forest on all features
+3. Compare real vs shadow feature importance
+4. Iteratively remove features less important than best shadow
+5. Stop when all remaining features > best shadow importance
+```
+
+**Parameters:**
+- Number of shadow features per real feature (default: 1-5)
+- Stopping criteria (max iterations, stability threshold)
+- Random forest parameters (number of trees, max depth)
+
+**Pros:**
+- ✅ **All-relevant selection** - Finds all predictive taxa, not just top performers
+- ✅ **Statistical foundation** - Uses permutation testing for significance
+- ✅ **Handles correlations** - Works well with correlated microbial features
+- ✅ **Robust to overfitting** - Ensemble method reduces variance
+- ✅ **No parameter tuning** - Algorithm determines optimal feature set
+
+**Cons:**
+- ❌ **Computationally intensive** - Multiple random forest trainings
+- ❌ **Time-consuming** - May take significant time for large datasets
+- ❌ **Memory intensive** - Random forest objects for each iteration
+- ❌ **Random forest dependence** - Results depend on RF implementation
+- ❌ **May be overly inclusive** - Includes marginally relevant features
+
+**Limitations:**
+- Requires sufficient sample size for stable random forest importance
+- May be conservative in small datasets
+- Computational requirements may be prohibitive for very large feature sets
+
+**Why Choose:** Ideal for comprehensive biomarker discovery ensuring no important taxa are missed.
+
+**Expected Results:** Selects 15-50 taxa with confirmed predictive relevance
+
+---
+
+### **9. Elastic Net Regularization - Automated Selection**
+**Description:** Use L1/L2 regularized regression to automatically select taxa with PFS predictive value through coefficient shrinkage.
+
+**Algorithm:**
+```
+# Optimize elastic net: minimize loss + λ₁||β||₁ + λ₂||β||₂
+# L1 penalty drives irrelevant taxa to zero
+# L2 penalty handles correlations
+
+selected_taxa = taxa_with_nonzero_coefficients(final_model)
+```
+
+**Parameters:**
+- L1 ratio (balance between L1 and L2, default: 0.5)
+- Regularization strength λ (chosen by cross-validation)
+- Maximum iterations (default: 1000)
+- Convergence tolerance
+
+**Pros:**
+- ✅ **Automated selection** - No manual threshold setting required
+- ✅ **Handles correlations** - L2 component manages multicollinear taxa
+- ✅ **Continuous selection** - Gradual elimination rather than hard cutoffs
+- ✅ **Cross-validation built-in** - Automatic parameter optimization
+- ✅ **Predictive focus** - Selects for outcome prediction performance
+
+**Cons:**
+- ❌ **Model dependence** - Results depend on chosen base model
+- ❌ **Linear assumptions** - Assumes linear relationships for selection
+- ❌ **Parameter sensitivity** - Regularization balance affects results
+- ❌ **May miss weak signals** - Conservative selection approach
+- ❌ **Computational cost** - Especially for large feature sets
+
+**Limitations:**
+- Requires specification of base regression model
+- Selection depends on regularization parameter choice
+- May not capture non-linear taxon-PFS relationships
+- Cross-validation can be computationally expensive
+
+**Why Choose:** Provides automated, statistically principled feature selection with built-in correlation handling.
+
+**Expected Results:** Selects 5-25 taxa with non-zero coefficients in regularized model
+
+---
+
+### **10. Combined Multi-Method Selection**
+**Description:** Apply multiple selection methods and take consensus or intersection to identify robustly selected taxa.
+
+**Algorithm:**
+```
+# Apply multiple methods
+method1_taxa = apply_method1(data, parameters1)
+method2_taxa = apply_method2(data, parameters2)
+method3_taxa = apply_method3(data, parameters3)
+
+# Consensus approaches:
+# Intersection: taxa selected by ALL methods
+# Union: taxa selected by ANY method
+# Weighted: taxa selected by multiple methods get higher priority
+```
+
+**Parameters:**
+- Methods to combine (select 2-4 complementary approaches)
+- Consensus rule (intersection, union, weighted voting)
+- Minimum agreement threshold (for weighted approaches)
+
+**Pros:**
+- ✅ **Robust selection** - Taxa selected by multiple methods are more reliable
+- ✅ **Method validation** - Cross-validation of different approaches
+- ✅ **Comprehensive coverage** - Captures different types of associations
+- ✅ **Uncertainty reduction** - Reduces method-specific biases
+- ✅ **Confidence building** - Multiple lines of evidence for selected taxa
+
+**Cons:**
+- ❌ **Computational cost** - Running multiple methods increases time
+- ❌ **Result complexity** - Different methods may give different answers
+- ❌ **Decision complexity** - Choosing how to combine results
+- ❌ **Conservative bias** - Strict consensus may miss valid taxa
+- ❌ **Method dependence** - Results depend on which methods are combined
+
+**Limitations:**
+- Requires careful consideration of which methods to combine
+- Consensus rules are somewhat arbitrary
+- May miss taxa only detectable by specific methods
+- Interpretation becomes more complex
+
+**Why Choose:** Essential for high-confidence biomarker discovery with validation across multiple approaches.
+
+**Expected Results:** Highly confident selection of 5-20 taxa supported by multiple methods
+
+---
+
+## 🎯 Implementation Strategy
+
+### **Recommended Selection Pipeline:**
+```
+Phase 1: Quality Control (Implemented)
+├── 1. Prevalence Filtering → Remove measurement artifacts
+└── 2. Abundance Filtering → Focus on ecologically relevant taxa
+
+Phase 2: Clinical Relevance (Mixed implementation)
+├── 3. PFS-Univariate Screening → Identify clinically relevant taxa (Implemented)
+├── 4. PFS-Stability Selection → Ensure robust associations (Not implemented)
+└── 5. Multivariate PFS Screening → Confirm clinical context relevance (Not implemented)
+
+Phase 3: Advanced Validation (Not implemented)
+├── 6. Information-Theoretic Selection → Capture complex relationships
+├── 7. Boruta Algorithm → All-relevant feature selection
+├── 8. LASSO Regularization → Automated sparse selection
+└── 9. Combined Multi-Method → Consensus validation
+```
+
+### **Alternative Strategies:**
+
+#### **Conservative Approach (High Confidence, Clinical Focus):**
+- Use intersection of PFS-aware methods only
+- Best for clinical applications requiring maximum certainty
+- May miss some valid taxa but ensures clinical relevance
+
+#### **Comprehensive Approach (Max Coverage, Discovery Focus):**
+- Use union of all applicable methods
+- Best for exploratory research to avoid missing potential biomarkers
+- Requires careful validation to avoid false positives
+
+#### **Staged Approach (Balanced, Recommended):**
+- Start with liberal criteria (higher p-values, lower stability thresholds)
+- Apply increasingly stringent filters in later stages
+- Best for balancing discovery potential with clinical utility
+
+### **Quality Control Checkpoints:**
+- **After filtering steps:** Verify biologically important taxa aren't inappropriately discarded
+- **After PFS screening:** Ensure selected taxa have plausible mechanistic associations
+- **After stability validation:** Confirm selections are reproducible across data subsets
+- **After multivariate screening:** Validate associations hold in full clinical context
+- **Final validation:** Cross-reference with existing literature and biological knowledge
+
+### **Parameter Selection Guidelines:**
+- **Prevalence threshold:** 5-15% depending on sequencing depth (lower for deep sequencing)
+- **Abundance threshold:** 0.005-0.05% relative abundance (check data distribution)
+- **PFS significance:** p < 0.05 for discovery, p < 0.01 for validation studies
+- **Stability threshold:** 70-80% consistency across bootstrap samples
+- **Clinical covariates:** Always include age, ISS stage, treatment type as minimum
+
+This variable selection phase transforms your biologically grouped microbes into a focused, high-quality dataset optimized for downstream PFS correlation analysis.
