@@ -130,8 +130,14 @@ def upload_dataset_file(dataset_id):
       filename = f"{dataset.id}_{show_filename}_{timestamp}"
       show_filename = show_filename
 
-    file_path = os.path.join(get_dataset_files_folder(
-        current_user.email, dataset_id), file.filename)
+
+    # Ensure file.filename is not None
+    file_folder = get_dataset_files_folder(current_user.email, dataset_id)
+    filename_str = file.filename if file.filename is not None else "uploaded_file"
+    # Ensure file_folder and filename_str are both strings
+    file_folder = str(file_folder) if file_folder is not None else ""
+    filename_str = str(filename_str)
+    file_path = os.path.join(file_folder, filename_str)
     file.save(file_path)
 
     # Create database record
@@ -422,45 +428,117 @@ def get_column_groups(dataset_id):
     }), 500
 
 
-@datasets_bp.route('/dataset/<int:dataset_id>/metadata/bracken-time-points')
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/attribute-discarding')
 @login_required
-def get_bracken_time_points(dataset_id):
-  """Get bracken time points metadata"""
+def get_attribute_discarding_policies(dataset_id):
+  """Get attribute discarding policies metadata"""
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
 
   try:
-    BRACKEN_TIME_POINTS = load_metadata_module('BRACKEN_TIME_POINTS')
+    ATTRIBUTE_DISCARDING = load_metadata_module('ATTRIBUTE_DISCARDING')
 
     # Convert to ordered list to preserve the order from the metadata file
     # Python 3.7+ dictionaries maintain insertion order
-    ordered_time_points = []
-    for time_point_key, time_point_data in BRACKEN_TIME_POINTS.items():
-      ordered_time_points.append({
-          'key': time_point_key,
-          'suffix': time_point_data['suffix'],
-          'description': time_point_data['description'],
-          'timepoint': time_point_data['timepoint'],
-          'function': time_point_data['function']
-      })
+    ordered_policies = []
+    for policy_key, policy_data in ATTRIBUTE_DISCARDING.items():
+      if policy_key != 'DEFAULT_DISCARDING_SETTINGS':  # Skip the default settings
+        ordered_policies.append({
+            'key': policy_key,
+            'name': policy_data['name'],
+            'description': policy_data['description'],
+            'parameters': policy_data['parameters'],
+            'enabled': policy_data['enabled'],
+            'order': policy_data['order']
+        })
 
-    # Get default time point from the module
-    import sys
-    import os
-    project_root = os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.dirname(__file__))))
-    if project_root not in sys.path:
-      sys.path.insert(0, project_root)
-
-    bracken_module = __import__(
-        'metadata.BRACKEN_TIME_POINTS', fromlist=['BRACKEN_TIME_POINTS'])
-    default_time_point = getattr(bracken_module, 'DEFAULT_TIME_POINT', None)
+    # Sort by order
+    ordered_policies.sort(key=lambda x: x['order'])
 
     return jsonify({
         'success': True,
-        'time_points': ordered_time_points,
-        'default_time_point': default_time_point
+        'discarding_policies': ordered_policies
     })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/attribute-discarding/calculate-remaining', methods=['POST'])
+@login_required
+def calculate_remaining_attributes(dataset_id):
+  """Calculate how many attributes remain after applying discarding policies"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    # For now, return placeholder message as requested
+    return jsonify({
+        'success': False,
+        'message': 'Calculation of remaining attributes not yet implemented'
+    }), 501
+
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/microbial-discarding')
+@login_required
+def get_microbial_discarding_policies(dataset_id):
+  """Get microbial discarding policies metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    MICROBIAL_DISCARDING = load_metadata_module('MICROBIAL_DISCARDING')
+
+    # Convert to ordered list to preserve the order from the metadata file
+    # Python 3.7+ dictionaries maintain insertion order
+    ordered_policies = []
+    for policy_key, policy_data in MICROBIAL_DISCARDING.items():
+      if policy_key != 'DEFAULT_MICROBIAL_DISCARDING_SETTINGS':  # Skip the default settings
+        ordered_policies.append({
+            'key': policy_key,
+            'name': policy_data['name'],
+            'description': policy_data['description'],
+            'parameters': policy_data['parameters'],
+            'enabled': policy_data['enabled'],
+            'order': policy_data['order']
+        })
+
+    # Sort by order
+    ordered_policies.sort(key=lambda x: x['order'])
+
+    return jsonify({
+        'success': True,
+        'discarding_policies': ordered_policies
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/microbial-discarding/calculate-remaining', methods=['POST'])
+@login_required
+def calculate_remaining_microbes(dataset_id):
+  """Calculate how many microbial taxa remain after applying discarding policies"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    # For now, return placeholder message as requested
+    return jsonify({
+        'success': False,
+        'message': 'Calculation of remaining microbial taxa not yet implemented'
+    }), 501
+
   except Exception as e:
     return jsonify({
         'success': False,
@@ -963,6 +1041,77 @@ def get_patient_count(dataset_id, file_id):
     })
   except Exception as e:
     current_app.logger.exception(f"Error in get_patient_count: {str(e)}")
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/bracken-time-points')
+@login_required
+def get_bracken_time_points(dataset_id):
+  """Get all bracken time points"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    # Load bracken time points from metadata
+    bracken_time_points = load_metadata_module('BRACKEN_TIME_POINTS')
+
+    # Get default time point
+    import importlib
+    time_points_module = importlib.import_module('metadata.BRACKEN_TIME_POINTS')
+    default_time_point = getattr(time_points_module, 'DEFAULT_TIME_POINT', 'pre')
+
+    # Read the file content to extract keys in order
+    metadata_folder = os.path.join(current_app.root_path, '..', 'metadata')
+    file_path = os.path.join(metadata_folder, 'BRACKEN_TIME_POINTS.py')
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+      content = f.read()
+
+    # Extract dictionary keys in the order they appear in the file
+    import re
+    # Find all dictionary keys (quoted strings followed by colon)
+    key_pattern = r"'([^']+)'\s*:\s*\{"
+    keys_in_order = re.findall(key_pattern, content)
+
+    # Filter out nested keys and keep only top-level keys
+    top_level_keys = []
+    lines = content.split('\n')
+    for line in lines:
+      # Look for lines that start with 4 spaces and have a quoted key followed by colon and brace
+      if re.match(r'^\s{4}\'([^\']+)\'\s*:\s*\{', line):
+        match = re.search(r"'([^']+)'\s*:", line)
+        if match:
+          key = match.group(1)
+          if key not in top_level_keys:
+            top_level_keys.append(key)
+
+    keys_in_order = top_level_keys
+
+    # Create ordered data using the keys in file order
+    time_points = []
+    for key in keys_in_order:
+      if key in bracken_time_points:
+        # Use the title field from metadata instead of formatting the key
+        title = bracken_time_points[key].get('title', key.replace('_', ' ').title())
+        time_points.append({
+            'key': key,
+            'title': title,
+            'description': bracken_time_points[key].get('description', ''),
+            'suffix': bracken_time_points[key].get('suffix', ''),
+            'timepoint': bracken_time_points[key].get('timepoint', ''),
+            'function': bracken_time_points[key].get('function', '')
+        })
+
+    return jsonify({
+        'success': True,
+        'time_points': time_points,
+        'default_time_point': default_time_point
+    })
+  except Exception as e:
+    current_app.logger.exception(f"Error loading bracken time points: {str(e)}")
     return jsonify({
         'success': False,
         'error': str(e)

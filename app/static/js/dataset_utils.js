@@ -239,6 +239,11 @@ window.DatasetUtils = {
             return this.call(`/dataset/${datasetId}/metadata/column-groups`);
         },
 
+        // Get attribute discarding policies
+        async getAttributeDiscarding(datasetId) {
+            return this.call(`/dataset/${datasetId}/metadata/attribute-discarding`);
+        },
+
         // Get bracken time points
         async getBrackenTimePoints(datasetId) {
             return this.call(`/dataset/${datasetId}/metadata/bracken-time-points`);

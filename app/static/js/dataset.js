@@ -611,8 +611,10 @@ function createNewAnalysis() {
     // Load column groups
     loadColumnGroups();
 
-    // Load bracken time points
-    loadBrackenTimePoints();
+    // Load bracken time points - skip if analysis manager is active
+    if (!window.analysisManager) {
+      loadBrackenTimePoints();
+    }
 
     // Load stratifications
     loadStratifications();
@@ -1060,6 +1062,9 @@ function displayBrackenTimePoints(timePoints, defaultTimePoint = null) {
   const timePointSelect = document.getElementById("editorBrackenTimePointSelect");
   if (!timePointSelect) return;
 
+  // Store descriptions globally for later access
+  window.brackenTimePointDescriptions = {};
+
   // Clear existing options (except the first one)
   while (timePointSelect.children.length > 1) {
     timePointSelect.removeChild(timePointSelect.lastChild);
@@ -1069,9 +1074,13 @@ function displayBrackenTimePoints(timePoints, defaultTimePoint = null) {
   timePoints.forEach((timePoint) => {
     const option = document.createElement("option");
     option.value = timePoint.key;
-    option.textContent = `${formatTimePointName(timePoint.key)} - ${timePoint.description}`;
+    option.textContent = timePoint.title; // Use title from metadata instead of formatted key
+    option.setAttribute("data-description", timePoint.description);
     option.setAttribute("data-suffix", timePoint.suffix);
     option.setAttribute("data-function", timePoint.function);
+
+    // Store description for later access
+    window.brackenTimePointDescriptions[timePoint.key] = timePoint.description;
 
     // Set as selected if it's the default
     if (defaultTimePoint && timePoint.key === defaultTimePoint) {
@@ -2008,13 +2017,54 @@ function showBrackenTimePointInfo() {
   });
 }
 
-function updateTimePointDescription() {
+// This function conflicts with the analysis manager's updateTimePointDescription
+// Renaming it to avoid conflicts
+function updateTimePointDescriptionValidation() {
   const timePointSelect = document.getElementById("editorBrackenTimePointSelect");
-  const descriptionElement = document.getElementById("timePointDescription");
+  const selectedValue = timePointSelect?.value;
+  const selectedOption = timePointSelect?.selectedOptions[0];
+
+  if (selectedOption && selectedValue) {
+    const suffix = selectedOption.getAttribute("data-suffix");
+    const function_ = selectedOption.getAttribute("data-function");
+
+    console.log("Selected time point:", {
+      key: selectedValue,
+      suffix: suffix,
+      function: function_,
+      description: selectedOption.textContent,
+    });
+
+    // You can add UI feedback here if needed
+    // For example, show additional info in a tooltip or info box
+  }
+}
+
+// The correct global updateTimePointDescription function that should be called by onchange
+function updateTimePointDescription() {
+  // #region agent log - hypothesis E: Check if corrected global function is called
+  fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset.js:updateTimePointDescription',message:'Corrected global updateTimePointDescription called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
+
+  // First try the analysis manager (preferred)
+  if (window.analysisManager && typeof window.analysisManager.updateTimePointDescription === 'function') {
+    // #region agent log - hypothesis E: Using analysis manager
+    fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset.js:updateTimePointDescription',message:'Using analysis manager method',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
+    window.analysisManager.updateTimePointDescription();
+    return;
+  }
+
+  // Fallback to standalone implementation
+  // #region agent log - hypothesis E: Using fallback implementation
+  fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset.js:updateTimePointDescription',message:'Using fallback implementation',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
+
+  const timePointSelect = document.getElementById("editorBrackenTimePointSelect");
+  const descriptionElement = document.getElementById("timePointDescriptionText");
 
   if (!timePointSelect) return;
 
-  const selectedOption = timePointSelect.options[timePointSelect.selectedIndex];
   const selectedValue = timePointSelect.value;
 
   if (!selectedValue) {
@@ -2022,16 +2072,12 @@ function updateTimePointDescription() {
     return;
   }
 
-  const timePointName = selectedOption.textContent;
-  const suffix = selectedOption.getAttribute("data-suffix") || "";
-  const functionType = selectedOption.getAttribute("data-function") || "";
+  // Get description from stored descriptions
+  const description = window.brackenTimePointDescriptions ? window.brackenTimePointDescriptions[selectedValue] : "";
 
-  // Update description
+  // Update description element with the actual description from metadata
   if (descriptionElement) {
-    let description = `Time point: ${timePointName}`;
-    if (suffix) description += ` | Suffix: ${suffix}`;
-    if (functionType) description += ` | Function: ${functionType}`;
-    descriptionElement.textContent = description;
+    descriptionElement.textContent = description || "No description available";
   }
 }
 
@@ -2113,7 +2159,7 @@ function toggleSelectionMode() {
 
     if (topLabel) topLabel.textContent = "Top Percentage";
     if (bottomLabel) bottomLabel.textContent = "Bottom Percentage";
-    if (topDescription) topDescription.textContent = "Percentage of patients with highest time values";
+    if (topDescription) topDescription.textContent = "PPercentage of patients with highest time values";
     if (bottomDescription) bottomDescription.textContent = "Percentage of patients with lowest time values";
   }
 
@@ -2732,7 +2778,7 @@ function validateAnalysisEditor() {
   return isValid;
 }
 
-function updateTimePointDescription() {
+function updateTimePointDescriptionValidation() {
   const timePointSelect = document.getElementById("editorBrackenTimePointSelect");
   const selectedValue = timePointSelect?.value;
   const selectedOption = timePointSelect?.selectedOptions[0];

@@ -65,23 +65,45 @@
           <li class="nav-item" role="presentation">
             <button
               class="nav-link"
-              id="config-editor-tab"
+              id="preanalysis-editor-tab"
               data-bs-toggle="tab"
-              data-bs-target="#config-editor"
+              data-bs-target="#preanalysis-editor"
               type="button"
               role="tab">
-              <i class="fas fa-sliders-h me-2"></i>Analysis Config
+              <i class="fas fa-filter me-2"></i>Pre-Analysis
             </button>
           </li>
           <li class="nav-item" role="presentation">
             <button
               class="nav-link"
-              id="reports-config-tab"
+              id="analysis-editor-tab"
               data-bs-toggle="tab"
-              data-bs-target="#reports-config"
+              data-bs-target="#analysis-editor"
               type="button"
               role="tab">
-              <i class="fas fa-file-alt me-2"></i>Report Config
+              <i class="fas fa-flask me-2"></i>Analysis
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="postanalysis-editor-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#postanalysis-editor"
+              type="button"
+              role="tab">
+              <i class="fas fa-chart-bar me-2"></i>Post-Analysis
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button
+              class="nav-link"
+              id="output-editor-tab"
+              data-bs-toggle="tab"
+              data-bs-target="#output-editor"
+              type="button"
+              role="tab">
+              <i class="fas fa-file-export me-2"></i>Output Options
             </button>
           </li>
         </ul>
@@ -96,7 +118,7 @@
                   <div class="card-header">
                     <h6 class="mb-0">
                       <i class="fas fa-files me-2"></i>
-                      Select Data Files
+                      Data Files Selection
                     </h6>
                   </div>
                   <div class="card-body">
@@ -146,6 +168,43 @@
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bracken Time Point Selection -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="fas fa-clock text-primary me-2"></i>
+                      Bracken Time Point Selection
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-4">
+                        <div class="mb-3">
+                          <label for="editorBrackenTimePointSelect" class="form-label">
+                            <i class="fas fa-calendar-alt text-warning me-2"></i>
+                            Time Point Selection
+                          </label>
+                          <select class="form-select" id="editorBrackenTimePointSelect" onchange="updateTimePointDescription()">
+                            <!-- Options will be populated dynamically -->
+                          </select>
+                          <div class="form-text">Choose the time point from your Bracken data for analysis</div>
+                        </div>
+                      </div>
+                      <div class="col-md-8">
+                        <label class="form-label">Time Point Description</label>
+                        <div class="d-flex align-items-center">
+                          <span id="timePointDescriptionText">Select a time point to see its description</span>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -269,7 +328,7 @@
               </div>
             </div>
 
-            <!-- Column Groups Selection Section -->
+            <!-- Attributes Groups Selection -->
             <div class="row mb-4">
               <div class="col-12">
                 <div class="card">
@@ -277,7 +336,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                       <h6 class="mb-0">
                         <i class="fas fa-layer-group me-2"></i>
-                        Patient Data Column Groups
+                        Attributes Groups Selection
                       </h6>
                       <div class="btn-group btn-group-sm">
                         <button
@@ -285,7 +344,7 @@
                           class="btn btn-outline-secondary"
                           id="toggleColumnGroupsBtn"
                           onclick="toggleColumnGroups()">
-                          <i class="fas fa-eye me-1"></i>Show Column Groups
+                          <i class="fas fa-eye me-1"></i>Show Groups
                         </button>
                         <button
                           type="button"
@@ -305,7 +364,7 @@
                   </div>
                   <div class="card-body">
                     <p class="text-muted mb-3">
-                      Select which groups of patient data columns to include in your analysis:
+                      Select which groups of patient data attributes to include in your analysis:
                     </p>
 
                     <!-- Column Groups Container -->
@@ -321,109 +380,11 @@
                         <div class="col-md-8">
                           <div class="d-flex align-items-center">
                             <i class="fas fa-info-circle text-primary me-2"></i>
-                            <span id="selectionSummary">No column groups selected</span>
+                            <span id="selectionSummary">No attribute groups selected</span>
                           </div>
                         </div>
                         <div class="col-md-4 text-end">
-                          <span class="badge bg-primary" id="totalColumnsCount">0 total columns</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Bracken Time Point Selection -->
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="card">
-                  <div class="card-header">
-                    <div class="d-flex align-items-center justify-content-between">
-                      <h6 class="mb-0">
-                        <i class="fas fa-timeline text-warning me-2"></i>
-                        Bracken Time Point Selection
-                      </h6>
-                      <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-info" onclick="showBrackenTimePointInfo()">
-                          <i class="fas fa-info-circle me-1"></i>Info
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <p class="text-muted mb-3">Select the time point for Bracken abundance analysis:</p>
-
-                    <!-- Time Point Selection -->
-                    <div class="row">
-                      <div class="col-12">
-                        <label for="editorBrackenTimePointSelect" class="form-label">
-                          <i class="fas fa-timeline text-warning me-2"></i>
-                          Bracken Time Point
-                        </label>
-                        <select
-                          class="form-select"
-                          id="editorBrackenTimePointSelect"
-                          onchange="updateTimePointDescription()">
-                          <option value="">Choose time point...</option>
-                          <!-- Options will be populated dynamically -->
-                        </select>
-                        <div class="form-text" id="timePointDescription">
-                          Select a time point to see its description
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Population Stratification Selection -->
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="card">
-                  <div class="card-header">
-                    <div class="d-flex align-items-center justify-content-between">
-                      <h6 class="mb-0">
-                        <i class="fas fa-layer-group me-2"></i>
-                        Population Stratification
-                      </h6>
-                      <div class="btn-group btn-group-sm">
-                        <button
-                          type="button"
-                          class="btn btn-outline-secondary"
-                          id="toggleStratificationBtn"
-                          onclick="toggleStratification()">
-                          <i class="fas fa-eye me-1"></i>Show Stratification Options
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" onclick="selectAllStratifications()">
-                          <i class="fas fa-check-all me-1"></i>Select All
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllStratifications()">
-                          <i class="fas fa-times me-1"></i>Clear All
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <p class="text-muted mb-3">
-                      Select stratification methods to divide the population into subgroups for comparative analysis:
-                    </p>
-                    <div id="stratificationContainer" style="display: none">
-                      <!-- Stratification options will be dynamically populated here -->
-                    </div>
-
-                    <!-- Stratification Summary -->
-                    <div class="mt-3 p-3 bg-light rounded" id="stratificationSummary">
-                      <div class="row align-items-center">
-                        <div class="col-md-8">
-                          <div class="d-flex align-items-center">
-                            <i class="fas fa-info-circle text-primary me-2"></i>
-                            <span id="stratificationSummaryText">No stratifications selected</span>
-                          </div>
-                        </div>
-                        <div class="col-md-4 text-end">
-                          <span class="badge bg-primary" id="stratificationCount">0 stratifications</span>
+                          <span class="badge bg-primary" id="totalColumnsCount">0 total attributes</span>
                         </div>
                       </div>
                     </div>
@@ -433,9 +394,145 @@
             </div>
           </div>
 
-          <!-- Analysis Config Editor Tab -->
-          <div class="tab-pane fade" id="config-editor" role="tabpanel">
-            <!-- Clustering Parameters Selection -->
+          <!-- Pre-Analysis Editor Tab -->
+          <div class="tab-pane fade" id="preanalysis-editor" role="tabpanel">
+            <!-- Attributes Discarding Policy -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>
+                        Attributes Discarding Policy
+                      </h6>
+                      <div class="btn-group btn-group-sm">
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          id="toggleDiscardingPolicyBtn"
+                          onclick="toggleDiscardingPolicy()">
+                          <i class="fas fa-eye me-1"></i>Show Policies
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">
+                      Configure policies for discarding patient attributes based on data quality criteria:
+                    </p>
+
+                    <!-- Discarding Policies Container -->
+                    <div id="discardingPolicyContent" style="display: none">
+                      <div class="row" id="discardingPolicyContainer">
+                        <!-- Discarding policies will be dynamically populated here -->
+                      </div>
+                    </div>
+
+                    <!-- Discarding Policy Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="discardingPolicySummary">
+                      <div class="row align-items-center">
+                        <div class="col-md-8">
+                          <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="discardingPolicySummaryText">No discarding policies configured</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                          <button
+                            type="button"
+                            class="btn btn-outline-success btn-sm me-2"
+                            onclick="calculateRemainingAttributes()">
+                            <i class="fas fa-calculator me-1"></i>Calculate Remaining
+                          </button>
+                          <span class="badge bg-primary" id="totalDiscardingPoliciesCount">0 policies</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Microbial Discarding Policy -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 class="mb-0">
+                        <i class="fas fa-bacteria me-2"></i>
+                        Microbial Discarding Policy
+                      </h6>
+                      <div class="btn-group btn-group-sm">
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          id="toggleMicrobialDiscardingPolicyBtn"
+                          onclick="toggleMicrobialDiscardingPolicy()">
+                          <i class="fas fa-eye me-1"></i>Show Policies
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">Configure policies for discarding microbial taxa based on abundance thresholds and prevalence criteria.</p>
+
+                    <!-- Microbial Discarding Policies Container -->
+                    <div id="microbialDiscardingPolicyContent" style="display: none">
+                      <div class="row" id="microbialDiscardingPolicyContainer">
+                        <!-- Microbial discarding policies will be dynamically populated here -->
+                      </div>
+                    </div>
+
+                    <!-- Microbial Discarding Policy Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="microbialDiscardingPolicySummary">
+                      <div class="row align-items-center">
+                        <div class="col-md-8">
+                          <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="microbialDiscardingPolicySummaryText">No microbial discarding policies configured</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                          <button
+                            type="button"
+                            class="btn btn-outline-success btn-sm me-2"
+                            onclick="calculateRemainingMicrobes()">
+                            <i class="fas fa-calculator me-1"></i>Calculate Remaining
+                          </button>
+                          <span class="badge bg-primary" id="totalMicrobialDiscardingPoliciesCount">0 policies</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Microbial Grouping -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="fas fa-object-group me-2"></i>
+                      Microbial Grouping
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">Configure how microbial taxa should be grouped for analysis (e.g., by genus, family, or custom groupings).</p>
+                    <!-- Microbial Grouping content will be populated here -->
+                    <div class="alert alert-info">
+                      <i class="fas fa-info-circle me-2"></i>
+                      Microbial grouping configuration will be implemented here.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Clustering - Policy -->
             <div class="row mb-4">
               <div class="col-12">
                 <div class="card">
@@ -443,7 +540,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                       <h6 class="mb-0">
                         <i class="fas fa-project-diagram me-2"></i>
-                        Clustering Parameters
+                        Clustering - Policy
                       </h6>
                       <div class="btn-group btn-group-sm">
                         <button
@@ -451,7 +548,7 @@
                           class="btn btn-outline-secondary"
                           id="toggleClusteringBtn"
                           onclick="toggleClustering()">
-                          <i class="fas fa-eye me-1"></i>Show Clustering Options
+                          <i class="fas fa-eye me-1"></i>Show Options
                         </button>
                         <button type="button" class="btn btn-outline-primary" onclick="resetClusteringToDefaults()">
                           <i class="fas fa-undo me-1"></i>Reset to Defaults
@@ -527,7 +624,7 @@
               </div>
             </div>
 
-            <!-- Cluster Representative Selection -->
+            <!-- Clustering - Naming -->
             <div class="row mb-4">
               <div class="col-12">
                 <div class="card">
@@ -535,7 +632,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                       <h6 class="mb-0">
                         <i class="fas fa-users me-2"></i>
-                        Cluster Representative Selection
+                        Clustering - Naming
                       </h6>
                       <div class="btn-group btn-group-sm">
                         <button
@@ -612,7 +709,10 @@
                 </div>
               </div>
             </div>
+          </div>
 
+          <!-- Analysis Editor Tab -->
+          <div class="tab-pane fade" id="analysis-editor" role="tabpanel">
             <!-- Analysis Type Selection -->
             <div class="row mb-4">
               <div class="col-12">
@@ -687,8 +787,131 @@
             </div>
           </div>
 
-          <!-- Reports Config Editor Tab -->
-          <div class="tab-pane fade" id="reports-config" role="tabpanel">
+          <!-- Post-Analysis Editor Tab -->
+          <div class="tab-pane fade" id="postanalysis-editor" role="tabpanel">
+            <!-- Population Sectors Comparison -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 class="mb-0">
+                        <i class="fas fa-layer-group me-2"></i>
+                        Population Sectors Comparison
+                      </h6>
+                      <div class="btn-group btn-group-sm">
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          id="toggleStratificationBtn"
+                          onclick="toggleStratification()">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="selectAllStratifications()">
+                          <i class="fas fa-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllStratifications()">
+                          <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">
+                      Select stratification methods to divide the population into subgroups for comparative analysis:
+                    </p>
+                    <div id="stratificationContainer" style="display: none">
+                      <!-- Stratification options will be dynamically populated here -->
+                    </div>
+
+                    <!-- Stratification Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="stratificationSummary">
+                      <div class="row align-items-center">
+                        <div class="col-md-8">
+                          <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="stratificationSummaryText">No stratifications selected</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                          <span class="badge bg-primary" id="stratificationCount">0 stratifications</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sample Timepoints Comparison -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="fas fa-timeline me-2"></i>
+                      Sample Timepoints Comparison
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">Configure comparison of analysis results across different sample timepoints.</p>
+                    <!-- Sample Timepoints Comparison content will be populated here -->
+                    <div class="alert alert-info">
+                      <i class="fas fa-info-circle me-2"></i>
+                      Sample timepoints comparison configuration will be implemented here.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Microbial Grouping Comparison -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="fas fa-object-group me-2"></i>
+                      Microbial Grouping Comparison
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">Configure comparison of analysis results across different microbial groupings.</p>
+                    <!-- Microbial Grouping Comparison content will be populated here -->
+                    <div class="alert alert-info">
+                      <i class="fas fa-info-circle me-2"></i>
+                      Microbial grouping comparison configuration will be implemented here.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Analysis Methods Comparison -->
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="fas fa-balance-scale me-2"></i>
+                      Analysis Methods Comparison
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">Configure comparison of results from different analysis methods.</p>
+                    <!-- Analysis Methods Comparison content will be populated here -->
+                    <div class="alert alert-info">
+                      <i class="fas fa-info-circle me-2"></i>
+                      Analysis methods comparison configuration will be implemented here.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Output Options Editor Tab -->
+          <div class="tab-pane fade" id="output-editor" role="tabpanel">
             <div class="row">
               <div class="col-md-6">
                 <h6 class="mb-3">
@@ -713,7 +936,7 @@
               <div class="col-md-6">
                 <h6 class="mb-3">
                   <i class="fas fa-chart-pie me-2"></i>
-                  Report Content
+                  Report Contents
                 </h6>
                 <div class="mb-3">
                   <div class="form-check">
