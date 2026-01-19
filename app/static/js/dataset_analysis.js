@@ -22,6 +22,8 @@ class DatasetAnalysisManager {
     await this.loadStratifications();
     await this.loadClusteringMethods();
     await this.loadAnalysisMethods();
+    // Ensure all editor elements have ids and matching names
+    try { this.ensureEditorIdsAndNames(); } catch (e) { /* ignore */ }
   }
 
   // Setup event listeners
@@ -608,20 +610,20 @@ class DatasetAnalysisManager {
         const fieldCount = Array.isArray(group.columns) ? group.columns.length : 0;
 
         return `
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="${groupName}" id="group_${groupKey}" data-field-count="${fieldCount}" onchange="window.analysisManager && window.analysisManager.updateColumnGroupsSummary()" checked>
-                                <label class="form-check-label" for="group_${groupKey}">
-                                    <strong>${groupName}</strong>
-                                    <small class="text-muted d-block">${fieldCount} fields</small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+            <div class="col-md-6 col-lg-4 mb-3">
+              <div class="card" id="group_card_${groupKey}" name="group_card_${groupKey}">
+                <div class="card-body">
+                  <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="${groupName}" id="group_${groupKey}" name="group_${groupKey}" data-field-count="${fieldCount}" onchange="window.analysisManager && window.analysisManager.updateColumnGroupsSummary()" checked>
+                    <label class="form-check-label" for="group_${groupKey}">
+                      <strong>${groupName}</strong>
+                      <small class="text-muted d-block">${fieldCount} fields</small>
+                    </label>
+                  </div>
                 </div>
-            `;
+              </div>
+            </div>
+          `;
       })
       .join("");
 
@@ -646,30 +648,30 @@ class DatasetAnalysisManager {
         const isEnabled = policy.enabled ? 'checked' : '';
 
         return `
-                <div class="col-12 mb-4">
-                    <div class="card discarding-policy-card" data-policy-key="${policy.key}">
-                        <div class="card-header">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="policy_${policy.key}" ${isEnabled}>
-                                    <label class="form-check-label" for="policy_${policy.key}">
-                                        ${policy.name}
-                                        <small class="text-muted d-block">${policy.description}</small>
-                                    </label>
-                                </div>
-                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('${policy.key}')">
-                                    <i class="fas fa-info-circle me-1"></i>Info
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body" id="policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
-                            <div class="row">
-                                ${parameterInputs}
-                            </div>
-                        </div>
+            <div class="col-12 mb-4">
+              <div class="card discarding-policy-card" id="policy_card_${policy.key}" name="policy_card_${policy.key}" data-policy-key="${policy.key}">
+                <div class="card-header">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="policy_${policy.key}" name="policy_${policy.key}" ${isEnabled}>
+                      <label class="form-check-label" for="policy_${policy.key}">
+                        ${policy.name}
+                        <small class="text-muted d-block">${policy.description}</small>
+                      </label>
                     </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('${policy.key}')">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
                 </div>
-            `;
+                <div class="card-body" id="policy_body_${policy.key}" name="policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
+                  <div class="row">
+                    ${parameterInputs}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
       })
       .join("");
 
@@ -724,7 +726,7 @@ class DatasetAnalysisManager {
 
           return `<div class="col-md-6 mb-2">
                     <label class="form-label fw-bold" for="${policyKey}_param_${paramKey}">${paramConfig.label || paramKey}</label>
-                    <input type="number" class="form-control" id="${policyKey}_param_${paramKey}" name="${paramKey}" value="${value}" step="${step}" ${minAttr} ${maxAttr}>
+                    <input type="number" class="form-control" id="${policyKey}_param_${paramKey}" name="${policyKey}_param_${paramKey}" value="${value}" step="${step}" ${minAttr} ${maxAttr}>
                     <div class="form-text">${paramConfig.description || ''}</div>
                   </div>`;
         }
@@ -738,7 +740,7 @@ class DatasetAnalysisManager {
 
           return `<div class="col-md-6 mb-2">
                     <label class="form-label fw-bold" for="${policyKey}_param_${paramKey}">${paramConfig.label || paramKey}</label>
-                    <select class="form-select" id="${policyKey}_param_${paramKey}" name="${paramKey}">${opts}</select>
+                    <select class="form-select" id="${policyKey}_param_${paramKey}" name="${policyKey}_param_${paramKey}">${opts}</select>
                     <div class="form-text">${paramConfig.description || ''}</div>
                   </div>`;
         }
@@ -746,7 +748,7 @@ class DatasetAnalysisManager {
         // FALLBACK: text input
         return `<div class="col-md-6 mb-2">
                   <label class="form-label fw-bold" for="${policyKey}_param_${paramKey}">${paramConfig.label || paramKey}</label>
-                  <input type="text" class="form-control" id="${policyKey}_param_${paramKey}" name="${paramKey}" value="${paramConfig.default !== undefined ? paramConfig.default : ''}">
+                  <input type="text" class="form-control" id="${policyKey}_param_${paramKey}" name="${policyKey}_param_${paramKey}" value="${paramConfig.default !== undefined ? paramConfig.default : ''}">
                   <div class="form-text">${paramConfig.description || ''}</div>
                 </div>`;
       })
@@ -878,9 +880,11 @@ class DatasetAnalysisManager {
 
       const card = document.createElement('div');
       card.className = 'card p-2 h-100';
+      card.id = `sample_tp_card_${tp.key}`;
+      card.setAttribute('name', `sample_tp_card_${tp.key}`);
       card.innerHTML = `
         <div class="form-check">
-          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="${tp.key}" id="sample_tp_${tp.key}">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="${tp.key}" id="sample_tp_${tp.key}" name="sample_tp_${tp.key}">
           <label class="form-check-label" for="sample_tp_${tp.key}">
             <strong>${tp.title}</strong>
             <div class="text-muted small">${(tp.description || '').substring(0,120)}${(tp.description||'').length>120?'...':''}</div>
@@ -1009,10 +1013,10 @@ class DatasetAnalysisManager {
 
         return `
               <div class="col-12 mb-3">
-                <div class="card w-100">
+                <div class="card w-100" id="strat_card_${key}" name="strat_card_${key}">
                   <div class="card-body">
                     <div class="form-check">
-                      <input class="form-check-input" type="checkbox" value="${key}" id="strat_${key}" onchange="window.analysisManager && window.analysisManager.updateStratificationSummary()">
+                      <input class="form-check-input" type="checkbox" value="${key}" id="strat_${key}" name="strat_${key}" onchange="window.analysisManager && window.analysisManager.updateStratificationSummary()">
                       <label class="form-check-label" for="strat_${key}">
                         <strong>${stratification.name}</strong>
                       </label>
@@ -1140,6 +1144,8 @@ class DatasetAnalysisManager {
 
       const card = document.createElement('div');
       card.className = 'card p-2 h-100 analysis-method-card';
+      card.id = `analysis_method_card_${m.key}`;
+      card.setAttribute('name', `analysis_method_card_${m.key}`);
 
       const safeTitle = m.title || m.name || m.key;
       const safeDesc = m.description || '';
@@ -1148,7 +1154,7 @@ class DatasetAnalysisManager {
         <div class="d-flex justify-content-between align-items-start">
           <div>
             <div class="form-check">
-              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="${m.key}" id="analysis_method_${m.key}">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="${m.key}" id="analysis_method_${m.key}" name="analysis_method_${m.key}">
               <label class="form-check-label" for="analysis_method_${m.key}"><strong>${safeTitle}</strong></label>
             </div>
             <div class="text-muted small">${(safeDesc).substring(0,120)}${(safeDesc).length>120?'...':''}</div>
@@ -1523,6 +1529,9 @@ class DatasetAnalysisManager {
     this.updateDiscardingPolicySummary();
     this.updateExtremeTimePointSummary();
     this.updateMicrobialGroupingSummary();
+
+    // Ensure any static elements in the editor have name attributes matching their ids
+    try { this.ensureEditorIdsAndNames(); } catch (e) { /* ignore */ }
   }
 
   // Update column groups summary
@@ -1648,12 +1657,12 @@ class DatasetAnalysisManager {
         const isEnabled = policy.enabled ? 'checked' : '';
 
         return `
-                <div class="col-12 mb-4">
-                    <div class="card microbial-discarding-policy-card" data-policy-key="${policy.key}">
+        <div class="col-12 mb-4">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_${policy.key}" name="microbial_policy_card_${policy.key}" data-policy-key="${policy.key}">
                         <div class="card-header">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="microbial_policy_${policy.key}" ${isEnabled}>
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_${policy.key}" name="microbial_policy_${policy.key}" ${isEnabled}>
                                     <label class="form-check-label" for="microbial_policy_${policy.key}">
                                         ${policy.name}
                                         <small class="text-muted d-block">${policy.description}</small>
@@ -1664,7 +1673,7 @@ class DatasetAnalysisManager {
                                 </button>
                             </div>
                         </div>
-                        <div class="card-body" id="microbial_policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
+                        <div class="card-body" id="microbial_policy_body_${policy.key}" name="microbial_policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
                             <div class="row">
                                 ${parameterInputs}
                             </div>
@@ -1770,7 +1779,7 @@ class DatasetAnalysisManager {
       const isChecked = method.enabled ? 'checked' : '';
       return `
           <div class="col-12 mb-4">
-            <div class="card microbial-grouping-card" data-method-key="${method.key}">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_${method.key}" name="microbial_grouping_card_${method.key}" data-method-key="${method.key}">
               <div class="card-header">
                 <div class="d-flex align-items-center justify-content-between">
                   <div class="form-check">
@@ -1785,7 +1794,7 @@ class DatasetAnalysisManager {
                   </button>
                 </div>
               </div>
-              <div class="card-body" id="microbial_grouping_body_${method.key}" style="display: ${method.enabled ? 'block' : 'none'}">
+              <div class="card-body" id="microbial_grouping_body_${method.key}" name="microbial_grouping_body_${method.key}" style="display: ${method.enabled ? 'block' : 'none'}">
                 <div class="row">
                   ${parameterInputs}
                 </div>
@@ -1859,6 +1868,45 @@ class DatasetAnalysisManager {
       const selectedRadio = document.querySelector('#microbialGroupingContainer input[name="microbialGroupingMethod"]:checked');
       count.textContent = selectedRadio ? "1 method" : "0 methods";
     }
+  }
+
+  // Ensure every input and card inside the analysis editor has a unique id and a name equal to that id
+  ensureEditorIdsAndNames() {
+    const section = document.getElementById('analysisEditorSection');
+    if (!section) return;
+
+    // Generate ids for elements that are missing them and ensure name == id
+    const selectors = 'input, select, textarea, button, div.card';
+    const elems = Array.from(section.querySelectorAll(selectors));
+    let counter = 1;
+    elems.forEach((el) => {
+      // skip elements outside the form area
+      if (!el) return;
+
+      // If element has no id, create one using a deterministic base
+      if (!el.id || el.id.trim() === '') {
+        const baseCandidates = [el.getAttribute('data-policy-key'), el.getAttribute('data-method-key'), el.className, el.tagName.toLowerCase()];
+        let base = baseCandidates.find(b => b && b.length > 0) || 'elem';
+        base = String(base).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '').toLowerCase();
+        let newId = `${base}_${counter}`;
+        while (document.getElementById(newId)) {
+          counter += 1;
+          newId = `${base}_${counter}`;
+        }
+        el.id = newId;
+        counter += 1;
+      }
+
+      // For radio inputs keep existing grouping name if present; otherwise set name=id
+      if (el.tagName.toLowerCase() === 'input' && el.type === 'radio') {
+        if (!el.name || el.name.trim() === '') {
+          el.name = el.id;
+        }
+        // do not overwrite existing radio group names
+      } else {
+        try { el.name = el.id; } catch (e) { /* ignore readonly name attributes */ }
+      }
+    });
   }
 
   // Toggle microbial grouping body visibility

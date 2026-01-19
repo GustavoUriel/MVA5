@@ -978,7 +978,7 @@ function displayColumnGroups(columnGroups) {
     html += `
             <div class="col-md-6 mb-3">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="${groupId}" checked onchange="updateColumnGroupsSummary()">
+                    <input class="form-check-input" type="checkbox" id="${groupId}" name="${groupId}" checked onchange="updateColumnGroupsSummary()">
                     <label class="form-check-label" for="${groupId}">
                         <strong>${displayName}</strong>
                         <small class="text-muted d-block">${columnCount} columns</small>

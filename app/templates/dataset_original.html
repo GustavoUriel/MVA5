@@ -746,13 +746,13 @@
                                                             </label>
                                                         </div>
                                                         <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="includePlots" checked>
+                                                            <input class="form-check-input" type="checkbox" id="includePlots" name="includePlots" checked>
                                                             <label class="form-check-label" for="includePlots">
                                                                 Visualization Plots
                                                             </label>
                                                         </div>
                                                         <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="includeRawData">
+                                                            <input class="form-check-input" type="checkbox" id="includeRawData" name="includeRawData">
                                                             <label class="form-check-label" for="includeRawData">
                                                                 Raw Data Tables
                                                             </label>
@@ -2497,7 +2497,7 @@ window.initializeColumnGroups = function() {
         html += `
             <div class="col-md-6 col-lg-4 mb-3">
                 <div class="form-check border rounded p-3 h-100">
-                    <input class="form-check-input" type="checkbox" value="${groupKey}" id="group_${groupKey}" onchange="updateColumnGroupSelection()">
+                    <input class="form-check-input" type="checkbox" value="${groupKey}" id="group_${groupKey}" name="group_${groupKey}" onchange="updateColumnGroupSelection()">
                     <label class="form-check-label w-100" for="group_${groupKey}">
                         <div class="d-flex align-items-center mb-2">
                             <i class="${group.icon} me-2"></i>
