@@ -1,4 +1,4 @@
-// Dataset Analysis Tab JavaScript
+﻿// Dataset Analysis Tab JavaScript
 // Handles analysis creation, configuration, and management
 
 class DatasetAnalysisManager {
@@ -2507,3 +2507,4 @@ function showPolicyInfoModal(policyInfo) {
     this.remove();
   });
 }
+
