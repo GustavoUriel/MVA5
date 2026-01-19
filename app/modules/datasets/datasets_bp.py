@@ -1365,21 +1365,29 @@ def save_analysis_configuration(dataset_id):
         current_app.instance_path, 'users', user_email, 'analysis')
     os.makedirs(analysis_folder, exist_ok=True)
 
+    # Optionally include full DOM snapshot if provided
+    full_dom = data.get('full_dom') if isinstance(data, dict) else None
+
     # Create analysis configuration object
     analysis_config = {
-        'analysis_name': analysis_name,
-        'analysis_description': analysis_description,
-        'dataset_id': dataset_id,
-        'dataset_name': dataset.name,
-        'created_at': datetime.utcnow().isoformat(),
-        # relative path from instance (use a stable, portable relative path)
-        'relative_path': f"users/{user_email}/analysis/{safe_name}.json",
-        # last_run is null until the analysis is executed; run_status is null when never run
-        'last_run': None,
-        'run_status': None,
-        'created_by': current_user.email,
-        'configuration': configuration
+      'analysis_name': analysis_name,
+      'analysis_description': analysis_description,
+      'dataset_id': dataset_id,
+      'dataset_name': dataset.name,
+      'created_at': datetime.utcnow().isoformat(),
+      'modified_at': datetime.utcnow().isoformat(),
+      # relative path from instance (use a stable, portable relative path)
+      'relative_path': f"users/{user_email}/analysis/{safe_name}.json",
+      # last_run is null until the analysis is executed; run_status is null when never run
+      'last_run': None,
+      'run_status': None,
+      'created_by': current_user.email,
+      'configuration': configuration
     }
+
+    if full_dom is not None:
+      # Persist the full DOM snapshot into the JSON
+      analysis_config['full_dom'] = full_dom
 
     # Save to JSON file
     filename = f"{safe_name}.json"

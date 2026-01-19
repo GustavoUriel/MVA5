@@ -231,6 +231,16 @@ class DatasetAnalysisManager {
     if (analysisEditorSection) {
       analysisEditorSection.style.display = "none";
     }
+    // Refresh the existing analyses list to show any changes
+    try {
+      this.loadAnalysisList();
+    } catch (e) {
+      // If manager cannot load, fallback to global function
+      try {
+        if (typeof refreshAnalysisList === 'function') refreshAnalysisList();
+        else if (typeof loadAnalysisList === 'function') loadAnalysisList();
+      } catch (e2) {}
+    }
   }
 
   // Save analysis
@@ -244,6 +254,13 @@ class DatasetAnalysisManager {
 
     try {
       const config = this.collectAnalysisConfiguration();
+      // also capture full editor DOM to persist exact state/contents
+      const fullDom = this.collectFullAnalysisEditor();
+      // capture full controls state (values, checked, options, visibility)
+      const controlsState = this.collectAllControls();
+
+      // attach controls_state into the configuration so it's part of the saved JSON
+      try { config.controls_state = controlsState; } catch (e) { /* ignore if config is not object */ }
 
       const response = await DatasetUtils.api.call(`/dataset/${this.datasetId}/analysis/save`, {
         method: "POST",
@@ -251,6 +268,7 @@ class DatasetAnalysisManager {
           analysis_name: analysisName,
           analysis_description: document.getElementById("analysisDescription").value.trim(),
           configuration: config,
+          full_dom: fullDom,
         }),
       });
 
@@ -284,6 +302,124 @@ class DatasetAnalysisManager {
       analysisMethods: this.collectAnalysisMethods(),
       extremeTimePoint: this.collectExtremeTimePointConfig(),
     };
+  }
+
+  // Serialize the analysis editor DOM subtree into a hierarchical JSON structure
+  collectFullAnalysisEditor() {
+    const root = document.getElementById('analysisEditorSection');
+    if (!root) return null;
+
+    function serializeNode(node) {
+      // Text node
+      if (node.nodeType === Node.TEXT_NODE) {
+        return { type: 'text', text: node.textContent.trim() };
+      }
+
+      // Element node
+      const obj = {
+        type: 'element',
+        tag: node.tagName.toLowerCase(),
+        id: node.id || null,
+        name: node.name || null,
+        classes: node.className ? String(node.className).split(/\s+/).filter(Boolean) : [],
+        attributes: {},
+        children: []
+      };
+
+      // Capture attributes (skip large data blobs)
+      if (node.attributes) {
+        Array.from(node.attributes).forEach((attr) => {
+          const key = attr.name;
+          const val = attr.value;
+          if (key.startsWith('data-') && val.length > 1000) return; // skip huge data-* attrs
+          obj.attributes[key] = val;
+        });
+      }
+
+      // Capture value / checked states for form controls
+      if (node.tagName === 'INPUT' || node.tagName === 'SELECT' || node.tagName === 'TEXTAREA') {
+        try {
+          if (node.type === 'checkbox' || node.type === 'radio') {
+            obj.checked = !!node.checked;
+          }
+        } catch (e) {}
+
+        try {
+          obj.value = node.value !== undefined ? node.value : null;
+        } catch (e) {
+          obj.value = null;
+        }
+      }
+
+      // Recursively serialize children
+      node.childNodes.forEach((child) => {
+        const c = serializeNode(child);
+        if (c) obj.children.push(c);
+      });
+
+      return obj;
+    }
+
+    return serializeNode(root);
+  }
+
+  // Collect states of all form controls inside the analysis editor (values, checked, options, visibility)
+  collectAllControls() {
+    const root = document.getElementById('analysisEditorSection');
+    if (!root) return {};
+
+    const controls = {};
+    const elems = root.querySelectorAll('input, select, textarea, button');
+    let anonIdx = 0;
+
+    elems.forEach((el) => {
+      const key = el.id || el.name || `elem_${anonIdx++}`;
+      // Only collect the minimal set requested:
+      // - textboxes/textarea: value (string, may be empty)
+      // - sliders (input[type=range]) and numeric inputs: value
+      // - checkboxes/radios: checked (boolean)
+      // - selects: selected option text (for file selects: filename), for multiple selects an array of texts
+      const info = { id: el.id || null, name: el.name || null, tag: el.tagName.toLowerCase() };
+
+      try {
+        if (el.tagName === 'INPUT') {
+          const t = (el.type || '').toLowerCase();
+          if (t === 'checkbox' || t === 'radio') {
+            info.checked = !!el.checked;
+            info.value = el.value !== undefined ? el.value : '';
+          } else if (t === 'range' || t === 'number') {
+            info.value = el.value !== undefined ? el.value : '';
+          } else if (t === 'text' || t === 'email' || t === 'search' || t === 'password' || t === 'tel' || t === 'url' || t === 'hidden') {
+            info.value = el.value !== undefined ? el.value : '';
+          } else {
+            // fallback: capture value for other input types (e.g., date)
+            info.value = el.value !== undefined ? el.value : '';
+          }
+        } else if (el.tagName === 'SELECT') {
+          if (el.multiple) {
+            info.selected_text = Array.from(el.selectedOptions).map(o => o.text);
+          } else {
+            const sel = el.selectedOptions[0];
+            // special-case the dataset file selects to store filename text
+            if (el.id === 'editorPatientFileSelect' || el.id === 'editorTaxonomyFileSelect' || el.id === 'editorBrackenFileSelect') {
+              info.selected_text = sel ? sel.text : '';
+              info.value = el.value || '';
+            } else {
+              info.selected_text = sel ? sel.text : '';
+              info.value = el.value || '';
+            }
+          }
+        } else if (el.tagName === 'TEXTAREA') {
+          info.value = el.value !== undefined ? el.value : '';
+        }
+      } catch (e) {
+        // ignore read-only properties
+      }
+
+      controls[key] = info;
+    });
+
+    return controls;
   }
 
   // Collect data sources

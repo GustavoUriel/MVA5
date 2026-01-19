@@ -640,6 +640,16 @@ function cancelAnalysisEdit() {
   if (analysisEditorSection) {
     analysisEditorSection.style.display = "none";
   }
+  // Refresh the existing analyses list
+  try {
+    if (window.analysisManager && typeof window.analysisManager.loadAnalysisList === 'function') {
+      window.analysisManager.loadAnalysisList();
+    } else if (typeof loadAnalysisList === 'function') {
+      loadAnalysisList();
+    }
+  } catch (e) {
+    console.error('Error refreshing analysis list after close:', e);
+  }
 }
 
 function saveAnalysis() {
@@ -655,6 +665,10 @@ function saveAnalysis() {
 
   // Collect all form data from the three tabs
   const analysisConfig = collectAnalysisConfiguration();
+  // Collect full controls state to persist all inputs (even empty/unchecked)
+  try {
+    analysisConfig.controls_state = collectAllControls();
+  } catch (e) {}
 
   // Send to backend to save as JSON file
   fetch(`/dataset/${datasetId}/analysis/save`, {
@@ -850,6 +864,55 @@ function collectAnalysisTypeParameters() {
   return parameters;
 }
 
+// Collect states of all form controls inside the analysis editor (values, checked, options, visibility)
+function collectAllControls() {
+  const root = document.getElementById('analysisEditorSection');
+  if (!root) return {};
+
+  const controls = {};
+  const elems = root.querySelectorAll('input, select, textarea, button');
+  let anonIdx = 0;
+
+  elems.forEach((el) => {
+    const key = el.id || el.name || `elem_${anonIdx++}`;
+    const info = { id: el.id || null, name: el.name || null, tag: el.tagName.toLowerCase() };
+    try {
+      if (el.tagName === 'INPUT') {
+        const t = (el.type || '').toLowerCase();
+        if (t === 'checkbox' || t === 'radio') {
+          info.checked = !!el.checked;
+          info.value = el.value !== undefined ? el.value : '';
+        } else if (t === 'range' || t === 'number') {
+          info.value = el.value !== undefined ? el.value : '';
+        } else {
+          info.value = el.value !== undefined ? el.value : '';
+        }
+      } else if (el.tagName === 'SELECT') {
+        if (el.multiple) {
+          info.selected_text = Array.from(el.selectedOptions).map(o => o.text);
+        } else {
+          const sel = el.selectedOptions[0];
+          if (el.id === 'editorPatientFileSelect' || el.id === 'editorTaxonomyFileSelect' || el.id === 'editorBrackenFileSelect') {
+            info.selected_text = sel ? sel.text : '';
+            info.value = el.value || '';
+          } else {
+            info.selected_text = sel ? sel.text : '';
+            info.value = el.value || '';
+          }
+        }
+      } else if (el.tagName === 'TEXTAREA') {
+        info.value = el.value !== undefined ? el.value : '';
+      }
+    } catch (e) {
+      // ignore read-only properties
+    }
+
+    controls[key] = info;
+  });
+
+  return controls;
+}
+
 function runAnalysisFromEditor() {
   console.log("Running analysis from editor...");
 
@@ -963,11 +1026,22 @@ function displayColumnGroups(columnGroups) {
 
   let html = "";
   let groupIndex = 0;
+  const usedIds = new Set();
 
   // columnGroups is now an ordered array from the backend
   columnGroups.forEach((group) => {
-    const groupId = `colGroup${groupIndex}`;
     const displayName = formatGroupName(group.name);
+    // Use the first line of the label (without spaces) as id/name
+    let baseId = (displayName || '').split('\n')[0].replace(/\s+/g, '');
+    if (!baseId) baseId = `colGroup${groupIndex}`;
+    let groupId = baseId;
+    let uniqCounter = 1;
+    // Ensure the id is unique within this render
+    while (usedIds.has(groupId) || document.getElementById(groupId)) {
+      groupId = `${baseId}_${uniqCounter}`;
+      uniqCounter++;
+    }
+    usedIds.add(groupId);
     const columnCount = group.columns.length;
 
     // Create a list of field names, sorted as they appear in the metadata file
