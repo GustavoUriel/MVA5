@@ -1,3 +1,7 @@
+# 00_ResultsComparison.md
+
+This document defines the conventions and expected result artefacts for comparing multiple analysis runs and methods.
+Note: updated to reflect the comparison output spec and naming used in `RequiredOutputs.md` and to align terminology with `330.MVAMethodsComparison.md` and the consensus outputs defined in `250.MVAMethods.md` and `07_consensus_analysis` sections of the pipeline structure.
 # 00_ResultsComparison.md: Multi-Method Results Comparison Framework
 
 This document specifies how to compare results across different MVA methods, variable selection approaches, grouping strategies, and complete pipeline runs to identify the most PFS-relevant microbes.

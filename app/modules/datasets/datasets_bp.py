@@ -409,12 +409,22 @@ def get_column_groups(dataset_id):
     COLUMN_GROUPS = load_metadata_module('COLUMN_GROUPS')
 
     # Convert to ordered list to preserve the order from the metadata file
-    # Python 3.7+ dictionaries maintain insertion order
+    # Support two metadata shapes:
+    # 1) COLUMN_GROUPS = { 'group_key': [col1, col2, ...], ... }
+    # 2) COLUMN_GROUPS = { 'group_key': {'title': 'Display Name', 'columns': [...]}, ... }
     ordered_groups = []
-    for group_name, columns in COLUMN_GROUPS.items():
+    for group_key, value in COLUMN_GROUPS.items():
+      # Normalize value to extract display name and columns list
+      if isinstance(value, dict):
+        display_name = value.get('title') or value.get('name') or group_key
+        cols = value.get('columns') or value.get('fields') or []
+      else:
+        display_name = group_key
+        cols = value if value is not None else []
+
       ordered_groups.append({
-          'name': group_name,
-          'columns': columns
+          'name': display_name,
+          'columns': cols
       })
 
     return jsonify({
@@ -445,11 +455,12 @@ def get_attribute_discarding_policies(dataset_id):
       if policy_key != 'DEFAULT_DISCARDING_SETTINGS':  # Skip the default settings
         ordered_policies.append({
             'key': policy_key,
-            'name': policy_data['name'],
-            'description': policy_data['description'],
-            'parameters': policy_data['parameters'],
-            'enabled': policy_data['enabled'],
-            'order': policy_data['order']
+            'name': policy_data.get('name', policy_key),
+            'description': policy_data.get('description', ''),
+            'parameters': policy_data.get('parameters', {}),
+            'enabled': policy_data.get('enabled', False),
+            'order': policy_data.get('order', 999),
+            'info': policy_data.get('info', {})
         })
 
     # Sort by order
@@ -504,11 +515,12 @@ def get_microbial_discarding_policies(dataset_id):
       if policy_key != 'DEFAULT_MICROBIAL_DISCARDING_SETTINGS':  # Skip the default settings
         ordered_policies.append({
             'key': policy_key,
-            'name': policy_data['name'],
-            'description': policy_data['description'],
-            'parameters': policy_data['parameters'],
-            'enabled': policy_data['enabled'],
-            'order': policy_data['order']
+            'name': policy_data.get('name', policy_key),
+            'description': policy_data.get('description', ''),
+            'parameters': policy_data.get('parameters', {}),
+            'enabled': policy_data.get('enabled', False),
+            'order': policy_data.get('order', 999),
+            'info': policy_data.get('info', {})
         })
 
     # Sort by order
@@ -546,6 +558,45 @@ def calculate_remaining_microbes(dataset_id):
     }), 500
 
 
+@datasets_bp.route('/dataset/<int:dataset_id>/metadata/microbial-grouping')
+@login_required
+def get_microbial_grouping_methods(dataset_id):
+  """Get microbial grouping methods metadata"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+
+  try:
+    MICROBIAL_GROUPING = load_metadata_module('MICROBIAL_GROUPING')
+
+    # Convert to ordered list to preserve the order from the metadata file
+    # Python 3.7+ dictionaries maintain insertion order
+    ordered_methods = []
+    for method_key, method_data in MICROBIAL_GROUPING.items():
+      if method_key != 'DEFAULT_MICROBIAL_GROUPING_SETTINGS':  # Skip the default settings
+        ordered_methods.append({
+            'key': method_key,
+            'name': method_data.get('name', method_key),
+            'description': method_data.get('description', ''),
+            'parameters': method_data.get('parameters', {}),
+            'enabled': method_data.get('enabled', False),
+            'order': method_data.get('order', 999),
+            'info': method_data.get('info', {})
+        })
+
+    # Sort by order
+    ordered_methods.sort(key=lambda x: x['order'])
+
+    return jsonify({
+        'success': True,
+        'grouping_methods': ordered_methods
+    })
+  except Exception as e:
+    return jsonify({
+        'success': False,
+        'error': str(e)
+    }), 500
+
+
 @datasets_bp.route('/dataset/<int:dataset_id>/metadata/stratifications')
 @login_required
 def get_stratifications(dataset_id):
@@ -554,45 +605,24 @@ def get_stratifications(dataset_id):
       id=dataset_id, user_id=current_user.id).first_or_404()
 
   try:
-    STRATIFICATIONS = load_metadata_module('STRATIFICATIONS')
+    POPULATION_SUBGROUPS = load_metadata_module('POPULATION_SUBGROUPS')
 
-    # Convert to ordered list to preserve the order from the metadata file
-    ordered_stratifications = []
-    for group_name, group_stratifications in STRATIFICATIONS.items():
-      group_data = {
-          'group_name': group_name,
-          'group_label': format_group_name(group_name),
-          'stratifications': []
-      }
-
-      for strat_name, strat_data in group_stratifications.items():
-        strat_info = {
-            'name': strat_name,
-            'label': format_stratification_name(strat_name),
-            'type': strat_data['type'],
-            'method': strat_data['method'],
-            'groups': []
+    # Flatten stratifications for frontend compatibility
+    flat_stratifications = {}
+    for subgroup_key, subgroup_data in POPULATION_SUBGROUPS.items():
+      if subgroup_key != 'DEFAULT_POPULATION_SUBGROUPS_SETTINGS':
+        flat_stratifications[subgroup_key] = {
+          'name': subgroup_data.get('name', subgroup_key),
+          'description': subgroup_data.get('description', ''),
+          'parameters': subgroup_data.get('parameters', {}),
+          'info': subgroup_data.get('info', {}),
+          'group_info': subgroup_data.get('group_info', ''),
+          'subgroups': subgroup_data.get('subgroups', [])
         }
 
-        # Add groups information
-        if 'groups' in strat_data:
-          for group_key, group_info in strat_data['groups'].items():
-            strat_info['groups'].append({
-                'key': group_key,
-                'label': group_info['label']
-            })
-
-        # Add parameters for composite stratifications
-        if 'parameters' in strat_data:
-          strat_info['parameters'] = strat_data['parameters']
-
-        group_data['stratifications'].append(strat_info)
-
-      ordered_stratifications.append(group_data)
-
     return jsonify({
-        'success': True,
-        'stratifications': ordered_stratifications
+      'success': True,
+      'stratifications': flat_stratifications
     })
   except Exception as e:
     return jsonify({

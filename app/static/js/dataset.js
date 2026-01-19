@@ -1109,53 +1109,58 @@ function displayStratifications(stratifications) {
   if (!stratificationContainer) return;
 
   let html = "";
-  let groupIndex = 0;
-
-  stratifications.forEach((group) => {
+  let index = 0;
+  // Accepts flat dictionary format from backend
+  Object.entries(stratifications).forEach(([key, stratification]) => {
+    const stratId = `strat_${index}_${key}`;
+    
+    let groupInfoHtml = '';
+    if (Array.isArray(stratification.group_info)) {
+      groupInfoHtml = `<ul class="mb-0 ps-3">${stratification.group_info.map(item => `<li>${item.replace(/^• /, '')}</li>`).join('')}</ul>`;
+    } else if (stratification.group_info) {
+      groupInfoHtml = `<span class="text-info" style="font-size:0.95em;">${stratification.group_info}</span>`;
+    }
+    let subgroupsHtml = '';
+    if (Array.isArray(stratification.subgroups) && stratification.subgroups.length > 0) {
+      subgroupsHtml = `<div class="mt-2"><strong>Subgroups:</strong><ul class="mb-0 ps-3">${stratification.subgroups.map(sg => `<li><strong>${sg.name}:</strong> <span class='text-muted'>${sg.condition}</span></li>`).join('')}</ul></div>`;
+    }
     html += `
-            <div class="mb-4">
-                <h6 class="text-primary mb-3">
-                    <i class="fas fa-layer-group me-2"></i>
-                    ${group.group_label}
-                </h6>
-                <div class="row">
-        `;
-
-    group.stratifications.forEach((stratification) => {
-      const stratId = `strat_${groupIndex}_${stratification.name}`;
-      const groupCount = stratification.groups.length;
-
-      html += `
-                <div class="col-md-6 mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="${stratId}" onchange="updateStratificationSummary()">
-                        <label class="form-check-label" for="${stratId}">
-                            <strong>${stratification.label}</strong>
-                            <small class="text-muted d-block">
-                                ${stratification.type} • ${groupCount} groups
-                                ${stratification.parameters ? `• ${stratification.parameters.length} parameters` : ""}
-                            </small>
-                            <div class="mt-1 stratification-groups" style="display: none;">
-                                ${stratification.groups
-                                  .map(
-                                    (group) => `<span class="badge bg-light text-dark me-1 mb-1">${group.label}</span>`
-                                  )
-                                  .join("")}
-                            </div>
-                        </label>
-                    </div>
-                </div>
-            `;
-      groupIndex++;
-    });
-
-    html += `
-                </div>
+      <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="${stratId}" onchange="(window.analysisManager && window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="${stratId}">
+                <strong>${stratification.name}</strong>
+                <small class="text-muted d-block">${stratification.description || ''}</small>
+              </label>
             </div>
-        `;
+            <div class="mt-2">${groupInfoHtml}</div>
+            ${subgroupsHtml}
+          </div>
+        </div>
+      </div>
+    `;
+    index++;
   });
+  stratificationContainer.innerHTML = `<div class="row">${html}</div>`;
 
-  stratificationContainer.innerHTML = html;
+  // Ensure all stratification checkboxes are unchecked by default on load
+  try {
+    const boxes = stratificationContainer.querySelectorAll('input[type="checkbox"]');
+    boxes.forEach((cb) => {
+      cb.checked = false;
+    });
+  } catch (e) {
+    console.warn('Unable to reset stratification checkboxes to unchecked by default', e);
+  }
+
+  // Update summary using analysisManager if available, otherwise fallback
+  if (window.analysisManager && typeof window.analysisManager.updateStratificationSummary === 'function') {
+    window.analysisManager.updateStratificationSummary();
+  } else if (typeof updateStratificationSummary === 'function') {
+    updateStratificationSummary();
+  }
 }
 
 function toggleStratification() {
@@ -1183,7 +1188,11 @@ function selectAllStratifications() {
   checkboxes.forEach((checkbox) => {
     checkbox.checked = true;
   });
-  updateStratificationSummary();
+  if (window.analysisManager && typeof window.analysisManager.updateStratificationSummary === 'function') {
+    window.analysisManager.updateStratificationSummary();
+  } else if (typeof updateStratificationSummary === 'function') {
+    updateStratificationSummary();
+  }
 }
 
 function clearAllStratifications() {
@@ -1191,7 +1200,11 @@ function clearAllStratifications() {
   checkboxes.forEach((checkbox) => {
     checkbox.checked = false;
   });
-  updateStratificationSummary();
+  if (window.analysisManager && typeof window.analysisManager.updateStratificationSummary === 'function') {
+    window.analysisManager.updateStratificationSummary();
+  } else if (typeof updateStratificationSummary === 'function') {
+    updateStratificationSummary();
+  }
 }
 
 function updateStratificationSummary() {
@@ -2042,23 +2055,17 @@ function updateTimePointDescriptionValidation() {
 
 // The correct global updateTimePointDescription function that should be called by onchange
 function updateTimePointDescription() {
-  // #region agent log - hypothesis E: Check if corrected global function is called
-  fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset.js:updateTimePointDescription',message:'Corrected global updateTimePointDescription called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
+  // updateTimePointDescription called
 
   // First try the analysis manager (preferred)
   if (window.analysisManager && typeof window.analysisManager.updateTimePointDescription === 'function') {
-    // #region agent log - hypothesis E: Using analysis manager
-    fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset.js:updateTimePointDescription',message:'Using analysis manager method',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
+    // using analysis manager method
     window.analysisManager.updateTimePointDescription();
     return;
   }
 
   // Fallback to standalone implementation
-  // #region agent log - hypothesis E: Using fallback implementation
-  fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset.js:updateTimePointDescription',message:'Using fallback implementation',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
+  // using fallback implementation
 
   const timePointSelect = document.getElementById("editorBrackenTimePointSelect");
   const descriptionElement = document.getElementById("timePointDescriptionText");
@@ -2417,6 +2424,8 @@ function updateAnalysisMethod() {
     description.textContent = "Choose a method for multivariate survival analysis";
     parametersContainer.style.display = "none";
     updateAnalysisMethodSummary();
+    // Update comparison visibility in analysis manager if available
+    try { if (window.analysisManager && typeof window.analysisManager.updateAnalysisMethodsVisibility === 'function') window.analysisManager.updateAnalysisMethodsVisibility(); } catch(e) {}
     return;
   }
 
@@ -2438,6 +2447,8 @@ function updateAnalysisMethod() {
 
         // Update summary
         updateAnalysisMethodSummary();
+        // Update comparison visibility in analysis manager if available
+        try { if (window.analysisManager && typeof window.analysisManager.updateAnalysisMethodsVisibility === 'function') window.analysisManager.updateAnalysisMethodsVisibility(); } catch(e) {}
       } else {
         showAnalysisMethodError(data.error);
       }

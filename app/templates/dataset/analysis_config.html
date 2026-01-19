@@ -515,17 +515,45 @@
               <div class="col-12">
                 <div class="card">
                   <div class="card-header">
-                    <h6 class="mb-0">
-                      <i class="fas fa-object-group me-2"></i>
-                      Microbial Grouping
-                    </h6>
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 class="mb-0">
+                        <i class="fas fa-object-group me-2"></i>
+                        Microbial Grouping
+                      </h6>
+                      <div class="btn-group btn-group-sm">
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          id="toggleMicrobialGroupingBtn"
+                          onclick="toggleMicrobialGrouping()">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div class="card-body">
-                    <p class="text-muted mb-3">Configure how microbial taxa should be grouped for analysis (e.g., by genus, family, or custom groupings).</p>
-                    <!-- Microbial Grouping content will be populated here -->
-                    <div class="alert alert-info">
-                      <i class="fas fa-info-circle me-2"></i>
-                      Microbial grouping configuration will be implemented here.
+                    <p class="text-muted mb-3">Configure how microbial taxa should be grouped for analysis (e.g., by functional categories or custom groupings).</p>
+
+                    <!-- Microbial Grouping Container -->
+                    <div id="microbialGroupingContent" style="display: none">
+                      <div class="row" id="microbialGroupingContainer">
+                        <!-- Microbial grouping methods will be dynamically populated here -->
+                      </div>
+                    </div>
+
+                    <!-- Microbial Grouping Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="microbialGroupingSummary">
+                      <div class="row align-items-center">
+                        <div class="col-md-8">
+                          <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="microbialGroupingSummaryText">No microbial grouping methods selected</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                          <span class="badge bg-primary" id="totalMicrobialGroupingMethodsCount">0 methods</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -848,62 +876,124 @@
               <div class="col-12">
                 <div class="card">
                   <div class="card-header">
-                    <h6 class="mb-0">
-                      <i class="fas fa-timeline me-2"></i>
-                      Sample Timepoints Comparison
-                    </h6>
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 class="mb-0">
+                        <i class="fas fa-timeline me-2"></i>
+                        Sample Timepoints Comparison
+                      </h6>
+                      <div class="btn-group btn-group-sm">
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          id="toggleSampleTimepointsBtn"
+                          onclick="toggleSampleTimepoints()">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="selectAllSampleTimepoints()">
+                          <i class="fas fa-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllSampleTimepoints()">
+                          <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div class="card-body">
                     <p class="text-muted mb-3">Configure comparison of analysis results across different sample timepoints.</p>
-                    <!-- Sample Timepoints Comparison content will be populated here -->
-                    <div class="alert alert-info">
-                      <i class="fas fa-info-circle me-2"></i>
-                      Sample timepoints comparison configuration will be implemented here.
+                    <!-- Sample Timepoints Comparison content -->
+                    <div id="sampleTimepointsCard">
+                      <div class="row mb-2">
+                        <div class="col-md-4 d-flex align-items-center">
+                          <div class="w-100">
+                            <span class="form-text">Timepoint selected in Data Source: <strong id="selectedTimePointDisplay">None</strong></span>
+                          </div>
+                        </div>
+                        <div class="col-md-8 text-end align-self-end">
+                          <!-- header buttons shown above; keep this space for possible future controls -->
+                        </div>
+                      </div>
+
+                      <div id="sampleTimepointsContainer" style="display: none; grid-template-columns: repeat(2, 1fr); gap: .5rem;">
+                        <!-- checkboxes for other timepoints will be rendered here -->
+                      </div>
+
+                      <div class="mt-3 p-2 bg-light rounded" id="sampleTimepointsSummary">
+                        <div class="d-flex align-items-center justify-content-between">
+                          <div>
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="sampleTimepointsSummaryText">No timepoints selected</span>
+                          </div>
+                          <div>
+                            <span class="badge bg-primary" id="sampleTimepointsCount">0 selected</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Microbial Grouping Comparison -->
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="card">
-                  <div class="card-header">
-                    <h6 class="mb-0">
-                      <i class="fas fa-object-group me-2"></i>
-                      Microbial Grouping Comparison
-                    </h6>
-                  </div>
-                  <div class="card-body">
-                    <p class="text-muted mb-3">Configure comparison of analysis results across different microbial groupings.</p>
-                    <!-- Microbial Grouping Comparison content will be populated here -->
-                    <div class="alert alert-info">
-                      <i class="fas fa-info-circle me-2"></i>
-                      Microbial grouping comparison configuration will be implemented here.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <!-- Microbial Grouping Comparison removed -->
 
             <!-- Analysis Methods Comparison -->
             <div class="row mb-4">
               <div class="col-12">
                 <div class="card">
                   <div class="card-header">
-                    <h6 class="mb-0">
-                      <i class="fas fa-balance-scale me-2"></i>
-                      Analysis Methods Comparison
-                    </h6>
+                    <div class="d-flex align-items-center justify-content-between">
+                      <h6 class="mb-0">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        Analysis Methods Comparison
+                      </h6>
+                      <div class="btn-group btn-group-sm">
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary"
+                          id="toggleAnalysisMethodsBtn"
+                          onclick="toggleAnalysisMethods()">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="selectAllAnalysisMethods()">
+                          <i class="fas fa-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllAnalysisMethods()">
+                          <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div class="card-body">
-                    <p class="text-muted mb-3">Configure comparison of results from different analysis methods.</p>
-                    <!-- Analysis Methods Comparison content will be populated here -->
-                    <div class="alert alert-info">
-                      <i class="fas fa-info-circle me-2"></i>
-                      Analysis methods comparison configuration will be implemented here.
+                    <p class="text-muted mb-3">Configure comparison of results produced by different analysis methods.</p>
+
+                    <div id="analysisMethodsCard">
+                      <div class="row mb-2">
+                        <div class="col-12 d-flex align-items-center">
+                          <div class="w-100">
+                            <span class="form-text">MVA Method selected in Analysis: <strong id="selectedAnalysisMethodDisplay">None</strong></span>
+                          </div>
+                        </div>
+                        <div class="col-12 text-end align-self-end">
+                          <!-- header buttons shown above; reserved space -->
+                        </div>
+                      </div>
+                      <div id="analysisMethodsContainer" style="display: none; grid-template-columns: repeat(2, 1fr); gap: .5rem;">
+                        <!-- analysis method cards will be rendered here -->
+                      </div>
+
+                      <div class="mt-3 p-2 bg-light rounded" id="analysisMethodsSummary">
+                        <div class="d-flex align-items-center justify-content-between">
+                          <div>
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="analysisMethodsSummaryText">No methods selected</span>
+                          </div>
+                          <div>
+                            <span class="badge bg-primary" id="analysisMethodsCount">0 selected</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
                   </div>
                 </div>
               </div>

@@ -16,6 +16,8 @@ This is the **technical specification** for implementing the modular microbiome 
 
 **Use this document when:** Building the pipeline implementation, debugging data flow issues, tracing individual microbes, or comparing analytical approaches.
 
+Note: updated to reflect the pipeline stage names, data keys and provenance conventions used across the `architecture/analysis` step documents (110-410). The standardized `PipelineData` structure and the `taxa_provenance` schema match the other analysis documents for consistent implementation.
+
 ---
 
 ## 📊 **Core Design Principles**

@@ -15,6 +15,8 @@ This specification defines:
 
 **Use this document when:** Planning pipeline implementation, validating outputs, or documenting results for publication.
 
+Note: updated to ensure required output filenames and categories align with the detailed step documents (110.DataSourcesSelect.md → input naming, 250.MVAMethods.md → MVA outputs, 410.OutputOptions.md → export formats). Use the `PipelineData` keys described in `00_DataFlow.md` when implementing generation scripts.
+
 ---
 
 # 📊 **LIST 1: Single Pipeline Run Outputs**

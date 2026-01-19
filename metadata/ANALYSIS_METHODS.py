@@ -543,3 +543,44 @@ METHOD_DESCRIPTIONS = {
     'frailty_model': 'Extension of Cox regression that accounts for unobserved heterogeneity.',
     'competing_risks': 'Method for analyzing multiple mutually exclusive event types.'
 }
+
+
+def get_analysis_methods_for_ui():
+    """Return a list of analysis methods formatted for the UI comparison card and info modal.
+
+    Each method dict contains:
+      - key: the method key
+      - title: display name
+      - description: short description
+      - info: dict with title, description, pros, cons, limitations, expectations, parameters
+    """
+    methods = []
+    for key, meta in ANALYSIS_METHODS.items():
+        params = []
+        for pkey, pmeta in meta.get('parameters', {}).items():
+            params.append({
+                'name': pkey,
+                'label': pmeta.get('name') or pkey,
+                'default': pmeta.get('default'),
+                'description': pmeta.get('description', '')
+            })
+
+        info = {
+            'title': meta.get('name'),
+            'description': meta.get('description') or METHOD_DESCRIPTIONS.get(key, ''),
+            'pros': meta.get('pros', []),
+            'cons': meta.get('cons', []),
+            'limitations': meta.get('cons', []),
+            'expectations': meta.get('use_cases', []) or [METHOD_DESCRIPTIONS.get(key, '')],
+            'parameters': params
+        }
+
+        methods.append({
+            'key': key,
+            'title': meta.get('name'),
+            'name': meta.get('name'),
+            'description': METHOD_DESCRIPTIONS.get(key, meta.get('description', '')),
+            'info': info
+        })
+
+    return methods

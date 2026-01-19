@@ -17,6 +17,7 @@ class DatasetAnalysisManager {
     await this.loadColumnGroups();
     await this.loadDiscardingPolicies();
     await this.loadMicrobialDiscardingPolicies();
+    await this.loadMicrobialGroupingPolicies();
     await this.loadBrackenTimePoints();
     await this.loadStratifications();
     await this.loadClusteringMethods();
@@ -180,29 +181,19 @@ class DatasetAnalysisManager {
             </td>
             <td>
                 <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-primary" onclick="loadAnalysis('${
-                      analysis.filename
-                    }')" title="Load Analysis">
+                    <button type="button" class="btn btn-outline-primary" onclick='loadAnalysis("${analysis.filename}")' title="Load Analysis">
                         <i class="fas fa-folder-open"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-success" onclick="runAnalysis('${
-                      analysis.filename
-                    }')" title="Run Analysis">
+                    <button type="button" class="btn btn-outline-success" onclick='runAnalysis("${analysis.filename}")' title="Run Analysis">
                         <i class="fas fa-play"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-info" onclick="duplicateAnalysis('${
-                      analysis.filename
-                    }')" title="Duplicate Analysis">
+                    <button type="button" class="btn btn-outline-info" onclick='duplicateAnalysis("${analysis.filename}")' title="Duplicate Analysis">
                         <i class="fas fa-copy"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-warning" onclick="renameAnalysis('${
-                      analysis.filename
-                    }', '${analysis.name}')" title="Rename Analysis">
+                    <button type="button" class="btn btn-outline-warning" onclick='renameAnalysis("${analysis.filename}", "${analysis.name}")' title="Rename Analysis">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-danger" onclick="deleteAnalysis('${
-                      analysis.filename
-                    }')" title="Delete Analysis">
+                    <button type="button" class="btn btn-outline-danger" onclick='deleteAnalysis("${analysis.filename}")' title="Delete Analysis">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -280,7 +271,11 @@ class DatasetAnalysisManager {
       dataSources: this.collectDataSources(),
       columnGroups: this.collectColumnGroups(),
       discardingPolicies: this.collectDiscardingPolicies(),
+      microbialDiscardingPolicies: this.collectMicrobialDiscardingPolicies(),
+      microbialGrouping: this.collectMicrobialGrouping(),
       timePoint: this.collectTimePoint(),
+      sample_timepoints: this.collectSampleTimepoints(),
+      analysis_methods_comparison: this.collectAnalysisMethodsComparison(),
       stratifications: this.collectStratificationMethods(),
       clustering: this.collectClusteringParameters(),
       clusterRepresentative: this.collectClusterRepresentativeParameters(),
@@ -341,6 +336,68 @@ class DatasetAnalysisManager {
     }
 
     return selectedPolicies;
+  }
+
+  // Collect microbial discarding policies
+  collectMicrobialDiscardingPolicies() {
+    const container = document.getElementById("microbialDiscardingPolicyContainer");
+    const selectedPolicies = {};
+
+    if (container) {
+      const policyCards = container.querySelectorAll('.microbial-discarding-policy-card');
+      policyCards.forEach((card) => {
+        const policyKey = card.dataset.policyKey;
+        const enabledCheckbox = card.querySelector('input[type="checkbox"]');
+        const parameters = {};
+
+        // Collect parameter values
+        const inputs = card.querySelectorAll('input, select');
+        inputs.forEach((input) => {
+          if (input.name && input.value !== "") {
+            parameters[input.name] = input.value;
+          }
+        });
+
+        selectedPolicies[policyKey] = {
+          enabled: enabledCheckbox ? enabledCheckbox.checked : false,
+          parameters: parameters
+        };
+      });
+    }
+
+    return selectedPolicies;
+  }
+
+  // Collect microbial grouping
+  collectMicrobialGrouping() {
+    const container = document.getElementById("microbialGroupingContainer");
+    const selectedMethod = null;
+
+    if (container) {
+      const selectedRadio = container.querySelector('input[name="microbialGroupingMethod"]:checked');
+      if (selectedRadio) {
+        const methodKey = selectedRadio.value;
+        const methodCard = container.querySelector(`[data-method-key="${methodKey}"]`);
+        const parameters = {};
+
+        // Collect parameter values from the selected method's card
+        if (methodCard) {
+          const inputs = methodCard.querySelectorAll('input, select');
+          inputs.forEach((input) => {
+            if (input.name && input.value !== "") {
+              parameters[input.name] = input.value;
+            }
+          });
+        }
+
+        return {
+          method: methodKey,
+          parameters: parameters
+        };
+      }
+    }
+
+    return null; // No method selected
   }
 
   // Collect time point
@@ -529,17 +586,33 @@ class DatasetAnalysisManager {
 
     if (!container) return;
 
-    const groupsHTML = Object.entries(columnGroups)
-      .map(([groupKey, groupData]) => {
-        const groupName = DatasetUtils.formatGroupName(groupKey);
-        const fieldCount = groupData.fields ? groupData.fields.length : 0;
+    // Support both dictionary-style and ordered-list responses from backend
+    let groupsArray = [];
+
+    if (Array.isArray(columnGroups)) {
+      groupsArray = columnGroups.map((g) => ({
+        name: g.name || g.key || '',
+        columns: g.columns || g.fields || []
+      }));
+    } else if (typeof columnGroups === 'object' && columnGroups !== null) {
+      groupsArray = Object.entries(columnGroups).map(([key, val]) => ({
+        name: val.name || key,
+        columns: val.columns || val.fields || []
+      }));
+    }
+
+    const groupsHTML = groupsArray
+      .map((group, idx) => {
+        const groupKey = (group.name || `group_${idx}`).replace(/\s+/g, '_').toLowerCase();
+        const groupName = DatasetUtils.formatGroupName(group.name || groupKey);
+        const fieldCount = Array.isArray(group.columns) ? group.columns.length : 0;
 
         return `
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="card">
                         <div class="card-body">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="${groupKey}" id="group_${groupKey}">
+                    <input class="form-check-input" type="checkbox" value="${groupName}" id="group_${groupKey}" data-field-count="${fieldCount}" onchange="window.analysisManager && window.analysisManager.updateColumnGroupsSummary()" checked>
                                 <label class="form-check-label" for="group_${groupKey}">
                                     <strong>${groupName}</strong>
                                     <small class="text-muted d-block">${fieldCount} fields</small>
@@ -553,6 +626,11 @@ class DatasetAnalysisManager {
       .join("");
 
     container.innerHTML = groupsHTML;
+
+    // Ensure the content area is visible now that groups are loaded
+    const content = document.getElementById('columnGroupsContent');
+    if (content) content.style.display = 'block';
+
     this.updateColumnGroupsSummary();
   }
 
@@ -610,66 +688,41 @@ class DatasetAnalysisManager {
 
   // Generate parameter inputs for a policy
   generateParameterInputs(policyKey, parameters) {
+    // For microbial grouping, only show static subgroup descriptions (no inputs)
+    // If a parameter has type 'static', just show its label and description
     return Object.entries(parameters)
       .map(([paramKey, paramConfig]) => {
-        const inputId = `${policyKey}_${paramKey}`;
-        const inputName = paramKey;
-        let inputHTML = '';
+        if (paramConfig.type === 'static') {
+          // Render subgroup descriptions as a bullet list when appropriate
+          if (paramKey === 'subgroups' && typeof paramConfig.description === 'string') {
+            // Split into sentences by period, semicolon or newline, keep non-empty parts
+            const parts = paramConfig.description
+              .split(/\.|;|\n/)
+              .map(p => p.trim())
+              .filter(p => p.length > 0);
 
-        switch (paramConfig.type) {
-          case 'float':
-            inputHTML = `
-                        <div class="col-md-6 mb-3">
-                            <label for="${inputId}" class="form-label">${paramConfig.label}</label>
-                            <input
-                                type="number"
-                                class="form-control"
-                                id="${inputId}"
-                                name="${inputName}"
-                                value="${paramConfig.default}"
-                                min="${paramConfig.min || ''}"
-                                max="${paramConfig.max || ''}"
-                                step="${paramConfig.step || 'any'}"
-                            />
-                            <div class="form-text">${paramConfig.description}</div>
-                        </div>
-                    `;
-            break;
-          case 'int':
-            inputHTML = `
-                        <div class="col-md-6 mb-3">
-                            <label for="${inputId}" class="form-label">${paramConfig.label}</label>
-                            <input
-                                type="number"
-                                class="form-control"
-                                id="${inputId}"
-                                name="${inputName}"
-                                value="${paramConfig.default}"
-                                min="${paramConfig.min || ''}"
-                                max="${paramConfig.max || ''}"
-                                step="${paramConfig.step || 1}"
-                            />
-                            <div class="form-text">${paramConfig.description}</div>
-                        </div>
-                    `;
-            break;
-          case 'select':
-            const options = paramConfig.options
-              .map(option => `<option value="${option.value}" ${option.value === paramConfig.default ? 'selected' : ''}>${option.label}</option>`)
-              .join('');
-            inputHTML = `
-                        <div class="col-md-6 mb-3">
-                            <label for="${inputId}" class="form-label">${paramConfig.label}</label>
-                            <select class="form-select" id="${inputId}" name="${inputName}">
-                                ${options}
-                            </select>
-                            <div class="form-text">${paramConfig.description}</div>
-                        </div>
-                    `;
-            break;
+            const items = parts.map(p => {
+              // If contains colon, bold the left side
+              if (p.indexOf(':') !== -1) {
+                const [left, right] = p.split(/:\s*(.+)/); // split into two parts
+                return `<li><strong>${left.trim()}:</strong> ${right ? right.trim() : ''}</li>`;
+              }
+              return `<li>${p}</li>`;
+            }).join('');
+
+            return `<div class="col-12 mb-2">
+                      <label class="form-label fw-bold">${paramConfig.label}</label>
+                      <div class="form-text"><ul class="mb-0 ps-3">${items}</ul></div>
+                    </div>`;
+          }
+
+          return `<div class="col-12 mb-2">
+                    <label class="form-label fw-bold">${paramConfig.label}</label>
+                    <div class="form-text">${paramConfig.description}</div>
+                  </div>`;
         }
-
-        return inputHTML;
+        // For all other types, do not render any input (future-proof)
+        return '';
       })
       .join("");
   }
@@ -766,6 +819,8 @@ class DatasetAnalysisManager {
 
     // Update description - placeholder should be selected initially
     this.updateTimePointDescription();
+    // Populate sample timepoints comparison UI
+    try { this.displaySampleTimepoints(timePoints); } catch(e) { /* ignore if UI not present */ }
   }
 
   // Show bracken time points error
@@ -778,6 +833,101 @@ class DatasetAnalysisManager {
     }
 
     DatasetUtils.showAlert(`Failed to load time points: ${message}`, "warning");
+  }
+
+  // Display sample timepoints comparison UI (checkboxes for all timepoints)
+  displaySampleTimepoints(timePoints) {
+    const container = document.getElementById('sampleTimepointsContainer');
+    const selectedDisplay = document.getElementById('selectedTimePointDisplay');
+    if (!container) return;
+
+    // Clear container
+    container.innerHTML = '';
+
+    // Render each timepoint as a checkbox row
+    timePoints.forEach(tp => {
+      const col = document.createElement('div');
+      // Use Bootstrap responsive grid columns (container uses row-cols-2)
+      col.className = 'col mb-2';
+
+      const card = document.createElement('div');
+      card.className = 'card p-2 h-100';
+      card.innerHTML = `
+        <div class="form-check">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="${tp.key}" id="sample_tp_${tp.key}">
+          <label class="form-check-label" for="sample_tp_${tp.key}">
+            <strong>${tp.title}</strong>
+            <div class="text-muted small">${(tp.description || '').substring(0,120)}${(tp.description||'').length>120?'...':''}</div>
+          </label>
+        </div>
+      `;
+
+      col.appendChild(card);
+      container.appendChild(col);
+    });
+
+    // Update initial selected display and visibility
+    this.updateSampleTimepointsVisibility();
+
+    // Add change listeners
+    const checkboxes = container.querySelectorAll('.sample-timepoint-checkbox');
+    checkboxes.forEach(cb => cb.addEventListener('change', () => this.updateSampleTimepointsSummary()));
+  }
+
+  // Hide/disable the checkbox that corresponds to the currently selected primary timepoint
+  updateSampleTimepointsVisibility() {
+    const selected = document.getElementById('editorBrackenTimePointSelect');
+    const selectedDisplay = document.getElementById('selectedTimePointDisplay');
+    const container = document.getElementById('sampleTimepointsContainer');
+    if (!container) return;
+
+    const selectedValue = selected ? selected.value : '';
+      // Show the option's visible text (title) rather than the value/key
+      let selectedText = '';
+      try {
+        selectedText = selected && selected.options && selected.selectedIndex >= 0 ? selected.options[selected.selectedIndex].text : '';
+      } catch (e) {
+        selectedText = selectedValue;
+      }
+      if (selectedDisplay) selectedDisplay.textContent = selectedText || 'None';
+
+    const checkboxes = container.querySelectorAll('.sample-timepoint-checkbox');
+    checkboxes.forEach(cb => {
+      if (cb.value === selectedValue) {
+        cb.checked = false;
+        cb.disabled = true;
+        const label = cb.nextElementSibling;
+        if (label) label.classList.add('text-muted');
+      } else {
+        cb.disabled = false;
+        const label = cb.nextElementSibling;
+        if (label) label.classList.remove('text-muted');
+      }
+    });
+
+    this.updateSampleTimepointsSummary();
+  }
+
+  // Update summary for sample timepoints selection
+  updateSampleTimepointsSummary() {
+    const container = document.getElementById('sampleTimepointsContainer');
+    const summaryText = document.getElementById('sampleTimepointsSummaryText');
+    const countBadge = document.getElementById('sampleTimepointsCount');
+    if (!container) return;
+
+    const selected = Array.from(container.querySelectorAll('.sample-timepoint-checkbox:checked')).map(cb => cb.value);
+    if (summaryText) {
+      summaryText.textContent = selected.length > 0 ? `${selected.length} timepoint(s) selected for comparison` : 'No timepoints selected';
+    }
+    if (countBadge) countBadge.textContent = `${selected.length} selected`;
+  }
+
+  // Collect selected sample timepoints for saving
+  collectSampleTimepoints() {
+    const container = document.getElementById('sampleTimepointsContainer');
+    if (!container) return [];
+    const selected = Array.from(container.querySelectorAll('.sample-timepoint-checkbox:checked')).map(cb => cb.value);
+    return selected;
   }
 
   // Load stratifications
@@ -804,20 +954,47 @@ class DatasetAnalysisManager {
 
     const stratificationsHTML = Object.entries(stratifications)
       .map(([key, stratification]) => {
+        // Group info (text or array)
+        let groupInfoHtml = '';
+        if (Array.isArray(stratification.group_info)) {
+          groupInfoHtml = `<ul class="mb-0 ps-3">${stratification.group_info.map(item => `<li>${item.replace(/^• /, '')}</li>`).join('')}</ul>`;
+        } else if (stratification.group_info) {
+          groupInfoHtml = `<span class="text-info" style="font-size:0.95em;">${stratification.group_info}</span>`;
+        }
+
+        // Parameters for stratification
+        let paramsHtml = '';
+        if (stratification.parameters && Object.keys(stratification.parameters).length > 0) {
+          // parameters may be an object with keys or an array in the info block
+          if (Array.isArray(stratification.parameters)) {
+            paramsHtml = `<div class="mt-2"><strong>Parameters:</strong><ul class="mb-0 ps-3">${stratification.parameters.map(p => `<li><strong>${p.name}</strong>: <span class='text-muted'>${p.description || ''} (default: ${p.default || ''})</span></li>`).join('')}</ul></div>`;
+          } else {
+            paramsHtml = `<div class="mt-2"><strong>Parameters:</strong><ul class="mb-0 ps-3">${Object.entries(stratification.parameters).map(([pkey, p]) => `<li><strong>${p.label || pkey}</strong>: <span class='text-muted'>${p.description || ''} (default: ${p.default || ''})</span></li>`).join('')}</ul></div>`;
+          }
+        } else if (stratification.info && Array.isArray(stratification.info.parameters) && stratification.info.parameters.length > 0) {
+          paramsHtml = `<div class="mt-2"><strong>Parameters:</strong><ul class="mb-0 ps-3">${stratification.info.parameters.map(p => `<li><strong>${p.name}</strong>: <span class='text-muted'>${p.description || ''} (default: ${p.default || ''})</span></li>`).join('')}</ul></div>`;
+        }
+
+        // Subgroups list
+        let subgroupsHtml = '';
+        if (Array.isArray(stratification.subgroups) && stratification.subgroups.length > 0) {
+          subgroupsHtml = `<div class="mt-2"><strong>Subgroups:</strong><ul class="mb-0 ps-3">${stratification.subgroups.map(sg => `<li><strong>${sg.name}:</strong> <span class='text-muted'>${sg.condition}</span></li>`).join('')}</ul></div>`;
+        }
+
         return `
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="${key}" id="strat_${key}">
-                                <label class="form-check-label" for="strat_${key}">
-                                    <strong>${stratification.name}</strong>
-                                    <small class="text-muted d-block">${stratification.description}</small>
-                                </label>
-                            </div>
-                        </div>
+              <div class="col-12 mb-3">
+                <div class="card w-100">
+                  <div class="card-body">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="${key}" id="strat_${key}" onchange="window.analysisManager && window.analysisManager.updateStratificationSummary()">
+                      <label class="form-check-label" for="strat_${key}">
+                        <strong>${stratification.name}</strong>
+                      </label>
                     </div>
+                    ${subgroupsHtml}
+                  </div>
                 </div>
+              </div>
             `;
       })
       .join("");
@@ -896,6 +1073,20 @@ class DatasetAnalysisManager {
 
       if (data.success) {
         this.displayAnalysisMethods(data.methods);
+        // Normalize methods into an array for UI usage and info modal
+        const methodsArray = Array.isArray(data.methods)
+          ? data.methods
+          : Object.entries(data.methods || {}).map(([k, v]) => {
+              return Object.assign({}, v, {
+                key: k,
+                title: v.title || v.name || k,
+                description: v.description || v.desc || ''
+              });
+            });
+
+        // store normalized methods and render comparison cards
+        this.analysisMethodsData = methodsArray;
+        try { this.displayAnalysisMethodsComparison(methodsArray); } catch (e) { /* ignore if UI not present */ }
       } else {
         this.showAnalysisMethodError(data.message);
       }
@@ -903,6 +1094,108 @@ class DatasetAnalysisManager {
       console.error("Failed to load analysis methods:", error);
       this.showAnalysisMethodError("Failed to load analysis methods");
     }
+  }
+
+  // Display analysis methods comparison cards
+  displayAnalysisMethodsComparison(methods) {
+    const container = document.getElementById('analysisMethodsContainer');
+    if (!container) return;
+
+    // Normalize input to an array if an object was provided
+    const methodsArray = Array.isArray(methods)
+      ? methods
+      : Object.entries(methods || {}).map(([k, v]) => ({ key: k, title: v.title || v.name || k, description: v.description || v.desc || '', info: v.info || v }));
+
+    container.innerHTML = '';
+
+    methodsArray.forEach(m => {
+      const col = document.createElement('div');
+      col.className = 'col mb-2';
+
+      const card = document.createElement('div');
+      card.className = 'card p-2 h-100 analysis-method-card';
+
+      const safeTitle = m.title || m.name || m.key;
+      const safeDesc = m.description || '';
+
+      card.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="form-check">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="${m.key}" id="analysis_method_${m.key}">
+              <label class="form-check-label" for="analysis_method_${m.key}"><strong>${safeTitle}</strong></label>
+            </div>
+            <div class="text-muted small">${(safeDesc).substring(0,120)}${(safeDesc).length>120?'...':''}</div>
+            <div class="text-muted small"><em>Uses default parameter values</em></div>
+          </div>
+          <div>
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('${m.key}')">Info</button>
+          </div>
+        </div>
+      `;
+
+      col.appendChild(card);
+      container.appendChild(col);
+    });
+
+    // wire change listeners
+    const checkboxes = container.querySelectorAll('.analysis-method-checkbox');
+    checkboxes.forEach(cb => cb.addEventListener('change', () => this.updateAnalysisMethodsSummary()));
+
+    this.updateAnalysisMethodsSummary();
+    // Ensure the selected analysis method is disabled in the comparison list
+    try { this.updateAnalysisMethodsVisibility(); } catch (e) { /* ignore */ }
+  }
+
+  // Hide/disable the checkbox that corresponds to the currently selected analysis method
+  updateAnalysisMethodsVisibility() {
+    const selected = document.getElementById('analysisMethodSelect');
+    const selectedDisplay = document.getElementById('selectedAnalysisMethodDisplay');
+    const container = document.getElementById('analysisMethodsContainer');
+    if (!container) return;
+
+    const selectedValue = selected ? selected.value : '';
+    // Show the option's visible text rather than the value/key
+    let selectedText = '';
+    try {
+      selectedText = selected && selected.options && selected.selectedIndex >= 0 ? selected.options[selected.selectedIndex].text : '';
+    } catch (e) {
+      selectedText = selectedValue;
+    }
+    if (selectedDisplay) selectedDisplay.textContent = selectedText || 'None';
+
+    const checkboxes = container.querySelectorAll('.analysis-method-checkbox');
+    checkboxes.forEach(cb => {
+      if (cb.value === selectedValue) {
+        cb.checked = false;
+        cb.disabled = true;
+        const label = cb.nextElementSibling;
+        if (label) label.classList.add('text-muted');
+      } else {
+        cb.disabled = false;
+        const label = cb.nextElementSibling;
+        if (label) label.classList.remove('text-muted');
+      }
+    });
+
+    this.updateAnalysisMethodsSummary();
+  }
+
+  updateAnalysisMethodsSummary() {
+    const container = document.getElementById('analysisMethodsContainer');
+    const summaryText = document.getElementById('analysisMethodsSummaryText');
+    const countBadge = document.getElementById('analysisMethodsCount');
+    if (!container) return;
+
+    const selected = Array.from(container.querySelectorAll('.analysis-method-checkbox:checked')).map(cb => cb.value);
+    if (summaryText) summaryText.textContent = selected.length > 0 ? `${selected.length} method(s) selected for comparison` : 'No methods selected';
+    if (countBadge) countBadge.textContent = `${selected.length} selected`;
+  }
+
+  collectAnalysisMethodsComparison() {
+    const container = document.getElementById('analysisMethodsContainer');
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.analysis-method-checkbox:checked')).map(cb => cb.value);
   }
 
   // Display analysis methods
@@ -1133,6 +1426,8 @@ class DatasetAnalysisManager {
     }
 
     // No longer disabling the first option - all options should remain selectable
+    // Update sample timepoints UI visibility to hide the primary selection
+    try { this.updateSampleTimepointsVisibility(); } catch(e) { /* ignore */ }
   }
 
   // Validate analysis editor
@@ -1168,20 +1463,20 @@ class DatasetAnalysisManager {
       }
     });
 
-    // Reset checkboxes
+    // Reset checkboxes (default to checked)
     const checkboxes = document.querySelectorAll(
       '#columnGroupsContainer input[type="checkbox"], #stratificationContainer input[type="checkbox"]'
     );
     checkboxes.forEach((checkbox) => {
-      checkbox.checked = false;
+      checkbox.checked = true;
     });
 
-    // Reset discarding policy checkboxes and hide bodies
-    const discardingCheckboxes = document.querySelectorAll('#discardingPolicyContainer input[type="checkbox"]');
-    discardingCheckboxes.forEach((checkbox) => {
-      checkbox.checked = false;
-      const policyKey = checkbox.id.replace('policy_', '');
-      const body = document.getElementById(`policy_body_${policyKey}`);
+    // Reset microbial grouping radio buttons and hide bodies
+    const microbialGroupingRadios = document.querySelectorAll('#microbialGroupingContainer input[name="microbialGroupingMethod"]');
+    microbialGroupingRadios.forEach((radio) => {
+      radio.checked = false;
+      const methodKey = radio.value;
+      const body = document.getElementById(`microbial_grouping_body_${methodKey}`);
       if (body) {
         body.style.display = 'none';
       }
@@ -1201,6 +1496,7 @@ class DatasetAnalysisManager {
     this.updateStratificationSummary();
     this.updateDiscardingPolicySummary();
     this.updateExtremeTimePointSummary();
+    this.updateMicrobialGroupingSummary();
   }
 
   // Update column groups summary
@@ -1210,21 +1506,27 @@ class DatasetAnalysisManager {
 
     if (summary) {
       const selectedGroups = document.querySelectorAll('#columnGroupsContainer input[type="checkbox"]:checked');
-      const groupNames = Array.from(selectedGroups).map((cb) => {
-        const label = cb.nextElementSibling;
-        return label ? label.querySelector("strong").textContent : cb.value;
-      });
+      // Sum the data-field-count attribute for each selected group to get total fields
+      const totalFields = Array.from(selectedGroups).reduce((acc, cb) => {
+        const fc = parseInt(cb.getAttribute('data-field-count') || cb.dataset.fieldCount || 0, 10);
+        return acc + (isNaN(fc) ? 0 : fc);
+      }, 0);
 
-      if (groupNames.length === 0) {
+      if (totalFields === 0) {
         summary.textContent = "No column groups selected";
       } else {
-        summary.textContent = `Selected: ${groupNames.join(", ")}`;
+        summary.textContent = `${totalFields} total attributes selected`;
       }
     }
 
     if (count) {
       const selectedGroups = document.querySelectorAll('#columnGroupsContainer input[type="checkbox"]:checked');
-      count.textContent = `${selectedGroups.length} total columns`;
+      // Sum the data-field-count attribute for each selected group to get total fields
+      const totalFields = Array.from(selectedGroups).reduce((acc, cb) => {
+        const fc = parseInt(cb.getAttribute('data-field-count') || cb.dataset.fieldCount || 0, 10);
+        return acc + (isNaN(fc) ? 0 : fc);
+      }, 0);
+      count.textContent = `${totalFields} total attributes`;
     }
   }
 
@@ -1411,6 +1713,143 @@ class DatasetAnalysisManager {
     }
 
     this.updateMicrobialDiscardingPolicySummary();
+  }
+
+  // Load microbial grouping policies
+  async loadMicrobialGroupingPolicies() {
+    try {
+      const data = await DatasetUtils.api.call(`/dataset/${this.datasetId}/metadata/microbial-grouping`);
+
+      if (data.success) {
+        this.displayMicrobialGroupingPolicies(data.grouping_methods);
+        this.microbialGroupingData = data.grouping_methods;
+      } else {
+        this.showMicrobialGroupingError(data.message);
+      }
+    } catch (error) {
+      console.error("Failed to load microbial grouping policies:", error);
+      this.showMicrobialGroupingError("Failed to load microbial grouping methods");
+    }
+  }
+
+  // Display microbial grouping policies
+  displayMicrobialGroupingPolicies(methods) {
+    const container = document.getElementById("microbialGroupingContainer");
+
+    if (!container) return;
+
+    const methodsHTML = methods
+      .map((method) => {
+      const parameterInputs = this.generateParameterInputs(method.key, method.parameters);
+      const isChecked = method.enabled ? 'checked' : '';
+      return `
+          <div class="col-12 mb-4">
+            <div class="card microbial-grouping-card" data-method-key="${method.key}">
+              <div class="card-header">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_${method.key}" value="${method.key}" ${isChecked}>
+                    <label class="form-check-label" for="microbial_grouping_${method.key}">
+                      ${method.name}
+                      <small class="text-muted d-block">${method.description}</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('${method.key}')">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_${method.key}" style="display: ${method.enabled ? 'block' : 'none'}">
+                <div class="row">
+                  ${parameterInputs}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    container.innerHTML = methodsHTML;
+
+    // Add event listeners for method radio buttons
+    methods.forEach((method) => {
+      const radio = document.getElementById(`microbial_grouping_${method.key}`);
+      if (radio) {
+        radio.addEventListener('change', () => this.toggleMicrobialGroupingBody(method.key));
+      }
+    });
+
+    this.updateMicrobialGroupingSummary();
+  }
+
+  // Show microbial grouping error
+  showMicrobialGroupingError(message) {
+    const container = document.getElementById("microbialGroupingContainer");
+    if (container) {
+      container.innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // Update microbial grouping summary
+  updateMicrobialGroupingSummary() {
+    const summary = document.getElementById("microbialGroupingSummaryText");
+    const count = document.getElementById("totalMicrobialGroupingCount");
+
+    if (summary) {
+      const selectedRadio = document.querySelector('#microbialGroupingContainer input[name="microbialGroupingMethod"]:checked');
+
+      if (!selectedRadio) {
+        summary.textContent = "No microbial grouping method selected";
+      } else {
+        const methodKey = selectedRadio.value;
+        const label = selectedRadio.nextElementSibling;
+        let methodName = methodKey;
+        if (label) {
+          const strong = label.querySelector("strong");
+          if (strong && strong.textContent && strong.textContent.trim() !== "") {
+            methodName = strong.textContent.trim();
+          } else {
+            const firstTextNode = Array.from(label.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent && n.textContent.trim() !== "");
+            if (firstTextNode) {
+              methodName = firstTextNode.textContent.trim();
+            } else {
+              methodName = label.textContent.trim();
+            }
+          }
+        }
+        summary.textContent = `Selected: ${methodName}`;
+      }
+    }
+
+    if (count) {
+      const selectedRadio = document.querySelector('#microbialGroupingContainer input[name="microbialGroupingMethod"]:checked');
+      count.textContent = selectedRadio ? "1 method" : "0 methods";
+    }
+  }
+
+  // Toggle microbial grouping body visibility
+  toggleMicrobialGroupingBody(selectedMethodKey) {
+    // Hide all method bodies first
+    const allBodies = document.querySelectorAll('#microbialGroupingContainer .card-body[id^="microbial_grouping_body_"]');
+    allBodies.forEach((body) => {
+      body.style.display = 'none';
+    });
+
+    // Show the selected method's body
+    const selectedBody = document.getElementById(`microbial_grouping_body_${selectedMethodKey}`);
+    if (selectedBody) {
+      selectedBody.style.display = 'block';
+    }
+
+    this.updateMicrobialGroupingSummary();
   }
 
   // Load analysis from file
@@ -1609,6 +2048,28 @@ window.toggleMicrobialDiscardingPolicy = function () {
   }
 };
 
+window.toggleMicrobialGrouping = function () {
+  const content = document.getElementById("microbialGroupingContent");
+  const button = document.getElementById("toggleMicrobialGroupingBtn");
+
+  if (content && button) {
+    const isVisible = content.style.display !== "none";
+    content.style.display = isVisible ? "none" : "block";
+    button.innerHTML = `<i class="fas fa-eye me-1"></i>${isVisible ? "Show" : "Hide"} Methods`;
+  }
+};
+
+window.toggleAnalysisMethods = function () {
+  const container = document.getElementById("analysisMethodsContainer");
+  const button = document.getElementById("toggleAnalysisMethodsBtn");
+
+  if (container && button) {
+    const isVisible = container.style.display !== "none";
+    container.style.display = isVisible ? "none" : "grid";
+    button.innerHTML = `<i class="fas fa-eye me-1"></i>${isVisible ? "Show" : "Hide"} Options`;
+  }
+};
+
 window.calculateRemainingAttributes = async function () {
   try {
     const response = await DatasetUtils.api.call(`/dataset/${window.datasetId}/metadata/attribute-discarding/calculate-remaining`, {
@@ -1657,6 +2118,13 @@ window.showMicrobialDiscardingPolicyInfo = function (policyKey) {
   }
 };
 
+window.showMicrobialGroupingInfo = function (methodKey) {
+  const methodInfo = getMicrobialGroupingInfo(methodKey);
+  if (methodInfo) {
+    showPolicyInfoModal(methodInfo);
+  }
+};
+
 window.toggleFieldNames = function () {
   // Implementation for toggling field names
   DatasetUtils.showAlert("Field names toggle feature coming soon", "info");
@@ -1670,6 +2138,17 @@ window.toggleStratification = function () {
     const isVisible = container.style.display !== "none";
     container.style.display = isVisible ? "none" : "block";
     button.innerHTML = `<i class="fas fa-eye me-1"></i>${isVisible ? "Show" : "Hide"} Stratification Options`;
+  }
+};
+
+window.toggleSampleTimepoints = function () {
+  const container = document.getElementById("sampleTimepointsContainer");
+  const button = document.getElementById("toggleSampleTimepointsBtn");
+
+  if (container && button) {
+    const isVisible = container.style.display !== "none";
+    container.style.display = isVisible ? "none" : "grid";
+    button.innerHTML = `<i class="fas fa-eye me-1"></i>${isVisible ? "Show" : "Hide"} Options`;
   }
 };
 
@@ -1736,6 +2215,69 @@ window.clearAllStratifications = function () {
   }
 };
 
+window.selectAllAnalysisMethods = function () {
+  const checkboxes = document.querySelectorAll('#analysisMethodsContainer .analysis-method-checkbox');
+  checkboxes.forEach((checkbox) => {
+    if (!checkbox.disabled) checkbox.checked = true;
+  });
+  if (window.analysisManager) window.analysisManager.updateAnalysisMethodsSummary();
+};
+
+window.clearAllAnalysisMethods = function () {
+  const checkboxes = document.querySelectorAll('#analysisMethodsContainer .analysis-method-checkbox');
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = false;
+  });
+  if (window.analysisManager) window.analysisManager.updateAnalysisMethodsSummary();
+};
+
+window.showAnalysisMethodInfo = function (methodKey) {
+  const info = getAnalysisMethodInfo(methodKey);
+  if (info) showPolicyInfoModal(info);
+};
+
+function getAnalysisMethodInfo(methodKey) {
+  if (window.analysisManager && window.analysisManager.analysisMethodsData) {
+    const method = window.analysisManager.analysisMethodsData.find(m => m.key === methodKey);
+    if (method) {
+      // Build modal info structure compatible with showPolicyInfoModal
+      const params = (method.info && method.info.parameters) ? method.info.parameters : (method.parameters || []);
+      return {
+        title: method.title || method.name || method.key,
+        description: (method.info && method.info.description) || method.description || '',
+        algorithm: '',
+        parameters: params.map(p => ({ name: p.name || p.label || p.key, default: p.default !== undefined ? p.default : '' , description: p.description || '' })),
+        pros: (method.info && method.info.pros) || method.pros || [],
+        cons: (method.info && method.info.cons) || method.cons || [],
+        limitations: (method.info && method.info.limitations) || method.cons || [],
+        expectations: (method.info && method.info.expectations) || (method.use_cases ? method.use_cases.join('; ') : '')
+      };
+    }
+  }
+  return null;
+}
+
+// Sample timepoints selection helpers
+window.selectAllSampleTimepoints = function () {
+  const checkboxes = document.querySelectorAll('#sampleTimepointsContainer .sample-timepoint-checkbox');
+  checkboxes.forEach((checkbox) => {
+    if (!checkbox.disabled) checkbox.checked = true;
+  });
+  if (window.analysisManager) {
+    window.analysisManager.updateSampleTimepointsSummary();
+  }
+};
+
+window.clearAllSampleTimepoints = function () {
+  const checkboxes = document.querySelectorAll('#sampleTimepointsContainer .sample-timepoint-checkbox');
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = false;
+  });
+  if (window.analysisManager) {
+    window.analysisManager.updateSampleTimepointsSummary();
+  }
+};
+
 // Update functions
 window.updateTopPercentage = function (value) {
   if (window.analysisManager) {
@@ -1762,19 +2304,12 @@ window.toggleSelectionMode = function () {
 };
 
 window.updateTimePointDescription = function () {
-  // #region agent log - hypothesis G: Window wrapper called
-  fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset_analysis.js:window.updateTimePointDescription',message:'Window wrapper called',data:{analysisManagerExists:!!window.analysisManager,hasUpdateMethod:!!(window.analysisManager && window.analysisManager.updateTimePointDescription)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'G'})}).catch(()=>{});
-  // #endregion
-
+  // Update timepoint description wrapper
   if (window.analysisManager && typeof window.analysisManager.updateTimePointDescription === 'function') {
-    // #region agent log - hypothesis G: Calling analysis manager method
-    fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset_analysis.js:window.updateTimePointDescription',message:'Calling analysis manager updateTimePointDescription',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
+    // calling analysis manager method
     window.analysisManager.updateTimePointDescription();
   } else {
-    // #region agent log - hypothesis G: Analysis manager method not available
-    fetch('http://127.0.0.1:7243/ingest/5860f252-044a-4785-9428-d425c09f65f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dataset_analysis.js:window.updateTimePointDescription',message:'Analysis manager or method not available',data:{managerExists:!!window.analysisManager,methodExists:!!(window.analysisManager && window.analysisManager.updateTimePointDescription)},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
+    // analysis manager method not available
   }
 };
 
@@ -1832,596 +2367,30 @@ window.DatasetAnalysisManager = DatasetAnalysisManager;
 
 // Helper functions for discarding policy info
 function getDiscardingPolicyInfo(policyKey) {
-  const policyDetails = {
-    'prevalence_filtering': {
-      title: 'Prevalence Filtering',
-      description: 'Discard taxa present in fewer than a specified percentage of samples, removing unreliable measurements.',
-      algorithm: 'For each taxon: prevalence = (abundance > detection_threshold).sum() / total_samples; if prevalence < min_prevalence_threshold: discard_taxon',
-      parameters: [
-        { name: 'Detection threshold', default: '>0', description: 'Minimum abundance to consider taxon present' },
-        { name: 'Minimum prevalence', default: '10% of samples', description: 'Minimum fraction of samples where taxon must be present' }
-      ],
-      pros: [
-        'Data quality control - Eliminates measurement artifacts and rare taxa',
-        'Statistical reliability - Focuses on consistently detectable microbes',
-        'Computational efficiency - Reduces dataset size significantly',
-        'Reproducibility - Removes taxa with unreliable abundance estimates',
-        'Simple implementation - Easy to understand and apply'
-      ],
-      cons: [
-        'May discard important taxa - Some biologically relevant microbes may be rare',
-        'Arbitrary thresholds - Prevalence cutoff is subjective',
-        'Context dependence - Optimal prevalence varies by study design and technology',
-        'False negatives - Rare pathogens or keystone species may be excluded'
-      ],
-      limitations: [
-        'Doesn\'t consider abundance levels, only presence/absence',
-        'May be too conservative for some research questions',
-        'Threshold selection requires biological knowledge'
-      ],
-      expectations: 'Reduces taxa count by 20-60%, depending on threshold'
-    },
-    'abundance_filtering': {
-      title: 'Abundance Filtering',
-      description: 'Discard taxa with consistently low abundance across samples, focusing on ecologically important microbes.',
-      algorithm: 'For each taxon: mean_abundance = taxon_abundances.mean(); median_abundance = taxon_abundances.median(); if mean_abundance < min_mean_threshold or median_abundance < min_median_threshold: discard_taxon',
-      parameters: [
-        { name: 'Minimum mean abundance', default: '0.01% relative abundance', description: 'Minimum mean relative abundance threshold' },
-        { name: 'Minimum median abundance', default: '0.005% relative abundance', description: 'Minimum median relative abundance threshold' }
-      ],
-      pros: [
-        'Ecological relevance - Focuses on microbes that contribute meaningfully to community',
-        'Measurement precision - Removes taxa near detection limits',
-        'Biological signal - Prioritizes microbes with functional impact',
-        'Data normalization - Complements relative abundance transformations',
-        'Statistical power - Reduces noise in downstream analyses'
-      ],
-      cons: [
-        'Context dependence - Abundance thresholds vary by sample type and technology',
-        'Functional bias - May exclude important low-abundance functional specialists',
-        'Normalization effects - Results depend on abundance transformation method',
-        'Sample variability - Abundance distributions vary across studies'
-      ],
-      limitations: [
-        'Requires appropriate abundance normalization (relative abundance, CLR, etc.)',
-        'May miss conditionally abundant taxa (bloomers under specific conditions)',
-        'Thresholds need validation against biological knowledge'
-      ],
-      expectations: 'Further reduces taxa count by 10-40%, depending on thresholds'
-    },
-    'variance_based_selection': {
-      title: 'Variance-Based Selection',
-      description: 'Select taxa with highest variance across samples, identifying microbes that differ between patients or conditions.',
-      algorithm: 'For each taxon: variance = taxon_abundances.var(); coefficient_of_variation = variance / mean_abundance; rank_taxa_by_variance(); select_top_n_most_variable()',
-      parameters: [
-        { name: 'Number of taxa to select', default: '50', description: 'Maximum number of most variable taxa to retain' },
-        { name: 'Variance metric', default: 'Coefficient of Variation', description: 'Method to measure taxon variability' }
-      ],
-      pros: [
-        'Biological heterogeneity - Identifies taxa that vary between individuals',
-        'Condition differences - Captures microbes that change with disease states',
-        'Data-driven - No biological assumptions required',
-        'Quality indicator - High variance suggests reliable measurements',
-        'Exploratory power - Reveals major sources of microbiome variation'
-      ],
-      cons: [
-        'No clinical relevance - Doesn\'t consider relationship to outcomes',
-        'Noise sensitivity - Technical variation can inflate variance',
-        'Scale dependence - Affected by abundance transformations',
-        'Arbitrary selection - "Top N" is subjective',
-        'Context ignorance - May select taxa varying for non-biological reasons'
-      ],
-      limitations: [
-        'Doesn\'t distinguish biological from technical variation',
-        'Rare taxa may appear highly variable due to sparsity',
-        'Selection depends on study population characteristics'
-      ],
-      expectations: 'Selects 20-100 most variable taxa from the microbial group'
-    },
-    'univariate_pfs_screening': {
-      title: 'Univariate PFS Screening',
-      description: 'Test each taxon individually against PFS using statistical models, keeping only those showing significant associations.',
-      algorithm: 'For each taxon: model = fit_statistical_model(pfs_outcomes, taxon_abundance); if p_value < significance_threshold: keep_taxon',
-      parameters: [
-        { name: 'Statistical test', default: 'Cox Regression', description: 'Method for testing PFS association' },
-        { name: 'Significance threshold', default: 'p < 0.05', description: 'P-value threshold for significance' },
-        { name: 'Multiple testing correction', default: 'FDR', description: 'Method to correct for multiple hypothesis testing' }
-      ],
-      pros: [
-        'Direct clinical relevance - Only keeps taxa associated with outcomes',
-        'Statistical rigor - Formal hypothesis testing for each taxon',
-        'Easy interpretation - Clear inclusion criteria',
-        'Biological insight - Reveals which microbes matter for disease progression',
-        'Flexible thresholds - Can adjust stringency based on study goals'
-      ],
-      cons: [
-        'Ignores interactions - May miss taxa significant only in combination',
-        'Multiple testing issues - Risk of false positives without correction',
-        'Conservative approach - May exclude taxa with weak individual effects',
-        'Sample size dependence - Power varies with number of events',
-        'Context independence - Doesn\'t account for clinical covariates'
-      ],
-      limitations: [
-        'Requires sufficient PFS events for statistical power',
-        'May miss synergistic effects between taxa',
-        'Results sensitive to censoring patterns'
-      ],
-      expectations: 'Retains 5-30% of taxa showing PFS associations'
-    },
-    'multivariate_pfs_screening': {
-      title: 'Multivariate PFS Screening',
-      description: 'Test taxa in multivariate models including clinical variables, selecting those significant after adjusting for confounders.',
-      algorithm: 'Fit full multivariate model: PFS ~ clinical_vars + all_taxa; Extract significant taxa (p < 0.05 after clinical adjustment)',
-      parameters: [
-        { name: 'Significance threshold', default: 'p < 0.05', description: 'P-value threshold for significance after clinical adjustment' },
-        { name: 'Regularization strength', default: '0.1', description: 'Penalty strength for numerical stability' },
-        { name: 'Maximum iterations', default: '10', description: 'Maximum iterations for iterative refinement' },
-        { name: 'Minimum taxa to retain', default: '5', description: 'Minimum number of taxa to keep for model stability' }
-      ],
-      pros: [
-        'Clinically realistic - Considers clinical context and confounding',
-        'Context-aware - Identifies taxa significant beyond clinical factors',
-        'Multivariate validity - Accounts for taxon intercorrelations',
-        'Clinical translation - Results relevant for patient stratification',
-        'Confounding control - Adjusts for known clinical predictors'
-      ],
-      cons: [
-        'Computational intensity - Requires fitting large multivariate models',
-        'Parameter instability - Large models can be numerically unstable',
-        'Clinical variable dependence - Results depend on which covariates are included',
-        'Overfitting risk - Too many taxa relative to sample size',
-        'Interpretation complexity - Hard to attribute effects to individual taxa'
-      ],
-      limitations: [
-        'Requires sufficient sample size for multivariate model stability',
-        'Sensitive to multicollinearity between taxa and clinical variables',
-        'Clinical covariate selection affects which taxa appear significant'
-      ],
-      expectations: 'Retains 3-15 taxa significant in multivariate clinical context'
-    },
-    'stability_selection': {
-      title: 'Stability Selection',
-      description: 'Use bootstrap resampling to identify taxa with consistently significant PFS associations across multiple subsamples.',
-      algorithm: 'For each bootstrap sample: fit PFS model; calculate stability scores based on consistency across bootstraps; select taxa above stability threshold',
-      parameters: [
-        { name: 'Number of bootstraps', default: '100', description: 'Number of bootstrap samples for stability assessment' },
-        { name: 'Stability threshold', default: '0.7', description: 'Minimum fraction of bootstraps where taxon must be significant' },
-        { name: 'Bootstrap sample size', default: '80%', description: 'Fraction of original sample size for each bootstrap' }
-      ],
-      pros: [
-        'Robust identification - Finds consistently associated taxa',
-        'Controls overfitting - Reduces false positive selections',
-        'Uncertainty quantification - Provides confidence in selections',
-        'Cross-validation built-in - Bootstrap validation of associations',
-        'Sample variability - Accounts for population heterogeneity'
-      ],
-      cons: [
-        'Computationally expensive - Requires many model fits',
-        'Time-intensive - May take hours for large taxon sets',
-        'Parameter dependence - Stability threshold affects results',
-        'Conservative bias - May miss taxa with moderate associations'
-      ],
-      limitations: [
-        'Requires sufficient sample size for meaningful bootstrapping',
-        'Assumes bootstrap samples represent population characteristics',
-        'May be overly conservative for small datasets',
-        'Computational cost scales with number of taxa'
-      ],
-      expectations: 'Identifies 5-20 taxa with high stability scores (70%+ consistency)'
-    },
-    'information_theoretic_selection': {
-      title: 'Information-Theoretic Selection',
-      description: 'Select taxa based on mutual information with PFS outcomes, capturing non-linear and complex relationships.',
-      algorithm: 'For each taxon: calculate mutual information I(taxon_abundance; pfs_outcome); test significance against null distribution',
-      parameters: [
-        { name: 'Mutual information estimator', default: 'K-Nearest Neighbors', description: 'Method for estimating mutual information' },
-        { name: 'Number of permutations', default: '1000', description: 'Number of permutations for significance testing' },
-        { name: 'Significance threshold', default: 'p < 0.05', description: 'P-value threshold for significance' }
-      ],
-      pros: [
-        'Non-linear relationships - Captures complex taxon-PFS associations',
-        'No distribution assumptions - Works with any abundance distribution',
-        'Information-theoretic foundation - Solid theoretical basis',
-        'Model independence - Doesn\'t assume specific relationship form',
-        'Robust to outliers - Less sensitive to extreme values'
-      ],
-      cons: [
-        'Computational cost - Especially for continuous variables',
-        'Estimator sensitivity - Results depend on binning or k parameter',
-        'Limited interpretability - MI scores don\'t indicate relationship direction',
-        'Multiple testing - Requires careful correction for many taxa'
-      ],
-      limitations: [
-        'Requires sufficient sample size for reliable MI estimation',
-        'Sensitive to discretization parameters for continuous variables',
-        'Doesn\'t provide effect size or relationship direction',
-        'May select redundant taxa with similar information content'
-      ],
-      expectations: 'Selects 10-40 taxa with significant information shared with PFS'
-    },
-    'boruta_algorithm': {
-      title: 'Boruta Algorithm',
-      description: 'Iterative algorithm using random forest to identify all features with predictive relevance, not just the strongest ones.',
-      algorithm: 'Add shadow features; train random forest; compare real vs shadow feature importance; iteratively remove features less important than best shadow',
-      parameters: [
-        { name: 'Shadow features per real feature', default: '3', description: 'Number of randomized shadow features to create' },
-        { name: 'Maximum iterations', default: '100', description: 'Maximum iterations for Boruta algorithm' },
-        { name: 'Random forest trees', default: '1000', description: 'Number of trees in random forest' }
-      ],
-      pros: [
-        'All-relevant selection - Finds all predictive taxa, not just top performers',
-        'Statistical foundation - Uses permutation testing for significance',
-        'Handles correlations - Works well with correlated microbial features',
-        'Robust to overfitting - Ensemble method reduces variance',
-        'No parameter tuning - Algorithm determines optimal feature set'
-      ],
-      cons: [
-        'Computationally intensive - Multiple random forest trainings',
-        'Time-consuming - May take significant time for large datasets',
-        'Memory intensive - Random forest objects for each iteration',
-        'Random forest dependence - Results depend on RF implementation',
-        'May be overly inclusive - Includes marginally relevant features'
-      ],
-      limitations: [
-        'Requires sufficient sample size for stable random forest importance',
-        'May be conservative in small datasets',
-        'Computational requirements may be prohibitive for very large feature sets'
-      ],
-      expectations: 'Selects 15-50 taxa with confirmed predictive relevance'
-    },
-    'elastic_net_regularization': {
-      title: 'Elastic Net Regularization',
-      description: 'Use L1/L2 regularized regression to automatically select taxa with PFS predictive value through coefficient shrinkage.',
-      algorithm: 'Optimize elastic net: minimize loss + λ₁||β||₁ + λ₂||β||₂; select taxa with non-zero coefficients',
-      parameters: [
-        { name: 'L1 ratio', default: '0.5', description: 'Balance between L1 (0) and L2 (1) regularization' },
-        { name: 'Maximum iterations', default: '1000', description: 'Maximum iterations for optimization' },
-        { name: 'Convergence tolerance', default: '1e-4', description: 'Tolerance for convergence in optimization' }
-      ],
-      pros: [
-        'Automated selection - No manual threshold setting required',
-        'Handles correlations - L2 component manages multicollinear taxa',
-        'Continuous selection - Gradual elimination rather than hard cutoffs',
-        'Cross-validation built-in - Automatic parameter optimization',
-        'Predictive focus - Selects for outcome prediction performance'
-      ],
-      cons: [
-        'Model dependence - Results depend on chosen base model',
-        'Linear assumptions - Assumes linear relationships for selection',
-        'Parameter sensitivity - Regularization balance affects results',
-        'May miss weak signals - Conservative selection approach',
-        'Computational cost - Especially for large feature sets'
-      ],
-      limitations: [
-        'Requires specification of base regression model',
-        'Selection depends on regularization parameter choice',
-        'May not capture non-linear taxon-PFS relationships',
-        'Cross-validation can be computationally expensive'
-      ],
-      expectations: 'Selects 5-25 taxa with non-zero coefficients in regularized model'
-    },
-    'combined_multi_method': {
-      title: 'Combined Multi-Method Selection',
-      description: 'Apply multiple selection methods and take consensus to identify robustly selected taxa.',
-      algorithm: 'Apply multiple methods; take intersection/union/weighted consensus of selected taxa',
-      parameters: [
-        { name: 'Consensus rule', default: 'Intersection', description: 'How to combine results from multiple methods' },
-        { name: 'Minimum agreement', default: '2', description: 'Minimum number of methods that must agree' }
-      ],
-      pros: [
-        'Robust selection - Taxa selected by multiple methods are more reliable',
-        'Method validation - Cross-validation of different approaches',
-        'Comprehensive coverage - Captures different types of associations',
-        'Uncertainty reduction - Reduces method-specific biases',
-        'Confidence building - Multiple lines of evidence for selected taxa'
-      ],
-      cons: [
-        'Computational cost - Running multiple methods increases time',
-        'Result complexity - Different methods may give different answers',
-        'Decision complexity - Choosing how to combine results',
-        'Conservative bias - Strict consensus may miss valid taxa',
-        'Method dependence - Results depend on which methods are combined'
-      ],
-      limitations: [
-        'Requires careful consideration of which methods to combine',
-        'Consensus rules are somewhat arbitrary',
-        'May miss taxa only detectable by specific methods',
-        'Interpretation becomes more complex'
-      ],
-      expectations: 'Highly confident selection of 5-20 taxa supported by multiple methods'
-    }
-  };
-
-  return policyDetails[policyKey];
+  // Get the policy data from the global analysis manager
+  if (window.analysisManager && window.analysisManager.discardingPoliciesData) {
+    const policy = window.analysisManager.discardingPoliciesData.find(p => p.key === policyKey);
+    return policy ? policy.info : null;
+  }
+  return null;
 }
 
 function getMicrobialDiscardingPolicyInfo(policyKey) {
-  const policyDetails = {
-    'prevalence_filtering': {
-      title: 'Prevalence Filtering',
-      description: 'Discard microbial taxa present in fewer than a specified percentage of samples, removing unreliable measurements.',
-      algorithm: 'For each taxon: prevalence = (abundance > detection_threshold).sum() / total_samples; if prevalence < min_prevalence_threshold: discard_taxon',
-      parameters: [
-        { name: 'Detection threshold', default: '>0', description: 'Minimum abundance to consider taxon present' },
-        { name: 'Minimum prevalence', default: '10% of samples', description: 'Minimum fraction of samples where taxon must be present' }
-      ],
-      pros: [
-        'Data quality control - Eliminates measurement artifacts and rare taxa',
-        'Statistical reliability - Focuses on consistently detectable microbes',
-        'Computational efficiency - Reduces dataset size significantly',
-        'Reproducibility - Removes taxa with unreliable abundance estimates',
-        'Simple implementation - Easy to understand and apply'
-      ],
-      cons: [
-        'May discard important taxa - Some biologically relevant microbes may be rare',
-        'Arbitrary thresholds - Prevalence cutoff is subjective',
-        'Context dependence - Optimal prevalence varies by study design and technology',
-        'False negatives - Rare pathogens or keystone species may be excluded'
-      ],
-      limitations: [
-        'Doesn\'t consider abundance levels, only presence/absence',
-        'May be too conservative for some research questions',
-        'Threshold selection requires biological knowledge'
-      ],
-      expectations: 'Reduces taxa count by 20-60%, depending on threshold'
-    },
-    'abundance_filtering': {
-      title: 'Abundance Filtering',
-      description: 'Discard taxa with consistently low abundance across samples, focusing on ecologically important microbes.',
-      algorithm: 'For each taxon: mean_abundance = taxon_abundances.mean(); median_abundance = taxon_abundances.median(); if mean_abundance < min_mean_threshold or median_abundance < min_median_threshold: discard_taxon',
-      parameters: [
-        { name: 'Minimum mean abundance', default: '0.01% relative abundance', description: 'Minimum mean relative abundance threshold' },
-        { name: 'Minimum median abundance', default: '0.005% relative abundance', description: 'Minimum median relative abundance threshold' }
-      ],
-      pros: [
-        'Ecological relevance - Focuses on microbes that contribute meaningfully to community',
-        'Measurement precision - Removes taxa near detection limits',
-        'Biological signal - Prioritizes microbes with functional impact',
-        'Data normalization - Complements relative abundance transformations',
-        'Statistical power - Reduces noise in downstream analyses'
-      ],
-      cons: [
-        'Context dependence - Abundance thresholds vary by sample type and technology',
-        'Functional bias - May exclude important low-abundance functional specialists',
-        'Normalization effects - Results depend on abundance transformation method',
-        'Sample variability - Abundance distributions vary across studies'
-      ],
-      limitations: [
-        'Arbitrary thresholds - No universal abundance cutoff exists',
-        'Scale dependence - Results vary with sequencing depth and technology',
-        'Biological context - Some low-abundance taxa are functionally important'
-      ],
-      expectations: 'Reduces taxa count by 30-70%, depending on threshold and sample type'
-    },
-    'taxonomic_rarity_filtering': {
-      title: 'Taxonomic Rarity Filtering',
-      description: 'Filter out rare taxa that appear in very few samples regardless of abundance, focusing on consistently detectable microbes.',
-      algorithm: 'For each taxon: sample_count = number of samples with abundance > detection_threshold; if sample_count < min_sample_count: discard_taxon',
-      parameters: [
-        { name: 'Minimum sample count', default: '3 samples', description: 'Minimum number of samples where taxon must be detected' },
-        { name: 'Rarity threshold', default: '1% of samples', description: 'Maximum proportion of samples where rare taxa are allowed' }
-      ],
-      pros: [
-        'Conservative approach - Ensures taxa are consistently detectable',
-        'Measurement reliability - Focuses on taxa with multiple measurements',
-        'Statistical stability - Reduces variance from sporadic detections',
-        'Quality control - Removes potential contamination artifacts',
-        'Simple and transparent - Easy to understand and communicate'
-      ],
-      cons: [
-        'May be too conservative - Excludes biologically relevant rare taxa',
-        'Context dependence - Appropriate thresholds vary by study size',
-        'Sample size bias - Larger studies can retain rarer taxa',
-        'Technology dependence - Detection limits vary by sequencing platform'
-      ],
-      limitations: [
-        'Doesn\'t consider ecological importance of rare taxa',
-        'May exclude important low-prevalence pathogens',
-        'Threshold selection is somewhat arbitrary'
-      ],
-      expectations: 'Reduces taxa count by 15-40%, depending on study size and detection threshold'
-    },
-    'low_abundance_taxa_removal': {
-      title: 'Low Abundance Taxa Removal',
-      description: 'Remove taxa that never exceed a specified abundance threshold in any sample, focusing on potentially impactful microbes.',
-      algorithm: 'For each taxon: max_abundance = maximum abundance across all samples; if max_abundance < max_abundance_threshold: discard_taxon; keep top N most abundant taxa regardless',
-      parameters: [
-        { name: 'Maximum abundance threshold', default: '0.1% relative abundance', description: 'Taxa exceeding this threshold in any sample will be retained' },
-        { name: 'Keep top N taxa', default: '100 taxa', description: 'Always retain the N most abundant taxa regardless of threshold' }
-      ],
-      pros: [
-        'Ecological focus - Prioritizes microbes that can dominate communities',
-        'Functional relevance - High abundance often correlates with ecological impact',
-        'Data quality - Removes taxa consistently near detection limits',
-        'Computational efficiency - Significantly reduces dataset size',
-        'Biological plausibility - Low abundance taxa may be ecologically irrelevant'
-      ],
-      cons: [
-        'May exclude important taxa - Some functional specialists are low abundance',
-        'Context dependence - Abundance thresholds vary by ecosystem',
-        'Detection limit bias - Results depend on sequencing technology sensitivity',
-        'Temporal variability - Abundance peaks may be missed in sampling'
-      ],
-      limitations: [
-        'Assumes abundance correlates with importance',
-        'May miss rare but ecologically important taxa',
-        'Threshold selection requires ecological knowledge'
-      ],
-      expectations: 'Reduces taxa count by 40-80%, depending on threshold and ecosystem'
-    },
-    'contaminant_filtering': {
-      title: 'Contaminant Filtering',
-      description: 'Remove potential contaminants based on prevalence in negative controls, ensuring data quality.',
-      algorithm: 'For each taxon: control_prevalence = prevalence in negative controls; control_abundance = mean abundance in controls; if control_prevalence > threshold or control_abundance > threshold: discard_taxon',
-      parameters: [
-        { name: 'Control prevalence threshold', default: '50% of controls', description: 'Maximum prevalence allowed in negative controls' },
-        { name: 'Control abundance threshold', default: '1% relative abundance', description: 'Maximum abundance allowed in negative controls' }
-      ],
-      pros: [
-        'Data quality assurance - Removes laboratory contamination artifacts',
-        'Experimental validity - Ensures microbial signal is biological, not technical',
-        'Reproducibility - Standardizes contamination removal across studies',
-        'Method validation - Uses experimental controls for quality control',
-        'Publication standards - Meets rigorous microbiome data quality requirements'
-      ],
-      cons: [
-        'Requires controls - Not applicable without negative control samples',
-        'Control quality dependence - Results depend on control sample quality',
-        'Conservative approach - May remove true low-level contaminants',
-        'Control variability - Different labs may have different contamination profiles'
-      ],
-      limitations: [
-        'Limited to studies with proper negative controls',
-        'May not detect all contamination types',
-        'Control contamination may not reflect sample contamination'
-      ],
-      expectations: 'Removes 5-20% of taxa, depending on laboratory and sequencing conditions'
-    },
-    'singleton_filtering': {
-      title: 'Singleton Filtering',
-      description: 'Remove taxa that appear as singletons (detected in only one sample), reducing potential artifacts.',
-      algorithm: 'For each taxon: detection_count = number of samples with abundance > detection_threshold; if detection_count == 1: apply singleton strategy',
-      parameters: [
-        { name: 'Singleton removal strategy', default: 'Strict removal', description: 'How to handle taxa detected in only one sample' },
-        { name: 'Singleton abundance threshold', default: '1% relative abundance', description: 'Minimum abundance to retain singletons (for lenient mode)' }
-      ],
-      pros: [
-        'Artifact removal - Eliminates likely sequencing or PCR errors',
-        'Data quality - Focuses on consistently detectable taxa',
-        'Statistical reliability - Removes highly variable singleton measurements',
-        'Computational stability - Reduces noise in diversity calculations',
-        'Biological plausibility - Singletons may represent contamination'
-      ],
-      cons: [
-        'May remove real taxa - Some microbes are legitimately rare',
-        'Overly conservative - Excludes potentially important low-prevalence taxa',
-        'Detection limit dependence - Results vary with sequencing sensitivity',
-        'Biological context ignored - All singletons treated equally'
-      ],
-      limitations: [
-        'Doesn\'t distinguish between true rarity and artifacts',
-        'May exclude important rare biosphere members',
-        'Threshold for "singleton" may not be biologically meaningful'
-      ],
-      expectations: 'Removes 10-30% of taxa, depending on sequencing depth and technology'
-    },
-    'variance_based_selection': {
-      title: 'Variance-Based Selection',
-      description: 'Select taxa with highest variance across samples, focusing on microbes that vary between conditions.',
-      algorithm: 'For each taxon: calculate variance metric (total variance or coefficient of variation); rank taxa by variance; select top N most variable taxa',
-      parameters: [
-        { name: 'Number of taxa to select', default: '50 taxa', description: 'Maximum number of most variable taxa to retain' },
-        { name: 'Variance metric', default: 'Coefficient of variation', description: 'Method to measure taxon variability' }
-      ],
-      pros: [
-        'Biological relevance - Variable taxa often respond to environmental changes',
-        'Differential abundance focus - Prioritizes taxa that differ between groups',
-        'Statistical power - Variable taxa are easier to detect as significant',
-        'Ecological insight - Highlights taxa involved in community dynamics',
-        'Data-driven approach - Uses empirical variability patterns'
-      ],
-      cons: [
-        'May select noise - High variance doesn\'t always indicate biological signal',
-        'Context dependence - Important taxa may be consistently present',
-        'Scale dependence - Variance depends on abundance transformation',
-        'Confounding factors - Variance may reflect technical rather than biological factors'
-      ],
-      limitations: [
-        'Assumes variable taxa are more important',
-        'May miss consistently important taxa',
-        'Variance calculation sensitive to outliers'
-      ],
-      expectations: 'Selects 50-200 most variable taxa, depending on desired subset size'
-    },
-    'taxonomic_level_filtering': {
-      title: 'Taxonomic Level Filtering',
-      description: 'Filter taxa based on their taxonomic classification level, ensuring reliable taxonomic assignment.',
-      algorithm: 'For each taxon: check taxonomic classification depth; if classification level < min_required_level: discard_taxon',
-      parameters: [
-        { name: 'Minimum taxonomic level', default: 'Genus level', description: 'Require taxa to be classified at least to this level' },
-        { name: 'Unclassified taxa handling', default: 'Remove all unclassified', description: 'How to handle taxa without complete classification' }
-      ],
-      pros: [
-        'Taxonomic reliability - Ensures taxa are properly identified',
-        'Comparative analysis - Enables cross-study comparisons',
-        'Biological interpretation - Provides meaningful taxonomic context',
-        'Database quality - Reflects quality of taxonomic reference database',
-        'Standardization - Creates consistent taxonomic resolution across studies'
-      ],
-      cons: [
-        'Resolution loss - May exclude taxa only identifiable to higher levels',
-        'Database dependence - Results vary with classification database quality',
-        'Biological information loss - Higher-level taxa may be ecologically relevant',
-        'Conservative approach - May be too restrictive for some analyses'
-      ],
-      limitations: [
-        'Depends on reference database completeness',
-        'May exclude novel or poorly characterized taxa',
-        'Arbitrary level cutoffs may not reflect biological reality'
-      ],
-      expectations: 'Retains 60-90% of taxa, depending on classification database and required level'
-    },
-    'core_microbiome_filtering': {
-      title: 'Core Microbiome Filtering',
-      description: 'Retain only taxa that are part of the core microbiome, focusing on consistently present microbes.',
-      algorithm: 'For each taxon: calculate prevalence across all samples; if prevalence >= core_prevalence_threshold and mean_abundance >= core_abundance_threshold: retain_taxon',
-      parameters: [
-        { name: 'Core prevalence threshold', default: '80% of samples', description: 'Minimum prevalence to be considered core microbiome' },
-        { name: 'Core abundance threshold', default: '1% relative abundance', description: 'Minimum abundance to be considered core microbiome' }
-      ],
-      pros: [
-        'Ecological stability - Focuses on consistently present community members',
-        'Functional importance - Core taxa often perform essential ecosystem functions',
-        'Comparative studies - Enables cross-sample and cross-study comparisons',
-        'Biological relevance - Core microbiome represents stable community structure',
-        'Robust analysis - Less sensitive to sampling variability'
-      ],
-      cons: [
-        'Context dependence - Core microbiome varies by ecosystem and condition',
-        'Temporal variability - Core taxa may change over time',
-        'Definition ambiguity - No universal definition of "core"',
-        'May miss important variable taxa - Focuses on presence, not change'
-      ],
-      limitations: [
-        'Arbitrary thresholds for core definition',
-        'May exclude ecologically important but variable taxa',
-        'Core composition changes with environmental conditions'
-      ],
-      expectations: 'Retains 10-30 core taxa, depending on ecosystem and thresholds'
-    },
-    'combined_microbial_selection': {
-      title: 'Combined Microbial Selection',
-      description: 'Apply multiple microbial selection methods and take consensus to identify robustly selected taxa.',
-      algorithm: 'Apply multiple methods independently; combine results using specified consensus rule; retain taxa selected by consensus',
-      parameters: [
-        { name: 'Consensus rule', default: 'Intersection (ALL methods)', description: 'How to combine results from multiple methods' },
-        { name: 'Minimum agreement', default: '2 methods', description: 'Minimum number of methods that must agree (for weighted voting)' }
-      ],
-      pros: [
-        'Robust selection - Taxa selected by multiple methods are more reliable',
-        'Method validation - Cross-validation of different filtering approaches',
-        'Comprehensive evaluation - Considers multiple data quality aspects',
-        'Uncertainty reduction - Reduces method-specific biases',
-        'Confidence building - Multiple lines of evidence for retained taxa'
-      ],
-      cons: [
-        'Computational cost - Running multiple methods increases processing time',
-        'Result complexity - Different methods may give conflicting results',
-        'Decision complexity - Choosing appropriate consensus rule',
-        'Conservative bias - Strict consensus may miss valid taxa',
-        'Method dependence - Results depend on which methods are combined'
-      ],
-      limitations: [
-        'Requires careful selection of complementary methods',
-        'Consensus rules are somewhat subjective',
-        'May miss taxa only detectable by specific approaches',
-        'Interpretation becomes more complex with multiple criteria'
-      ],
-      expectations: 'Highly confident retention of 20-50 taxa supported by multiple quality criteria'
-    }
-  };
+  // Get the policy data from the global analysis manager
+  if (window.analysisManager && window.analysisManager.microbialDiscardingPoliciesData) {
+    const policy = window.analysisManager.microbialDiscardingPoliciesData.find(p => p.key === policyKey);
+    return policy ? policy.info : null;
+  }
+  return null;
+}
 
-  return policyDetails[policyKey];
+function getMicrobialGroupingInfo(methodKey) {
+  // Get the method data from the global analysis manager
+  if (window.analysisManager && window.analysisManager.microbialGroupingData) {
+    const method = window.analysisManager.microbialGroupingData.find(m => m.key === methodKey);
+    return method ? method.info : null;
+  }
+  return null;
 }
 
 function showPolicyInfoModal(policyInfo) {

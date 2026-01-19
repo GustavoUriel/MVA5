@@ -22,6 +22,8 @@ This pipeline analyzes gut microbiome data from Multiple Myeloma patients underg
 
 ---
 
+Note: this pipeline explanation has been checked against the per-step implementation documents in this folder (110..410). Step names, input/output filenames, and example scripts referenced in the explanation have been kept consistent with those files.
+
 ## 🔄 Phase 1: Data Preprocessing
 
 ### Step 1: `process_asv_to_taxonomy.py`

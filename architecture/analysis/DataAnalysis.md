@@ -4,6 +4,7 @@
 
 This is a **modular, flexible pipeline** for microbiome analysis in Multiple Myeloma (MM) patients undergoing autologous stem cell transplant (ASCT). The pipeline allows researchers to **choose and combine different analysis components** based on their specific research questions and data characteristics.
 
+Note: this file has been updated to align content and phase names with the detailed step documents in the same folder (for example `110.DataSourcesSelect.md`, `120.ExtremePointsSelection.md`, `130.DataCuration.md`, `240.MicrobialGrouping.md`, `210.AttributeDiscarding.md`, `250.MVAMethods.md`, `320.TimePointsComparison.md`, `310.PopulationSubgroupsComparison.md`, `410.OutputOptions.md`). Phase names, dependencies and expected outputs were synchronized with those files.
 ## 📊 Pipeline Architecture
 
 The pipeline is designed with **maximum flexibility**, allowing you to select from multiple options at each stage:

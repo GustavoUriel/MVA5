@@ -46,3 +46,15 @@ BRACKEN_TIME_POINTS = {
 
 # Default time point selection
 DEFAULT_TIME_POINT = 'Pre-engraftment'
+
+
+def get_time_points():
+    """Return list of time point dicts suitable for UI consumption."""
+    result = []
+    for key, val in BRACKEN_TIME_POINTS.items():
+        result.append({
+            'key': key,
+            'title': val.get('title', key),
+            'description': val.get('description', '')
+        })
+    return result

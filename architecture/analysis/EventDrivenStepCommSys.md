@@ -22,6 +22,8 @@ The system implements a **publish-subscribe pattern** where:
 
 ### Key Components
 
+Note: this document was reviewed and kept consistent with how steps publish state changes (e.g. `DATA_SOURCE_CHANGED`, `TIMEPOINT_CHANGED`) described in the individual step files (`110.DataSourcesSelect.md`, `120.ExtremePointsSelection.md`, etc.). WebSocket and callback names were verified to match the step-level implementation conventions used elsewhere in the analysis docs.
+
 #### 1. Step Communication Manager (Backend)
 
 ```python
