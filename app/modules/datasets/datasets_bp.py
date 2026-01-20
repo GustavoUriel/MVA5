@@ -412,20 +412,20 @@ def get_column_groups(dataset_id):
     # Support two metadata shapes:
     # 1) COLUMN_GROUPS = { 'group_key': [col1, col2, ...], ... }
     # 2) COLUMN_GROUPS = { 'group_key': {'title': 'Display Name', 'columns': [...]}, ... }
+
     ordered_groups = []
     for group_key, value in COLUMN_GROUPS.items():
-      # Normalize value to extract display name and columns list
       if isinstance(value, dict):
-        display_name = value.get('title') or value.get('name') or group_key
-        cols = value.get('columns') or value.get('fields') or []
+        # Copy all fields from the dict, and add group_key for reference
+        group_obj = dict(value)
+        group_obj['group_key'] = group_key
       else:
-        display_name = group_key
-        cols = value if value is not None else []
-
-      ordered_groups.append({
-          'name': display_name,
-          'columns': cols
-      })
+        # If value is just a list, wrap in dict with columns and group_key
+        group_obj = {
+          'columns': value if value is not None else [],
+          'group_key': group_key
+        }
+      ordered_groups.append(group_obj)
 
     return jsonify({
         'success': True,

@@ -2,6 +2,7 @@ MICROBIAL_DISCARDING = {
     'prevalence_filtering': {
         'name': 'Prevalence Filtering',
         'description': 'Discard taxa present in fewer than a specified percentage of samples',
+        'param_prefix': 'MiDi_Prevalence_',
         'parameters': {
             'detection_threshold': {
                 'type': 'float',
@@ -10,7 +11,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.001,
                 'label': 'Detection Threshold',
-                'description': 'Minimum abundance to consider taxon present (default: >0)'
+                'description': 'Minimum abundance to consider taxon present (default: >0)',
+                'control_name': 'MiDi_Prevalence_detection_threshold'
             },
             'min_prevalence': {
                 'type': 'float',
@@ -19,7 +21,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.01,
                 'label': 'Minimum Prevalence (%)',
-                'description': 'Minimum fraction of samples where taxon must be present'
+                'description': 'Minimum fraction of samples where taxon must be present',
+                'control_name': 'MiDi_Prevalence_min_prevalence'
             }
         },
         'enabled': False,
@@ -57,6 +60,7 @@ MICROBIAL_DISCARDING = {
     'abundance_filtering': {
         'name': 'Abundance Filtering',
         'description': 'Discard taxa with consistently low abundance across samples',
+        'param_prefix': 'MiDi_Abundance_',
         'parameters': {
             'min_mean_abundance': {
                 'type': 'float',
@@ -65,7 +69,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.00001,
                 'label': 'Minimum Mean Abundance (%)',
-                'description': 'Minimum mean relative abundance threshold'
+                'description': 'Minimum mean relative abundance threshold',
+                'control_name': 'MiDi_Abundance_min_mean_abundance'
             },
             'min_median_abundance': {
                 'type': 'float',
@@ -74,7 +79,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.00001,
                 'label': 'Minimum Median Abundance (%)',
-                'description': 'Minimum median relative abundance threshold'
+                'description': 'Minimum median relative abundance threshold',
+                'control_name': 'MiDi_Abundance_min_median_abundance'
             }
         },
         'enabled': False,
@@ -112,6 +118,7 @@ MICROBIAL_DISCARDING = {
     'taxonomic_rarity_filtering': {
         'name': 'Taxonomic Rarity Filtering',
         'description': 'Filter out rare taxa that appear in very few samples regardless of abundance',
+        'param_prefix': 'MiDi_Rarity_',
         'parameters': {
             'min_sample_count': {
                 'type': 'int',
@@ -120,7 +127,8 @@ MICROBIAL_DISCARDING = {
                 'max': 50,
                 'step': 1,
                 'label': 'Minimum Sample Count',
-                'description': 'Minimum number of samples where taxon must be detected'
+                'description': 'Minimum number of samples where taxon must be detected',
+                'control_name': 'MiDi_Rarity_min_sample_count'
             },
             'rarity_threshold': {
                 'type': 'float',
@@ -129,7 +137,8 @@ MICROBIAL_DISCARDING = {
                 'max': 0.1,
                 'step': 0.001,
                 'label': 'Rarity Threshold',
-                'description': 'Maximum proportion of samples where rare taxa are allowed'
+                'description': 'Maximum proportion of samples where rare taxa are allowed',
+                'control_name': 'MiDi_Rarity_rarity_threshold'
             }
         },
         'enabled': False,
@@ -167,6 +176,7 @@ MICROBIAL_DISCARDING = {
     'low_abundance_taxa_removal': {
         'name': 'Low Abundance Taxa Removal',
         'description': 'Remove taxa that never exceed a specified abundance threshold in any sample',
+        'param_prefix': 'MiDi_LowAbundance_',
         'parameters': {
             'max_abundance_threshold': {
                 'type': 'float',
@@ -175,7 +185,8 @@ MICROBIAL_DISCARDING = {
                 'max': 0.1,
                 'step': 0.0001,
                 'label': 'Maximum Abundance Threshold (%)',
-                'description': 'Taxa exceeding this threshold in any sample will be retained'
+                'description': 'Taxa exceeding this threshold in any sample will be retained',
+                'control_name': 'MiDi_LowAbundance_max_abundance_threshold'
             },
             'keep_top_n': {
                 'type': 'int',
@@ -184,7 +195,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1000,
                 'step': 10,
                 'label': 'Keep Top N Taxa',
-                'description': 'Always retain the N most abundant taxa regardless of threshold'
+                'description': 'Always retain the N most abundant taxa regardless of threshold',
+                'control_name': 'MiDi_LowAbundance_keep_top_n'
             }
         },
         'enabled': False,
@@ -222,6 +234,7 @@ MICROBIAL_DISCARDING = {
     'contaminant_filtering': {
         'name': 'Contaminant Filtering',
         'description': 'Remove potential contaminants based on prevalence in negative controls',
+        'param_prefix': 'MiDi_Contaminant_',
         'parameters': {
             'control_prevalence_threshold': {
                 'type': 'float',
@@ -230,7 +243,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.01,
                 'label': 'Control Prevalence Threshold (%)',
-                'description': 'Maximum prevalence allowed in negative controls'
+                'description': 'Maximum prevalence allowed in negative controls',
+                'control_name': 'MiDi_Contaminant_control_prevalence_threshold'
             },
             'control_abundance_threshold': {
                 'type': 'float',
@@ -239,7 +253,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.001,
                 'label': 'Control Abundance Threshold (%)',
-                'description': 'Maximum abundance allowed in negative controls'
+                'description': 'Maximum abundance allowed in negative controls',
+                'control_name': 'MiDi_Contaminant_control_abundance_threshold'
             }
         },
         'enabled': False,
@@ -277,6 +292,7 @@ MICROBIAL_DISCARDING = {
     'singleton_filtering': {
         'name': 'Singleton Filtering',
         'description': 'Remove taxa that appear as singletons (detected in only one sample)',
+        'param_prefix': 'MiDi_Singleton_',
         'parameters': {
             'remove_singletons': {
                 'type': 'select',
@@ -287,7 +303,8 @@ MICROBIAL_DISCARDING = {
                     {'value': 'none', 'label': 'Keep all singletons'}
                 ],
                 'label': 'Singleton Removal Strategy',
-                'description': 'How to handle taxa detected in only one sample'
+                'description': 'How to handle taxa detected in only one sample',
+                'control_name': 'MiDi_Singleton_remove_singletons'
             },
             'singleton_abundance_threshold': {
                 'type': 'float',
@@ -296,7 +313,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.001,
                 'label': 'Singleton Abundance Threshold (%)',
-                'description': 'Minimum abundance to retain singletons (for lenient mode)'
+                'description': 'Minimum abundance to retain singletons (for lenient mode)',
+                'control_name': 'MiDi_Singleton_singleton_abundance_threshold'
             }
         },
         'enabled': False,
@@ -334,6 +352,7 @@ MICROBIAL_DISCARDING = {
     'variance_based_selection': {
         'name': 'Variance-Based Selection',
         'description': 'Select taxa with highest variance across samples',
+        'param_prefix': 'MiDi_Variance_',
         'parameters': {
             'num_taxa_to_select': {
                 'type': 'int',
@@ -342,7 +361,8 @@ MICROBIAL_DISCARDING = {
                 'max': 200,
                 'step': 5,
                 'label': 'Number of Taxa to Select',
-                'description': 'Maximum number of most variable taxa to retain'
+                'description': 'Maximum number of most variable taxa to retain',
+                'control_name': 'MiDi_Variance_num_taxa_to_select'
             },
             'variance_metric': {
                 'type': 'select',
@@ -352,7 +372,8 @@ MICROBIAL_DISCARDING = {
                     {'value': 'coefficient_of_variation', 'label': 'Coefficient of Variation'}
                 ],
                 'label': 'Variance Metric',
-                'description': 'Method to measure taxon variability'
+                'description': 'Method to measure taxon variability',
+                'control_name': 'MiDi_Variance_variance_metric'
             }
         },
         'enabled': False,
@@ -390,6 +411,7 @@ MICROBIAL_DISCARDING = {
     'taxonomic_level_filtering': {
         'name': 'Taxonomic Level Filtering',
         'description': 'Filter taxa based on their taxonomic classification level',
+        'param_prefix': 'MiDi_TaxonomicLevel_',
         'parameters': {
             'min_taxonomic_level': {
                 'type': 'select',
@@ -404,7 +426,8 @@ MICROBIAL_DISCARDING = {
                     {'value': 'species', 'label': 'Species'}
                 ],
                 'label': 'Minimum Taxonomic Level',
-                'description': 'Require taxa to be classified at least to this level'
+                'description': 'Require taxa to be classified at least to this level',
+                'control_name': 'MiDi_TaxonomicLevel_min_taxonomic_level'
             },
             'remove_unclassified': {
                 'type': 'select',
@@ -415,7 +438,8 @@ MICROBIAL_DISCARDING = {
                     {'value': 'none', 'label': 'Keep all taxa'}
                 ],
                 'label': 'Unclassified Taxa Handling',
-                'description': 'How to handle taxa without complete classification'
+                'description': 'How to handle taxa without complete classification',
+                'control_name': 'MiDi_TaxonomicLevel_remove_unclassified'
             }
         },
         'enabled': False,
@@ -453,6 +477,7 @@ MICROBIAL_DISCARDING = {
     'core_microbiome_filtering': {
         'name': 'Core Microbiome Filtering',
         'description': 'Retain only taxa that are part of the core microbiome',
+        'param_prefix': 'MiDi_CoreMicrobiome_',
         'parameters': {
             'core_prevalence_threshold': {
                 'type': 'float',
@@ -461,7 +486,8 @@ MICROBIAL_DISCARDING = {
                 'max': 1.0,
                 'step': 0.01,
                 'label': 'Core Prevalence Threshold (%)',
-                'description': 'Minimum prevalence to be considered core microbiome'
+                'description': 'Minimum prevalence to be considered core microbiome',
+                'control_name': 'MiDi_CoreMicrobiome_core_prevalence_threshold'
             },
             'core_abundance_threshold': {
                 'type': 'float',
@@ -470,7 +496,8 @@ MICROBIAL_DISCARDING = {
                 'max': 0.1,
                 'step': 0.001,
                 'label': 'Core Abundance Threshold (%)',
-                'description': 'Minimum abundance to be considered core microbiome'
+                'description': 'Minimum abundance to be considered core microbiome',
+                'control_name': 'MiDi_CoreMicrobiome_core_abundance_threshold'
             }
         },
         'enabled': False,
@@ -508,6 +535,7 @@ MICROBIAL_DISCARDING = {
     'combined_microbial_selection': {
         'name': 'Combined Microbial Selection',
         'description': 'Apply multiple microbial selection methods and take consensus',
+        'param_prefix': 'MiDi_CombinedSelection_',
         'parameters': {
             'consensus_rule': {
                 'type': 'select',
@@ -518,7 +546,8 @@ MICROBIAL_DISCARDING = {
                     {'value': 'weighted', 'label': 'Weighted Voting'}
                 ],
                 'label': 'Consensus Rule',
-                'description': 'How to combine results from multiple methods'
+                'description': 'How to combine results from multiple methods',
+                'control_name': 'MiDi_CombinedSelection_consensus_rule'
             },
             'min_agreement': {
                 'type': 'int',
@@ -527,7 +556,8 @@ MICROBIAL_DISCARDING = {
                 'max': 5,
                 'step': 1,
                 'label': 'Minimum Agreement',
-                'description': 'Minimum number of methods that must agree (for weighted voting)'
+                'description': 'Minimum number of methods that must agree (for weighted voting)',
+                'control_name': 'MiDi_CombinedSelection_min_agreement'
             }
         },
         'enabled': False,

@@ -767,7 +767,7 @@
                           <i class="fas fa-cogs text-primary me-2"></i>
                           Analysis Method
                         </label>
-                        <select class="form-select" id="analysisMethodSelect" name="analysisMethodSelect" onchange="updateAnalysisMethod()">
+                        <select class="form-select" id="analysisMethodSelect" name="analysisMethodSelect">
                           <option value="">Select analysis method...</option>
                           <!-- Options will be populated dynamically -->
                         </select>
@@ -786,19 +786,9 @@
                       </div>
                     </div>
 
-                    <!-- Analysis Method Parameters Container -->
-                    <div id="analysisMethodParametersContainer" style="display: none">
-                      <div class="row">
-                        <div class="col-12">
-                          <h6 class="mb-3">
-                            <i class="fas fa-sliders-h me-2"></i>
-                            Method Parameters
-                          </h6>
-                          <div id="analysisMethodParametersForm">
-                            <!-- Parameters will be dynamically populated here -->
-                          </div>
-                        </div>
-                      </div>
+                    <!-- Analysis Method Parameters Containers (one per method, hidden by default) -->
+                    <div id="analysisMethodParametersContainers">
+                      <!-- These containers will be filled by JS at load time, one per method, each with id="analysisMethodParameters_{methodKey}" -->
                     </div>
 
                     <!-- Analysis Method Summary -->

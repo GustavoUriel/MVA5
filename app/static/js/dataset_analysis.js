@@ -724,35 +724,27 @@ class DatasetAnalysisManager {
 
     if (!container) return;
 
-    // Support both dictionary-style and ordered-list responses from backend
+    // Use only the control_name as provided by backend, no fallback
     let groupsArray = [];
-
     if (Array.isArray(columnGroups)) {
-      groupsArray = columnGroups.map((g) => ({
-        name: g.name || g.key || '',
-        columns: g.columns || g.fields || []
-      }));
+      groupsArray = columnGroups.map((g) => ({ ...g }));
     } else if (typeof columnGroups === 'object' && columnGroups !== null) {
-      groupsArray = Object.entries(columnGroups).map(([key, val]) => ({
-        name: val.name || key,
-        columns: val.columns || val.fields || []
-      }));
+      groupsArray = Object.values(columnGroups).map((val) => ({ ...val }));
     }
 
     const groupsHTML = groupsArray
-      .map((group, idx) => {
-        const groupKey = (group.name || `group_${idx}`).replace(/\s+/g, '_').toLowerCase();
-        const groupName = DatasetUtils.formatGroupName(group.name || groupKey);
+      .map((group) => {
+        const controlName = group.control_name;
         const fieldCount = Array.isArray(group.columns) ? group.columns.length : 0;
-
+        const value = typeof group.default_value !== 'undefined' ? group.default_value : '';
         return `
             <div class="col-md-6 col-lg-4 mb-3">
-              <div class="card" id="group_card_${groupKey}" name="group_card_${groupKey}">
+              <div class="card" id="group_card_${controlName}" name="group_card_${controlName}">
                 <div class="card-body">
                   <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="${groupName}" id="group_${groupKey}" name="group_${groupKey}" data-field-count="${fieldCount}" onchange="window.analysisManager && window.analysisManager.updateColumnGroupsSummary()" checked>
-                    <label class="form-check-label" for="group_${groupKey}">
-                      <strong>${groupName}</strong>
+                    <input class="form-check-input" type="checkbox" value="${value}" id="${controlName}" name="${controlName}" data-field-count="${fieldCount}" onchange="window.analysisManager && window.analysisManager.updateColumnGroupsSummary()" checked>
+                    <label class="form-check-label" for="${controlName}">
+                      <strong>${controlName}</strong>
                       <small class="text-muted d-block">${fieldCount} fields</small>
                     </label>
                   </div>
@@ -764,11 +756,6 @@ class DatasetAnalysisManager {
       .join("");
 
     container.innerHTML = groupsHTML;
-
-    // Ensure the content area is visible now that groups are loaded
-    const content = document.getElementById('columnGroupsContent');
-    if (content) content.style.display = 'block';
-
     this.updateColumnGroupsSummary();
   }
 
@@ -1116,46 +1103,42 @@ class DatasetAnalysisManager {
   displayStratifications(stratifications) {
     const container = document.getElementById("stratificationContainer");
 
-    if (!container) return;
-
-    const stratificationsHTML = Object.entries(stratifications)
-      .map(([key, stratification]) => {
-        // Group info (text or array)
-        let groupInfoHtml = '';
-        if (Array.isArray(stratification.group_info)) {
-          groupInfoHtml = `<ul class="mb-0 ps-3">${stratification.group_info.map(item => `<li>${item.replace(/^• /, '')}</li>`).join('')}</ul>`;
-        } else if (stratification.group_info) {
-          groupInfoHtml = `<span class="text-info" style="font-size:0.95em;">${stratification.group_info}</span>`;
+        let groupsArray = [];
+        if (Array.isArray(columnGroups)) {
+          groupsArray = columnGroups.map((g, idx) => ({
+            ...g
+          }));
+        } else if (typeof columnGroups === 'object' && columnGroups !== null) {
+          groupsArray = Object.entries(columnGroups).map(([key, val], idx) => ({
+            ...val
+          }));
         }
 
-        // Parameters for stratification
-        let paramsHtml = '';
-        if (stratification.parameters && Object.keys(stratification.parameters).length > 0) {
-          // parameters may be an object with keys or an array in the info block
-          if (Array.isArray(stratification.parameters)) {
-            paramsHtml = `<div class="mt-2"><strong>Parameters:</strong><ul class="mb-0 ps-3">${stratification.parameters.map(p => `<li><strong>${p.name}</strong>: <span class='text-muted'>${p.description || ''} (default: ${p.default || ''})</span></li>`).join('')}</ul></div>`;
-          } else {
-            paramsHtml = `<div class="mt-2"><strong>Parameters:</strong><ul class="mb-0 ps-3">${Object.entries(stratification.parameters).map(([pkey, p]) => `<li><strong>${p.label || pkey}</strong>: <span class='text-muted'>${p.description || ''} (default: ${p.default || ''})</span></li>`).join('')}</ul></div>`;
-          }
-        } else if (stratification.info && Array.isArray(stratification.info.parameters) && stratification.info.parameters.length > 0) {
-          paramsHtml = `<div class="mt-2"><strong>Parameters:</strong><ul class="mb-0 ps-3">${stratification.info.parameters.map(p => `<li><strong>${p.name}</strong>: <span class='text-muted'>${p.description || ''} (default: ${p.default || ''})</span></li>`).join('')}</ul></div>`;
-        }
+        const groupsHTML = groupsArray
+          .map((group, idx) => {
+            const controlName = group.control_name;
+            const groupName = DatasetUtils.formatGroupName(group.name || controlName);
+            const fieldCount = Array.isArray(group.columns) ? group.columns.length : 0;
+            return `
+                <div class="col-md-6 col-lg-4 mb-3">
+                  <div class="card" id="group_card_${controlName}" name="group_card_${controlName}">
+                    <div class="card-body">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${groupName}" id="${controlName}" name="${controlName}" data-field-count="${fieldCount}" onchange="window.analysisManager && window.analysisManager.updateColumnGroupsSummary()" checked>
+                        <label class="form-check-label" for="${controlName}">
+                          <strong>${groupName}</strong>
+                          <small class="text-muted d-block">${fieldCount} fields</small>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+          })
+          .join("");
 
-        // Subgroups list
-        let subgroupsHtml = '';
-        if (Array.isArray(stratification.subgroups) && stratification.subgroups.length > 0) {
-          subgroupsHtml = `<div class="mt-2"><strong>Subgroups:</strong><ul class="mb-0 ps-3">${stratification.subgroups.map(sg => `<li><strong>${sg.name}:</strong> <span class='text-muted'>${sg.condition}</span></li>`).join('')}</ul></div>`;
-        }
-
-        return `
-              <div class="col-12 mb-3">
-                <div class="card w-100" id="strat_card_${key}" name="strat_card_${key}">
-                  <div class="card-body">
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" value="${key}" id="strat_${key}" name="strat_${key}" onchange="window.analysisManager && window.analysisManager.updateStratificationSummary()">
-                      <label class="form-check-label" for="strat_${key}">
-                        <strong>${stratification.name}</strong>
-                      </label>
+        container.innerHTML = groupsHTML;
+        this.updateColumnGroupsSummary();
                     </div>
                     ${subgroupsHtml}
                   </div>
@@ -1253,6 +1236,9 @@ class DatasetAnalysisManager {
         // store normalized methods and render comparison cards
         this.analysisMethodsData = methodsArray;
         try { this.displayAnalysisMethodsComparison(methodsArray); } catch (e) { /* ignore if UI not present */ }
+
+        // Pre-create all parameter containers for each method
+        this.createAllAnalysisMethodParameterContainers(methodsArray);
       } else {
         this.showAnalysisMethodError(data.message);
       }
@@ -1260,6 +1246,66 @@ class DatasetAnalysisManager {
       console.error("Failed to load analysis methods:", error);
       this.showAnalysisMethodError("Failed to load analysis methods");
     }
+  }
+
+  // Create all parameter containers for each analysis method (hidden by default)
+  createAllAnalysisMethodParameterContainers(methodsArray) {
+    const parent = document.getElementById("analysisMethodParametersContainers");
+    if (!parent) return;
+    parent.innerHTML = "";
+    methodsArray.forEach(method => {
+      const container = document.createElement("div");
+      container.id = `analysisMethodParameters_${method.key}`;
+      container.className = "analysis-method-parameters-container";
+      container.style.display = "none";
+      container.innerHTML = `
+        <div class="row">
+          <div class="col-12">
+            <h6 class="mb-3">
+              <i class="fas fa-sliders-h me-2"></i>
+              Method Parameters (${method.title || method.name || method.key})
+            </h6>
+            <div>
+              ${this.generateAnalysisMethodParameterInputs(method)}
+            </div>
+          </div>
+        </div>
+      `;
+      parent.appendChild(container);
+    });
+  }
+
+  // Generate parameter inputs for a method using control_name for id/name
+  generateAnalysisMethodParameterInputs(method) {
+    if (!method.parameters) return "";
+    // parameters can be array or object
+    const params = Array.isArray(method.parameters)
+      ? method.parameters
+      : Object.values(method.parameters);
+    return params.map(param => {
+      const id = param.control_name;
+      if (!id) {
+        console.error("Parameter missing control_name:", param);
+        return ""; // Skip invalid parameters
+      }
+      const label = param.label || param.name || param.key || id;
+      const desc = param.description || "";
+      const def = param.default !== undefined ? param.default : "";
+      if (param.type === "select" && param.options) {
+        const opts = param.options.map(o => `<option value="${o.value}" ${o.value === def ? "selected" : ""}>${o.label}</option>`).join("");
+        return `<div class="mb-2"><label class="form-label fw-bold" for="${id}">${label}</label><select class="form-select" id="${id}" name="${id}">${opts}</select><div class="form-text">${desc}</div></div>`;
+      } else if (param.type === "int" || param.type === "float") {
+        const step = param.type === "int" ? 1 : "any";
+        const min = param.min !== undefined ? `min=\"${param.min}\"` : "";
+        const max = param.max !== undefined ? `max=\"${param.max}\"` : "";
+        return `<div class="mb-2"><label class="form-label fw-bold" for="${id}">${label}</label><input type="number" class="form-control" id="${id}" name="${id}" value="${def}" step="${step}" ${min} ${max}><div class="form-text">${desc}</div></div>`;
+      } else if (param.type === "boolean") {
+        const checked = def ? "checked" : "";
+        return `<div class="mb-2"><label class="form-label fw-bold" for="${id}">${label}</label><input type="checkbox" class="form-check-input" id="${id}" name="${id}" ${checked}><div class="form-text">${desc}</div></div>`;
+      } else {
+        return `<div class="mb-2"><label class="form-label fw-bold" for="${id}">${label}</label><input type="text" class="form-control" id="${id}" name="${id}" value="${def}"><div class="form-text">${desc}</div></div>`;
+      }
+    }).join("");
   }
 
   // Display analysis methods comparison cards
@@ -1320,7 +1366,9 @@ class DatasetAnalysisManager {
     const selected = document.getElementById('analysisMethodSelect');
     const selectedDisplay = document.getElementById('selectedAnalysisMethodDisplay');
     const container = document.getElementById('analysisMethodsContainer');
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     const selectedValue = selected ? selected.value : '';
     // Show the option's visible text rather than the value/key
@@ -1334,15 +1382,22 @@ class DatasetAnalysisManager {
 
     const checkboxes = container.querySelectorAll('.analysis-method-checkbox');
     checkboxes.forEach(cb => {
+      const card = cb.closest('.analysis-method-card');
       if (cb.value === selectedValue) {
         cb.checked = false;
         cb.disabled = true;
         const label = cb.nextElementSibling;
         if (label) label.classList.add('text-muted');
+        if (card) {
+          card.classList.add('bg-light', 'opacity-50');
+        }
       } else {
         cb.disabled = false;
         const label = cb.nextElementSibling;
         if (label) label.classList.remove('text-muted');
+        if (card) {
+          card.classList.remove('bg-light', 'opacity-50');
+        }
       }
     });
 
@@ -1366,33 +1421,57 @@ class DatasetAnalysisManager {
     return Array.from(container.querySelectorAll('.analysis-method-checkbox:checked')).map(cb => cb.value);
   }
 
-  // Display analysis methods
+  // Display analysis methods (only called ONCE at load)
   displayAnalysisMethods(methods, defaultMethod = null) {
     const methodSelect = document.getElementById("analysisMethodSelect");
-
     if (!methodSelect) return;
-
     // Clear existing options except first
     while (methodSelect.children.length > 1) {
       methodSelect.removeChild(methodSelect.lastChild);
     }
-
     // Add method options
     Object.entries(methods).forEach(([key, method]) => {
       const option = document.createElement("option");
       option.value = key;
       option.textContent = method.name;
-
       if (defaultMethod && key === defaultMethod) {
         option.selected = true;
       }
-
       methodSelect.appendChild(option);
     });
+    // Do NOT call updateAnalysisMethod here; only call on dropdown change
+  }
 
-    if (defaultMethod) {
-      this.updateAnalysisMethod();
+  // Show/hide parameter containers for selected method (NO fetch, robust to missing container)
+  updateAnalysisMethod() {
+  console.log('DatasetAnalysisManager.updateAnalysisMethod called');
+  const select = document.getElementById("analysisMethodSelect");
+  const containersParent = document.getElementById("analysisMethodParametersContainers");
+  if (!select || !containersParent) {
+    console.log('select or containersParent not found');
+    return;
+  }
+  const selectedKey = select.value;
+  console.log('selectedKey:', selectedKey);
+  // Hide all
+  Array.from(containersParent.children).forEach(child => {
+    if (child && child.style) child.style.display = "none";
+  });
+  // Show selected
+  if (selectedKey) {
+    const showDiv = document.getElementById(`analysisMethodParameters_${selectedKey}`);
+    if (showDiv && showDiv.style) {
+      showDiv.style.display = "block";
+    } else {
+      // Fallback: show a warning in the UI for missing container, but do not throw
+      console.warn(`No parameter container found for analysis method: ${selectedKey}`);
+      if (typeof DatasetUtils !== 'undefined' && DatasetUtils.showAlert) {
+        DatasetUtils.showAlert(`No parameter UI for selected method (${selectedKey})`, "warning");
+      }
     }
+  }
+	// Update comparison visibility
+	console.log('calling updateAnalysisMethodsVisibility');
   }
 
   // Show analysis method error
@@ -2691,3 +2770,10 @@ function showPolicyInfoModal(policyInfo) {
     this.remove();
   });
 }
+
+// Make it global so the HTML onchange can call it
+window.updateAnalysisMethod = function() {
+  if (window.analysisManager) {
+    window.analysisManager.updateAnalysisMethod();
+  }
+};

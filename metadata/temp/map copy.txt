@@ -1,0 +1,157 @@
+Analysis Configuration
+	Analysis Information
+		Analysis Name, textbox, name "analysisName", value: ""
+		Description, textbox, name "analysisDescription", value: ""
+Data Sources
+    Data Files Selection
+        Patient Data File, select, name: "editorPatientFileSelect", value: ""
+        Taxonomy Data File, select, name: "editorTaxonomyFileSelect", value: ""
+        Bracken Results File, select, name: "editorBrackenFileSelect", value: ""
+    Bracken Time Point Selection
+        Time Point Selection, select, name: "editorBrackenTimePointSelect", value: ""
+        Time Point Description, span, id: "timePointDescriptionText"
+    Extreme Time Point Selection
+        Select by percentage, checkbox, name: "selectionModeToggle", value: false
+        Top Percentage, range, name: "topPercentage", value: 25
+        Bottom Percentage, range, name: "bottomPercentage", value: 25
+        Link top and bottom percentages to the same value, checkbox, name: "linkPercentages", value: true
+    Attribute Groups Selection
+        Group checkboxes, names: "Demographics", "DiseaseCharacteristics", "FishIndicators", "Comorbidities", "TreatmentAndTransplantation", "LaboratoryValues", "GenomicMarkers", "Antiviral", "Antibiotics", "Antifungal"
+Pre-Analysis
+	Attributes Discarding Policy
+		Prevalence Filtering, checkbox, name: "policy_prevalence_filtering"
+			Detection Threshold, number, name: "prevalence_filtering_param_detection_threshold", value: 0
+			Minimum Prevalence (%), number, name: "prevalence_filtering_param_min_prevalence", value: 0.1
+		Abundance Filtering, checkbox, name: "policy_abundance_filtering"
+			Minimum Mean Abundance (%), number, name: "abundance_filtering_param_min_mean_abundance", value: 0.0001
+			Minimum Median Abundance (%), number, name: "abundance_filtering_param_min_median_abundance", value: 0.00005
+		Variance-Based Selection, checkbox, name: "policy_variance_based_selection"
+			Number of Taxa to Select, number, name: "variance_based_selection_param_num_taxa_to_select", value: 50
+			Variance Metric, select, name: "variance_based_selection_param_variance_metric", value: "coefficient_of_variation"
+		Univariate PFS Screening, checkbox, name: "policy_univariate_pfs_screening"
+			Multiple Testing Correction, select, name: "univariate_pfs_screening_param_multiple_testing_correction", value: "fdr"
+			Significance Threshold, number, name: "univariate_pfs_screening_param_significance_threshold", value: 0.05
+			Statistical Test, select, name: "univariate_pfs_screening_param_statistical_test", value: "cox_regression"
+		Multivariate PFS Screening, checkbox, name: "policy_multivariate_pfs_screening"
+			Maximum Iterations, number, name: "multivariate_pfs_screening_param_max_iterations", value: 10
+			Minimum Taxa to Retain, number, name: "multivariate_pfs_screening_param_min_taxa_retain", value: 5
+			Regularization Strength, number, name: "multivariate_pfs_screening_param_regularization_strength", value: 0.1
+			Significance Threshold, number, name: "multivariate_pfs_screening_param_significance_threshold", value: 0.05
+		Stability Selection, checkbox, name: "policy_stability_selection"
+			Bootstrap Sample Size (%), number, name: "stability_selection_param_bootstrap_sample_size", value: 0.8
+			Number of Bootstraps, number, name: "stability_selection_param_num_bootstraps", value: 100
+			Stability Threshold, number, name: "stability_selection_param_stability_threshold", value: 0.7
+		Information-Theoretic Selection, checkbox, name: "policy_information_theoretic_selection"
+			Mutual Information Estimator, select, name: "information_theoretic_selection_param_mi_estimator", value: "knn"
+			Number of Permutations, number, name: "information_theoretic_selection_param_num_permutations", value: 1000
+			Significance Threshold, number, name: "information_theoretic_selection_param_significance_threshold", value: 0.05
+		Boruta Algorithm, checkbox, name: "policy_boruta_algorithm"
+			Maximum Iterations, number, name: "boruta_algorithm_param_max_iterations", value: 100
+			Shadow Features per Real Feature, number, name: "boruta_algorithm_param_num_shadow_features", value: 3
+			Random Forest Trees, number, name: "boruta_algorithm_param_rf_num_trees", value: 1000
+		Elastic Net Regularization, checkbox, name: "policy_elastic_net_regularization"
+			Convergence Tolerance, number, name: "elastic_net_regularization_param_convergence_tolerance", value: 0.0001
+			L1 Ratio, number, name: "elastic_net_regularization_param_l1_ratio", value: 0.5
+			Maximum Iterations, number, name: "elastic_net_regularization_param_max_iterations", value: 1000
+		Combined Multi-Method Selection, checkbox, name: "policy_combined_multi_method"
+			Consensus Rule, select, name: "combined_multi_method_param_consensus_rule", value: "intersection"
+			Minimum Agreement, number, name: "combined_multi_method_param_min_agreement", value: 2
+	Microbial Discarding Policy
+		Prevalence Filtering, checkbox, name: "microbial_policy_prevalence_filtering"
+			Detection Threshold, number, name: "prevalence_filtering_param_detection_threshold", value: 0
+			Minimum Prevalence (%), number, name: "prevalence_filtering_param_min_prevalence", value: 0.1
+		Abundance Filtering, checkbox, name: "microbial_policy_abundance_filtering"
+			Minimum Mean Abundance (%), number, name: "abundance_filtering_param_min_mean_abundance", value: 0.0001
+			Minimum Median Abundance (%), number, name: "abundance_filtering_param_min_median_abundance", value: 0.00005
+		Taxonomic Rarity Filtering, checkbox, name: "microbial_policy_taxonomic_rarity_filtering"
+			Minimum Sample Count, number, name: "taxonomic_rarity_filtering_param_min_sample_count", value: 3
+			Rarity Threshold, number, name: "taxonomic_rarity_filtering_param_rarity_threshold", value: 0.01
+		Low Abundance Taxa Removal, checkbox, name: "microbial_policy_low_abundance_taxa_removal"
+			Keep Top N Taxa, number, name: "low_abundance_taxa_removal_param_keep_top_n", value: 100
+			Maximum Abundance Threshold (%), number, name: "low_abundance_taxa_removal_param_max_abundance_threshold", value: 0.001
+		Contaminant Filtering, checkbox, name: "microbial_policy_contaminant_filtering"
+			Control Abundance Threshold (%), number, name: "contaminant_filtering_param_control_abundance_threshold", value: 0.01
+			Control Prevalence Threshold (%), number, name: "contaminant_filtering_param_control_prevalence_threshold", value: 0.5
+		Singleton Filtering, checkbox, name: "microbial_policy_singleton_filtering"
+			Singleton Removal Strategy, select, name: "singleton_filtering_param_remove_singletons", value: "strict"
+			Singleton Abundance Threshold (%), number, name: "singleton_filtering_param_singleton_abundance_threshold", value: 0.01
+		Variance-Based Selection, checkbox, name: "microbial_policy_variance_based_selection"
+			Number of Taxa to Select, number, name: "variance_based_selection_param_num_taxa_to_select", value: 50
+			Variance Metric, select, name: "variance_based_selection_param_variance_metric", value: "coefficient_of_variation"
+		Taxonomic Level Filtering, checkbox, name: "microbial_policy_taxonomic_level_filtering"
+			Minimum Taxonomic Level, select, name: "taxonomic_level_filtering_param_min_taxonomic_level", value: "genus"
+			Unclassified Taxa Handling, select, name: "taxonomic_level_filtering_param_remove_unclassified", value: "strict"
+		Core Microbiome Filtering, checkbox, name: "microbial_policy_core_microbiome_filtering"
+			Core Abundance Threshold (%), number, name: "core_microbiome_filtering_param_core_abundance_threshold", value: 0.01
+			Core Prevalence Threshold (%), number, name: "core_microbiome_filtering_param_core_prevalence_threshold", value: 0.8
+		Combined Microbial Selection, checkbox, name: "microbial_policy_combined_microbial_selection"
+			Consensus Rule, select, name: "combined_microbial_selection_param_consensus_rule", value: "intersection"
+			Minimum Agreement, number, name: "combined_microbial_selection_param_min_agreement", value: 2
+	Microbial Grouping
+		Grouping Method, radio, name: "microbialGroupingMethod", values: "not_grouping", "scfa_producers", "pathogenic_bacteria", "immunomodulatory_bacteria", "vitamin_synthesis", "bile_acid_metabolism", "mucin_degraders", "antibiotic_resistance_carriers", "disease_associated_microbiome"
+	Clustering - Policy
+		Clustering Method, select, name: "clusteringMethodSelect", value: "kmeans"
+		Maximum Iterations, number, name: "clustering_param_max_iter", value: 300
+		Number of Clusters, number, name: "clustering_param_n_clusters", value: 3
+		Random State, number, name: "clustering_param_random_state", value: 42
+	Clustering - Naming
+		Representative Method, select, name: "clusterRepresentativeMethod", value: "abundance_highest"
+Analysis
+	Analysis Type
+		Analysis Method, select, name: "analysisMethodSelect", value: "cox_proportional_hazards"
+		# Dynamic controls for each analysis method (generated based on method selection)
+		Accelerated Failure Time (AFT) Model
+			Distribution, select, name: "aftParam_distribution", options: ["Weibull", "Log-logistic", "Log-normal"]
+			Significance Level, number, name: "aftParam_alpha"
+			Maximum Iterations, number, name: "aftParam_max_iter"
+			Convergence Tolerance, number, name: "aftParam_tolerance"
+		Competing Risks Analysis
+			Event Type, select, name: "competingRisksParam_event_type", options: ["Death", "Relapse", "Other"]
+			Significance Level, number, name: "competingRisksParam_alpha"
+			Maximum Iterations, number, name: "competingRisksParam_max_iter"
+			Convergence Tolerance, number, name: "competingRisksParam_tolerance"
+		Cox Proportional Hazards Regression
+			Significance Level, number, name: "analysisParam_alpha", param_name:"alpha"
+			L1 Ratio, number, name: "analysisParam_l1_ratio", param_name:"l1_ratio"
+			Maximum Iterations, number, name: "analysisParam_max_iter", param_name:"max_iter"
+			L2 Penalty, number, name: "analysisParam_penalizer", param_name:"penalizer"
+			Convergence Tolerance, number, name: "analysisParam_tolerance", param_name:"tolerance"
+		Frailty Model
+			Frailty Distribution, select, name: "frailtyParam_distribution", options: ["Gamma", "Inverse Gaussian"]
+			Significance Level, number, name: "frailtyParam_alpha"
+			Maximum Iterations, number, name: "frailtyParam_max_iter"
+			Convergence Tolerance, number, name: "frailtyParam_tolerance"
+		Gradient Boosting Survival Analysis
+			Number of Trees, number, name: "gbmParam_n_trees"
+			Learning Rate, number, name: "gbmParam_learning_rate"
+			Maximum Depth, number, name: "gbmParam_max_depth"
+			Significance Level, number, name: "gbmParam_alpha"
+		Kaplan-Meier Estimator
+			Time Interval, number, name: "kmParam_time_interval"
+			Confidence Level, number, name: "kmParam_confidence_level"
+		Log-Rank Test
+			Significance Level, number, name: "logRankParam_alpha"
+		Random Survival Forest
+			Number of Trees, number, name: "rsfParam_n_trees"
+			Maximum Depth, number, name: "rsfParam_max_depth"
+			Minimum Samples Split, number, name: "rsfParam_min_samples_split"
+			Significance Level, number, name: "rsfParam_alpha"
+		Restricted Mean Survival Time (RMST)
+			Time Horizon, number, name: "rmstParam_time_horizon"
+			Significance Level, number, name: "rmstParam_alpha"
+Post-Analysis
+	Population Sectors Comparison
+		Stratification checkboxes, ids: "strat_0_demographics_age", "strat_1_demographics_bmi", "strat_2_demographics_smoking", "strat_3_disease_characteristics", "strat_4_fish_indicators", "strat_5_genomic_markers", "strat_6_laboratory_values", "strat_7_none", "strat_8_treatment_response"
+	Sample Timepoints Comparison
+		Sample timepoint checkboxes, ids: "sample_tp_Pre-engraftment", "sample_tp_2 months after engraftment", "sample_tp_24 months after engraftment", "sample_tp_delta_to_engraftment", "sample_tp_delta_after_engraftment", "sample_tp_delta_pre_pos"
+	Analysis Methods Comparison
+		Analysis method checkboxes, ids: "analysis_method_accelerated_failure_time", "analysis_method_competing_risks", "analysis_method_cox_proportional_hazards", "analysis_method_frailty_model", "analysis_method_gradient_boosting_survival", "analysis_method_kaplan_meier", "analysis_method_log_rank_test", "analysis_method_random_survival_forest", "analysis_method_restricted_mean_survival_time"
+	Output Options
+		Report Format
+			PDF Report, checkbox, id: "reportPDF", name: "reportPDF"
+			HTML Report, checkbox, id: "reportHTML", name: "reportHTML"
+			CSV Data Export, checkbox, id: "reportCSV", name: "reportCSV"
+		Report Contents
+			Summary Statistics, checkbox, id: "includeSummary", name: "includeSummary"
+			Visualization Plots, checkbox, id: "includePlots", name: "includePlots"
+			Raw Data Tables, checkbox, id: "includeRawData", name: "includeRawData"

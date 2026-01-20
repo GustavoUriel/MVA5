@@ -564,9 +564,10 @@ function goToTab(tabName) {
 
 // Analysis Tab Functions
 function loadAnalysisTab() {
-  // If DatasetAnalysisManager is available, let it handle the analysis list
+  // Create DatasetAnalysisManager if it doesn't exist
   if (!window.analysisManager) {
-    loadAnalysisList();
+    window.analysisManager = new DatasetAnalysisManager(datasetId);
+    window.analysisManager.init();
   }
   setupAnalysisEditor();
 }
@@ -2198,6 +2199,19 @@ function setupAnalysisEditor() {
     brackenSelect.addEventListener("change", validateAnalysisEditor);
   }
 
+  // Add event listener for analysis method select
+  const analysisMethodSelect = document.getElementById('analysisMethodSelect');
+  console.log('analysisMethodSelect found:', !!analysisMethodSelect);
+  if (analysisMethodSelect) {
+    analysisMethodSelect.addEventListener('change', () => {
+      try {
+        window.updateAnalysisMethod();
+      } catch (e) {
+        console.error('error calling updateAnalysisMethod', e);
+      }
+    });
+  }
+
   // Load clustering methods for the clustering parameters container
   loadClusteringMethods();
 
@@ -2483,54 +2497,28 @@ function displayAnalysisMethods(methods, defaultMethod, categories, descriptions
 
 function updateAnalysisMethod() {
   const select = document.getElementById("analysisMethodSelect");
-  const status = document.getElementById("analysisMethodStatus");
-  const description = document.getElementById("analysisMethodDescription");
-  const parametersContainer = document.getElementById("analysisMethodParametersContainer");
-  const parametersForm = document.getElementById("analysisMethodParametersForm");
-
-  if (!select || !status || !description) return;
-
-  const selectedMethod = select.value;
-
-  if (!selectedMethod) {
-    status.textContent = "No method selected";
-    status.className = "badge bg-secondary me-2";
-    description.textContent = "Choose a method for multivariate survival analysis";
-    parametersContainer.style.display = "none";
-    updateAnalysisMethodSummary();
-    // Update comparison visibility in analysis manager if available
-    try { if (window.analysisManager && typeof window.analysisManager.updateAnalysisMethodsVisibility === 'function') window.analysisManager.updateAnalysisMethodsVisibility(); } catch(e) {}
-    return;
+  const containersParent = document.getElementById("analysisMethodParametersContainers");
+  if (!select || !containersParent) return;
+  const selectedKey = select.value;
+  // Hide all
+  Array.from(containersParent.children).forEach(child => {
+    if (child && child.style) child.style.display = "none";
+  });
+  // Show selected
+  if (selectedKey) {
+    const showDiv = document.getElementById(`analysisMethodParameters_${selectedKey}`);
+    if (showDiv && showDiv.style) {
+      showDiv.style.display = "block";
+    }
   }
-
-  // Fetch method details
-  fetch(`/dataset/${datasetId}/metadata/analysis-methods/${selectedMethod}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        const method = data.method;
-
-        // Update status and description
-        status.textContent = method.name;
-        status.className = "badge bg-success me-2";
-        description.textContent = method.description;
-
-        // Display parameters
-        displayAnalysisMethodParameters(method.parameters);
-        parametersContainer.style.display = "block";
-
-        // Update summary
-        updateAnalysisMethodSummary();
-        // Update comparison visibility in analysis manager if available
-        try { if (window.analysisManager && typeof window.analysisManager.updateAnalysisMethodsVisibility === 'function') window.analysisManager.updateAnalysisMethodsVisibility(); } catch(e) {}
-      } else {
-        showAnalysisMethodError(data.error);
-      }
-    })
-    .catch((error) => {
-      console.error("Error loading analysis method details:", error);
-      showAnalysisMethodError("Failed to load method details");
-    });
+  // Also update card disabling
+  if (window.analysisManager && typeof window.analysisManager.updateAnalysisMethodsVisibility === 'function') {
+    window.analysisManager.updateAnalysisMethodsVisibility();
+  }
+  // Also update card disabling
+  if (window.analysisManager && typeof window.analysisManager.updateAnalysisMethodsVisibility === 'function') {
+    window.analysisManager.updateAnalysisMethodsVisibility();
+  }
 }
 
 function displayAnalysisMethodParameters(parameters) {

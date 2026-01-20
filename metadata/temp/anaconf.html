@@ -1,0 +1,2354 @@
+<div class="row" id="analysisEditorSection" style="display: block;" bis_skin_checked="1">
+  <div class="col-12" bis_skin_checked="1">
+    <div class="card border-primary" bis_skin_checked="1" id="card_border-primary_1">
+      <div class="card-header bg-primary text-white" bis_skin_checked="1">
+        <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+          <h6 class="mb-0">
+            <i class="fas fa-edit me-2"></i>
+            <span id="editorTitle">Analysis Configuration</span>
+          </h6>
+          <div class="btn-group" bis_skin_checked="1">
+            <button type="button" class="btn btn-light btn-sm" onclick="saveAnalysis()" id="btn_btn-light_btn-sm_2" name="btn_btn-light_btn-sm_2">
+              <i class="fas fa-save me-1"></i>Save
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="cancelAnalysisEdit()" id="btn_btn-outline-light_btn-sm_3" name="btn_btn-outline-light_btn-sm_3">
+              <i class="fas fa-times me-1"></i>Close
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="card-body" bis_skin_checked="1">
+        <!-- Analysis Information Section -->
+        <div class="row mb-4" bis_skin_checked="1">
+          <div class="col-12" bis_skin_checked="1">
+            <div class="card border-info" bis_skin_checked="1" id="card_border-info_4">
+              <div class="card-header bg-info text-white" bis_skin_checked="1">
+                <h6 class="mb-0">
+                  <i class="fas fa-info-circle me-2"></i>
+                  Analysis Information
+                </h6>
+              </div>
+              <div class="card-body" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-md-6" bis_skin_checked="1">
+                    <label for="analysisName" class="form-label">Analysis Name</label>
+                    <input type="text" class="form-control" id="analysisName" name="analysisName" placeholder="Enter analysis name...">
+                  </div>
+                  <div class="col-md-6" bis_skin_checked="1">
+                    <label for="analysisDescription" class="form-label">Description</label>
+                    <input type="text" class="form-control" id="analysisDescription" name="analysisDescription" placeholder="Brief description...">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editor Tabs -->
+        <ul class="nav nav-tabs" id="analysisEditorTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="datasources-editor-tab" data-bs-toggle="tab" data-bs-target="#datasources-editor" type="button" role="tab" aria-selected="true" name="datasources-editor-tab">
+              <i class="fas fa-layer-group me-2"></i>Data Sources
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="preanalysis-editor-tab" data-bs-toggle="tab" data-bs-target="#preanalysis-editor" type="button" role="tab" aria-selected="false" tabindex="-1" name="preanalysis-editor-tab">
+              <i class="fas fa-filter me-2"></i>Pre-Analysis
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="analysis-editor-tab" data-bs-toggle="tab" data-bs-target="#analysis-editor" type="button" role="tab" aria-selected="false" tabindex="-1" name="analysis-editor-tab">
+              <i class="fas fa-flask me-2"></i>Analysis
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="postanalysis-editor-tab" data-bs-toggle="tab" data-bs-target="#postanalysis-editor" type="button" role="tab" aria-selected="false" tabindex="-1" name="postanalysis-editor-tab">
+              <i class="fas fa-chart-bar me-2"></i>Post-Analysis
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="output-editor-tab" data-bs-toggle="tab" data-bs-target="#output-editor" type="button" role="tab" aria-selected="false" tabindex="-1" name="output-editor-tab">
+              <i class="fas fa-file-export me-2"></i>Output Options
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content mt-3" id="analysisEditorTabsContent" bis_skin_checked="1">
+          <!-- Data Sources Editor Tab -->
+          <div class="tab-pane fade show active" id="datasources-editor" role="tabpanel" aria-labelledby="datasources-editor-tab" bis_skin_checked="1">
+            <!-- File Selection Section -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_5">
+                  <div class="card-header" bis_skin_checked="1">
+                    <h6 class="mb-0">
+                      <i class="fas fa-files me-2"></i>
+                      Data Files Selection
+                    </h6>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <div class="row" bis_skin_checked="1">
+                      <!-- Patient File Selection -->
+                      <div class="col-md-4" bis_skin_checked="1">
+                        <div class="mb-3" bis_skin_checked="1">
+                          <label for="editorPatientFileSelect" class="form-label">
+                            <i class="fas fa-user-injured text-primary me-2"></i>
+                            Patient Data File
+                          </label>
+                          <select class="form-select" id="editorPatientFileSelect" name="editorPatientFileSelect" onchange="validateAnalysisEditor()">
+                            <option value="">Select patient file...</option>
+                            <!-- Options will be populated dynamically -->
+                          <option value="1">patients (39.02 KB)</option></select>
+                          <div class="form-text" bis_skin_checked="1">Choose the patient metadata file for analysis</div>
+                        </div>
+                      </div>
+
+                      <!-- Taxonomy File Selection -->
+                      <div class="col-md-4" bis_skin_checked="1">
+                        <div class="mb-3" bis_skin_checked="1">
+                          <label for="editorTaxonomyFileSelect" class="form-label">
+                            <i class="fas fa-sitemap text-info me-2"></i>
+                            Taxonomy Data File
+                          </label>
+                          <select class="form-select" id="editorTaxonomyFileSelect" name="editorTaxonomyFileSelect" onchange="validateAnalysisEditor()">
+                            <option value="">Select taxonomy file...</option>
+                            <!-- Options will be populated dynamically -->
+                          <option value="2">taxonomy (3.27 MB)</option></select>
+                          <div class="form-text" bis_skin_checked="1">Choose the taxonomy reference file</div>
+                        </div>
+                      </div>
+
+                      <!-- Bracken File Selection -->
+                      <div class="col-md-4" bis_skin_checked="1">
+                        <div class="mb-3" bis_skin_checked="1">
+                          <label for="editorBrackenFileSelect" class="form-label">
+                            <i class="fas fa-chart-bar text-success me-2"></i>
+                            Bracken Results File
+                          </label>
+                          <select class="form-select" id="editorBrackenFileSelect" name="editorBrackenFileSelect" onchange="validateAnalysisEditor()">
+                            <option value="">Select bracken file...</option>
+                            <!-- Options will be populated dynamically -->
+                          <option value="3">bracken (20.69 MB)</option></select>
+                          <div class="form-text" bis_skin_checked="1">Choose the bracken abundance data file</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bracken Time Point Selection -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_6">
+                  <div class="card-header" bis_skin_checked="1">
+                    <h6 class="mb-0">
+                      <i class="fas fa-clock text-primary me-2"></i>
+                      Bracken Time Point Selection
+                    </h6>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <div class="row" bis_skin_checked="1">
+                      <div class="col-md-4" bis_skin_checked="1">
+                        <div class="mb-3" bis_skin_checked="1">
+                          <label for="editorBrackenTimePointSelect" class="form-label">
+                            <i class="fas fa-calendar-alt text-warning me-2"></i>
+                            Time Point Selection
+                          </label>
+                          <select class="form-select" id="editorBrackenTimePointSelect" name="editorBrackenTimePointSelect" onchange="updateTimePointDescription()"><option value="" disabled="">Select a Time Point...</option><option value="Pre-engraftment">Pre-engraftment</option><option value="2 months after engraftment">2m post-engraft</option><option value="24 months after engraftment">24m post-engraft</option><option value="delta_to_engraftment">Delta E to P</option><option value="delta_after_engraftment">Delta 24m to 2m</option><option value="delta_pre_pos">Delta 24m to P</option></select>
+                          <div class="form-text" bis_skin_checked="1">Choose the time point from your Bracken data for analysis</div>
+                        </div>
+                      </div>
+                      <div class="col-md-8" bis_skin_checked="1">
+                        <label class="form-label">Time Point Description</label>
+                        <div class="d-flex align-items-center" bis_skin_checked="1">
+                          <span id="timePointDescriptionText"></span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Extreme Time Point Selection -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_7">
+                  <div class="card-header" bis_skin_checked="1">
+                    <h6 class="mb-0">
+                      <i class="fas fa-chart-line me-2"></i>
+                      Extreme Time Point Selection
+                    </h6>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <!-- Selection Mode Toggle -->
+                    <div class="row mb-3" bis_skin_checked="1">
+                      <div class="col-12" bis_skin_checked="1">
+                        <div class="form-check form-switch" bis_skin_checked="1">
+                          <input class="form-check-input" type="checkbox" id="selectionModeToggle" name="selectionModeToggle" onchange="toggleSelectionMode()">
+                          <label class="form-check-label" for="selectionModeToggle">
+                            <i class="fas fa-toggle-on me-2"></i>
+                            <span id="selectionModeLabel">Select by percentage of patients</span>
+                          </label>
+                        </div>
+                        <div class="form-text" id="selectionModeDescription" bis_skin_checked="1">
+                          When enabled: Select by percentage of time variable value range. When disabled: Select by
+                          percentage of patients.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="row" bis_skin_checked="1">
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <div class="mb-3" bis_skin_checked="1">
+                          <label for="topPercentage" class="form-label">
+                            <i class="fas fa-arrow-up text-success me-2"></i>
+                            <span id="topPercentageLabel">Top Percentage</span>
+                          </label>
+                          <div class="input-group" bis_skin_checked="1">
+                            <input type="range" class="form-range" id="topPercentage" name="topPercentage" min="10" max="50" value="25" step="5" oninput="updateTopPercentage(this.value)">
+                            <span class="input-group-text" id="topPercentageValue">25%</span>
+                          </div>
+                          <div class="form-text" id="topPercentageDescription" bis_skin_checked="1">
+                            Percentage of patients with highest time values
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <div class="mb-3" bis_skin_checked="1">
+                          <label for="bottomPercentage" class="form-label">
+                            <i class="fas fa-arrow-down text-danger me-2"></i>
+                            <span id="bottomPercentageLabel">Bottom Percentage</span>
+                          </label>
+                          <div class="input-group" bis_skin_checked="1">
+                            <input type="range" class="form-range" id="bottomPercentage" name="bottomPercentage" min="10" max="50" value="25" step="5" oninput="updateBottomPercentage(this.value)">
+                            <span class="input-group-text" id="bottomPercentageValue">25%</span>
+                          </div>
+                          <div class="form-text" id="bottomPercentageDescription" bis_skin_checked="1">
+                            Percentage of patients with lowest time values
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row" bis_skin_checked="1">
+                      <div class="col-12" bis_skin_checked="1">
+                        <div class="form-check" bis_skin_checked="1">
+                          <input class="form-check-input" type="checkbox" id="linkPercentages" name="linkPercentages" checked="" onchange="toggleLinkedPercentages()">
+                          <label class="form-check-label" for="linkPercentages">
+                            <i class="fas fa-link me-2"></i>
+                            Link top and bottom percentages to the same value
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Extreme Time Point Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="extremeTimePointSummaryText">Select data files to see patient counts</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <span class="badge bg-success me-2" id="topPatientsCount">0 patients</span>
+                          <span class="badge bg-danger me-2" id="bottomPatientsCount">0 patients</span>
+                          <span class="badge bg-primary" id="totalPatientsCount">0 total</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Attributes Groups Selection -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_8">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-layer-group me-2"></i>
+                        Attributes Groups Selection
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleColumnGroupsBtn" onclick="toggleColumnGroups()" name="toggleColumnGroupsBtn">
+                          <i class="fas fa-eye me-1"></i>Show Groups
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="toggleFieldNamesBtn" onclick="toggleFieldNames()" name="toggleFieldNamesBtn">
+                          <i class="fas fa-eye me-1"></i>Show Field Names
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="selectAllColumnGroups()" id="btn_btn-outline-primary_9" name="btn_btn-outline-primary_9">
+                          <i class="fas fa-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllColumnGroups()" id="btn_btn-outline-secondary_10" name="btn_btn-outline-secondary_10">
+                          <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">
+                      Select which groups of patient data attributes to include in your analysis:
+                    </p>
+
+                    <!-- Column Groups Container -->
+                    <div id="columnGroupsContent" style="display: block;" bis_skin_checked="1">
+                      <div class="row" id="columnGroupsContainer" bis_skin_checked="1">
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="Demographics" name="Demographics" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="Demographics">
+                        <strong>Demographics</strong>
+                        <small class="text-muted d-block">9 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">age</span><span class="badge bg-light text-dark me-1 mb-1">gender</span><span class="badge bg-light text-dark me-1 mb-1">race</span><span class="badge bg-light text-dark me-1 mb-1">ethnicity</span><span class="badge bg-light text-dark me-1 mb-1">weight_kg</span><span class="badge bg-light text-dark me-1 mb-1">height_m</span><span class="badge bg-light text-dark me-1 mb-1">bmi</span><span class="badge bg-light text-dark me-1 mb-1">smoking</span><span class="badge bg-light text-dark me-1 mb-1">smoking_status</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="DiseaseCharacteristics" name="DiseaseCharacteristics" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="DiseaseCharacteristics">
+                        <strong>Disease Characteristics</strong>
+                        <small class="text-muted d-block">14 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">igg</span><span class="badge bg-light text-dark me-1 mb-1">iga</span><span class="badge bg-light text-dark me-1 mb-1">biclonal</span><span class="badge bg-light text-dark me-1 mb-1">lightchain</span><span class="badge bg-light text-dark me-1 mb-1">igh_rearrangement</span><span class="badge bg-light text-dark me-1 mb-1">hr_mutations</span><span class="badge bg-light text-dark me-1 mb-1">ultrahr_mutations</span><span class="badge bg-light text-dark me-1 mb-1">imwg_hr</span><span class="badge bg-light text-dark me-1 mb-1">functional_hr</span><span class="badge bg-light text-dark me-1 mb-1">iss</span><span class="badge bg-light text-dark me-1 mb-1">riss</span><span class="badge bg-light text-dark me-1 mb-1">beta2microglobulin</span><span class="badge bg-light text-dark me-1 mb-1">creatinine</span><span class="badge bg-light text-dark me-1 mb-1">albumin</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="FishIndicators" name="FishIndicators" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="FishIndicators">
+                        <strong>Fish Indicators</strong>
+                        <small class="text-muted d-block">23 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">3_monosomy</span><span class="badge bg-light text-dark me-1 mb-1">3_gain</span><span class="badge bg-light text-dark me-1 mb-1">5_gain</span><span class="badge bg-light text-dark me-1 mb-1">7_gain</span><span class="badge bg-light text-dark me-1 mb-1">9_monosomy</span><span class="badge bg-light text-dark me-1 mb-1">9_gain</span><span class="badge bg-light text-dark me-1 mb-1">11_monosomy</span><span class="badge bg-light text-dark me-1 mb-1">11_gain</span><span class="badge bg-light text-dark me-1 mb-1">13_monosomy</span><span class="badge bg-light text-dark me-1 mb-1">15_gain</span><span class="badge bg-light text-dark me-1 mb-1">17_monosomy</span><span class="badge bg-light text-dark me-1 mb-1">19_gain</span><span class="badge bg-light text-dark me-1 mb-1">21_gain</span><span class="badge bg-light text-dark me-1 mb-1">del_13q</span><span class="badge bg-light text-dark me-1 mb-1">t_11_14</span><span class="badge bg-light text-dark me-1 mb-1">t_4_14</span><span class="badge bg-light text-dark me-1 mb-1">t_14_16</span><span class="badge bg-light text-dark me-1 mb-1">t_14_20</span><span class="badge bg-light text-dark me-1 mb-1">1q_plus</span><span class="badge bg-light text-dark me-1 mb-1">del_1p32</span><span class="badge bg-light text-dark me-1 mb-1">del_17p</span><span class="badge bg-light text-dark me-1 mb-1">6q21</span><span class="badge bg-light text-dark me-1 mb-1">t_12_22</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="Comorbidities" name="Comorbidities" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="Comorbidities">
+                        <strong>Comorbidities</strong>
+                        <small class="text-muted d-block">4 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">es</span><span class="badge bg-light text-dark me-1 mb-1">esnoninfectiousfever</span><span class="badge bg-light text-dark me-1 mb-1">esnoninfectious_diarhhea</span><span class="badge bg-light text-dark me-1 mb-1">esrash</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="TreatmentAndTransplantation" name="TreatmentAndTransplantation" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="TreatmentAndTransplantation">
+                        <strong>Treatment And Transplantation</strong>
+                        <small class="text-muted d-block">18 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">induction_therapy</span><span class="badge bg-light text-dark me-1 mb-1">melphalanmgperm2</span><span class="badge bg-light text-dark me-1 mb-1">first_transplant_date</span><span class="badge bg-light text-dark me-1 mb-1">date_engraftment</span><span class="badge bg-light text-dark me-1 mb-1">last_date_of_contact</span><span class="badge bg-light text-dark me-1 mb-1">monthsfirst_transplant</span><span class="badge bg-light text-dark me-1 mb-1">secona_transplant_date</span><span class="badge bg-light text-dark me-1 mb-1">monthssecona_transplantrk</span><span class="badge bg-light text-dark me-1 mb-1">rk_updated_relapse_date</span><span class="badge bg-light text-dark me-1 mb-1">relapsemonthsfirst_transplant</span><span class="badge bg-light text-dark me-1 mb-1">relapsemonthssecona_transplant</span><span class="badge bg-light text-dark me-1 mb-1">duration_pfs</span><span class="badge bg-light text-dark me-1 mb-1">pfs_status</span><span class="badge bg-light text-dark me-1 mb-1">rk_updated_death_date</span><span class="badge bg-light text-dark me-1 mb-1">deathmonthsfirst_transplant</span><span class="badge bg-light text-dark me-1 mb-1">deathmonthssecona_transplant</span><span class="badge bg-light text-dark me-1 mb-1">duration_survival</span><span class="badge bg-light text-dark me-1 mb-1">death_status</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="LaboratoryValues" name="LaboratoryValues" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="LaboratoryValues">
+                        <strong>Laboratory Values</strong>
+                        <small class="text-muted d-block">8 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">beta2microglobulin</span><span class="badge bg-light text-dark me-1 mb-1">creatinine</span><span class="badge bg-light text-dark me-1 mb-1">albumin</span><span class="badge bg-light text-dark me-1 mb-1">ldh</span><span class="badge bg-light text-dark me-1 mb-1">hemoglobin</span><span class="badge bg-light text-dark me-1 mb-1">platelet_count</span><span class="badge bg-light text-dark me-1 mb-1">neutrophil_count</span><span class="badge bg-light text-dark me-1 mb-1">lymphocyte_count</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="GenomicMarkers" name="GenomicMarkers" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="GenomicMarkers">
+                        <strong>Genomic Markers</strong>
+                        <small class="text-muted d-block">7 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">tp53_mutation</span><span class="badge bg-light text-dark me-1 mb-1">rb1_deletion</span><span class="badge bg-light text-dark me-1 mb-1">myc_rearrangement</span><span class="badge bg-light text-dark me-1 mb-1">cyclin_d1</span><span class="badge bg-light text-dark me-1 mb-1">cyclin_d2</span><span class="badge bg-light text-dark me-1 mb-1">cyclin_d3</span><span class="badge bg-light text-dark me-1 mb-1">maf_rearrangement</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="Antiviral" name="Antiviral" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="Antiviral">
+                        <strong>Antiviral</strong>
+                        <small class="text-muted d-block">2 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">Acyclovir</span><span class="badge bg-light text-dark me-1 mb-1">valACYclovir</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="Antibiotics" name="Antibiotics" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="Antibiotics">
+                        <strong>Antibiotics</strong>
+                        <small class="text-muted d-block">28 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">ciprofloxin</span><span class="badge bg-light text-dark me-1 mb-1">ciprofloxin_eng</span><span class="badge bg-light text-dark me-1 mb-1">levofloxin</span><span class="badge bg-light text-dark me-1 mb-1">levofloxin_eng</span><span class="badge bg-light text-dark me-1 mb-1">moxifloxin</span><span class="badge bg-light text-dark me-1 mb-1">moxifloxin_eng</span><span class="badge bg-light text-dark me-1 mb-1">amoxicillin</span><span class="badge bg-light text-dark me-1 mb-1">amoxicillin_eng</span><span class="badge bg-light text-dark me-1 mb-1">ampicillin</span><span class="badge bg-light text-dark me-1 mb-1">ampicillin_eng</span><span class="badge bg-light text-dark me-1 mb-1">cefipine</span><span class="badge bg-light text-dark me-1 mb-1">cefipine_eng</span><span class="badge bg-light text-dark me-1 mb-1">cefazolin</span><span class="badge bg-light text-dark me-1 mb-1">cefazolin_eng</span><span class="badge bg-light text-dark me-1 mb-1">azithromycin</span><span class="badge bg-light text-dark me-1 mb-1">azithromycin_eng</span><span class="badge bg-light text-dark me-1 mb-1">trimethoprim_sulfamethoxazole</span><span class="badge bg-light text-dark me-1 mb-1">trimethoprim_sulfamethoxazole_eng</span><span class="badge bg-light text-dark me-1 mb-1">clindamycin</span><span class="badge bg-light text-dark me-1 mb-1">clindamycin_eng</span><span class="badge bg-light text-dark me-1 mb-1">metronidazole</span><span class="badge bg-light text-dark me-1 mb-1">metronidazole_eng</span><span class="badge bg-light text-dark me-1 mb-1">piperacilin_tazobactam</span><span class="badge bg-light text-dark me-1 mb-1">piperacilin_tazobactam_eng</span><span class="badge bg-light text-dark me-1 mb-1">vancomycin_iv</span><span class="badge bg-light text-dark me-1 mb-1">vancomycin_iv_eng</span><span class="badge bg-light text-dark me-1 mb-1">vancomycin_po</span><span class="badge bg-light text-dark me-1 mb-1">vancomycin_po_eng</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="Antifungal" name="Antifungal" checked="" onchange="updateColumnGroupsSummary()">
+                    <label class="form-check-label" for="Antifungal">
+                        <strong>Antifungal</strong>
+                        <small class="text-muted d-block">2 columns</small>
+                        <div class="mt-1 field-names" style="display: none;" bis_skin_checked="1">
+                            <span class="badge bg-light text-dark me-1 mb-1">fluconazole</span><span class="badge bg-light text-dark me-1 mb-1">fluconazole_eng</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+                    </div>
+
+                    <!-- Column Groups Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="columnGroupsSummary" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="selectionSummary">10 column groups selected</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <span class="badge bg-primary" id="totalColumnsCount">115 total columns</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pre-Analysis Editor Tab -->
+          <div class="tab-pane fade" id="preanalysis-editor" role="tabpanel" aria-labelledby="preanalysis-editor-tab" bis_skin_checked="1">
+            <!-- Attributes Discarding Policy -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_11">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>
+                        Attributes Discarding Policy
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleDiscardingPolicyBtn" onclick="toggleDiscardingPolicy()" name="toggleDiscardingPolicyBtn">
+                          <i class="fas fa-eye me-1"></i>Show Policies
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">
+                      Configure policies for discarding patient attributes based on data quality criteria:
+                    </p>
+
+                    <!-- Discarding Policies Container -->
+                    <div id="discardingPolicyContent" style="display: none" bis_skin_checked="1">
+                      <div class="row" id="discardingPolicyContainer" bis_skin_checked="1">
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_prevalence_filtering" name="policy_card_prevalence_filtering" data-policy-key="prevalence_filtering" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_prevalence_filtering" name="policy_prevalence_filtering">
+                      <label class="form-check-label" for="policy_prevalence_filtering">
+                        Prevalence Filtering
+                        <small class="text-muted d-block">Discard taxa present in fewer than a specified percentage of samples</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('prevalence_filtering')" id="btn_btn-outline-info_btn-sm_12" name="btn_btn-outline-info_btn-sm_12">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_prevalence_filtering" name="policy_body_prevalence_filtering" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="prevalence_filtering_param_detection_threshold">Detection Threshold</label>
+                    <input type="number" class="form-control" id="prevalence_filtering_param_detection_threshold" name="prevalence_filtering_param_detection_threshold" value="0" step="0.001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum abundance to consider taxon present (default: &gt;0)</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="prevalence_filtering_param_min_prevalence">Minimum Prevalence (%)</label>
+                    <input type="number" class="form-control" id="prevalence_filtering_param_min_prevalence" name="prevalence_filtering_param_min_prevalence" value="0.1" step="0.01" min="0.01" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum fraction of samples where taxon must be present</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_abundance_filtering" name="policy_card_abundance_filtering" data-policy-key="abundance_filtering" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_abundance_filtering" name="policy_abundance_filtering">
+                      <label class="form-check-label" for="policy_abundance_filtering">
+                        Abundance Filtering
+                        <small class="text-muted d-block">Discard taxa with consistently low abundance across samples</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('abundance_filtering')" id="btn_btn-outline-info_btn-sm_13" name="btn_btn-outline-info_btn-sm_13">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_abundance_filtering" name="policy_body_abundance_filtering" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="abundance_filtering_param_min_mean_abundance">Minimum Mean Abundance (%)</label>
+                    <input type="number" class="form-control" id="abundance_filtering_param_min_mean_abundance" name="abundance_filtering_param_min_mean_abundance" value="0.0001" step="0.00001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum mean relative abundance threshold</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="abundance_filtering_param_min_median_abundance">Minimum Median Abundance (%)</label>
+                    <input type="number" class="form-control" id="abundance_filtering_param_min_median_abundance" name="abundance_filtering_param_min_median_abundance" value="0.00005" step="0.00001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum median relative abundance threshold</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_variance_based_selection" name="policy_card_variance_based_selection" data-policy-key="variance_based_selection" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_variance_based_selection" name="policy_variance_based_selection">
+                      <label class="form-check-label" for="policy_variance_based_selection">
+                        Variance-Based Selection
+                        <small class="text-muted d-block">Select taxa with highest variance across samples</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('variance_based_selection')" id="btn_btn-outline-info_btn-sm_14" name="btn_btn-outline-info_btn-sm_14">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_variance_based_selection" name="policy_body_variance_based_selection" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="variance_based_selection_param_num_taxa_to_select">Number of Taxa to Select</label>
+                    <input type="number" class="form-control" id="variance_based_selection_param_num_taxa_to_select" name="variance_based_selection_param_num_taxa_to_select" value="50" step="5" min="5" max="200">
+                    <div class="form-text" bis_skin_checked="1">Maximum number of most variable taxa to retain</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="variance_based_selection_param_variance_metric">Variance Metric</label>
+                    <select class="form-select" id="variance_based_selection_param_variance_metric" name="variance_based_selection_param_variance_metric"><option value="total_variance">Total Variance</option><option value="coefficient_of_variation" selected="">Coefficient of Variation</option></select>
+                    <div class="form-text" bis_skin_checked="1">Method to measure taxon variability</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_univariate_pfs_screening" name="policy_card_univariate_pfs_screening" data-policy-key="univariate_pfs_screening" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_univariate_pfs_screening" name="policy_univariate_pfs_screening">
+                      <label class="form-check-label" for="policy_univariate_pfs_screening">
+                        Univariate PFS Screening
+                        <small class="text-muted d-block">Test each taxon individually against PFS using statistical models</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('univariate_pfs_screening')" id="btn_btn-outline-info_btn-sm_15" name="btn_btn-outline-info_btn-sm_15">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_univariate_pfs_screening" name="policy_body_univariate_pfs_screening" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="univariate_pfs_screening_param_multiple_testing_correction">Multiple Testing Correction</label>
+                    <select class="form-select" id="univariate_pfs_screening_param_multiple_testing_correction" name="univariate_pfs_screening_param_multiple_testing_correction"><option value="none">None</option><option value="bonferroni">Bonferroni</option><option value="fdr" selected="">False Discovery Rate</option></select>
+                    <div class="form-text" bis_skin_checked="1">Method to correct for multiple hypothesis testing</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="univariate_pfs_screening_param_significance_threshold">Significance Threshold</label>
+                    <input type="number" class="form-control" id="univariate_pfs_screening_param_significance_threshold" name="univariate_pfs_screening_param_significance_threshold" value="0.05" step="0.001" min="0.001" max="0.2">
+                    <div class="form-text" bis_skin_checked="1">P-value threshold for significance</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="univariate_pfs_screening_param_statistical_test">Statistical Test</label>
+                    <select class="form-select" id="univariate_pfs_screening_param_statistical_test" name="univariate_pfs_screening_param_statistical_test"><option value="cox_regression" selected="">Cox Regression</option><option value="log_rank_test">Log-Rank Test</option></select>
+                    <div class="form-text" bis_skin_checked="1">Method for testing PFS association</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_multivariate_pfs_screening" name="policy_card_multivariate_pfs_screening" data-policy-key="multivariate_pfs_screening" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_multivariate_pfs_screening" name="policy_multivariate_pfs_screening">
+                      <label class="form-check-label" for="policy_multivariate_pfs_screening">
+                        Multivariate PFS Screening
+                        <small class="text-muted d-block">Test taxa in multivariate models including clinical variables</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('multivariate_pfs_screening')" id="btn_btn-outline-info_btn-sm_16" name="btn_btn-outline-info_btn-sm_16">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_multivariate_pfs_screening" name="policy_body_multivariate_pfs_screening" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="multivariate_pfs_screening_param_max_iterations">Maximum Iterations</label>
+                    <input type="number" class="form-control" id="multivariate_pfs_screening_param_max_iterations" name="multivariate_pfs_screening_param_max_iterations" value="10" step="1" min="1" max="50">
+                    <div class="form-text" bis_skin_checked="1">Maximum iterations for iterative refinement</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="multivariate_pfs_screening_param_min_taxa_retain">Minimum Taxa to Retain</label>
+                    <input type="number" class="form-control" id="multivariate_pfs_screening_param_min_taxa_retain" name="multivariate_pfs_screening_param_min_taxa_retain" value="5" step="1" min="1" max="20">
+                    <div class="form-text" bis_skin_checked="1">Minimum number of taxa to keep for model stability</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="multivariate_pfs_screening_param_regularization_strength">Regularization Strength</label>
+                    <input type="number" class="form-control" id="multivariate_pfs_screening_param_regularization_strength" name="multivariate_pfs_screening_param_regularization_strength" value="0.1" step="0.01" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Penalty strength for numerical stability</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="multivariate_pfs_screening_param_significance_threshold">Significance Threshold</label>
+                    <input type="number" class="form-control" id="multivariate_pfs_screening_param_significance_threshold" name="multivariate_pfs_screening_param_significance_threshold" value="0.05" step="0.001" min="0.001" max="0.2">
+                    <div class="form-text" bis_skin_checked="1">P-value threshold for significance after clinical adjustment</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_stability_selection" name="policy_card_stability_selection" data-policy-key="stability_selection" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_stability_selection" name="policy_stability_selection">
+                      <label class="form-check-label" for="policy_stability_selection">
+                        Stability Selection
+                        <small class="text-muted d-block">Use bootstrap resampling to identify taxa with consistently significant PFS associations</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('stability_selection')" id="btn_btn-outline-info_btn-sm_17" name="btn_btn-outline-info_btn-sm_17">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_stability_selection" name="policy_body_stability_selection" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="stability_selection_param_bootstrap_sample_size">Bootstrap Sample Size (%)</label>
+                    <input type="number" class="form-control" id="stability_selection_param_bootstrap_sample_size" name="stability_selection_param_bootstrap_sample_size" value="0.8" step="0.05" min="0.5" max="1">
+                    <div class="form-text" bis_skin_checked="1">Fraction of original sample size for each bootstrap</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="stability_selection_param_num_bootstraps">Number of Bootstraps</label>
+                    <input type="number" class="form-control" id="stability_selection_param_num_bootstraps" name="stability_selection_param_num_bootstraps" value="100" step="50" min="50" max="1000">
+                    <div class="form-text" bis_skin_checked="1">Number of bootstrap samples for stability assessment</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="stability_selection_param_stability_threshold">Stability Threshold</label>
+                    <input type="number" class="form-control" id="stability_selection_param_stability_threshold" name="stability_selection_param_stability_threshold" value="0.7" step="0.05" min="0.5" max="0.95">
+                    <div class="form-text" bis_skin_checked="1">Minimum fraction of bootstraps where taxon must be significant</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_information_theoretic_selection" name="policy_card_information_theoretic_selection" data-policy-key="information_theoretic_selection" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_information_theoretic_selection" name="policy_information_theoretic_selection">
+                      <label class="form-check-label" for="policy_information_theoretic_selection">
+                        Information-Theoretic Selection
+                        <small class="text-muted d-block">Select taxa based on mutual information with PFS outcomes</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('information_theoretic_selection')" id="btn_btn-outline-info_btn-sm_18" name="btn_btn-outline-info_btn-sm_18">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_information_theoretic_selection" name="policy_body_information_theoretic_selection" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="information_theoretic_selection_param_mi_estimator">Mutual Information Estimator</label>
+                    <select class="form-select" id="information_theoretic_selection_param_mi_estimator" name="information_theoretic_selection_param_mi_estimator"><option value="histogram">Histogram-based</option><option value="knn" selected="">K-Nearest Neighbors</option></select>
+                    <div class="form-text" bis_skin_checked="1">Method for estimating mutual information</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="information_theoretic_selection_param_num_permutations">Number of Permutations</label>
+                    <input type="number" class="form-control" id="information_theoretic_selection_param_num_permutations" name="information_theoretic_selection_param_num_permutations" value="1000" step="100" min="100" max="10000">
+                    <div class="form-text" bis_skin_checked="1">Number of permutations for significance testing</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="information_theoretic_selection_param_significance_threshold">Significance Threshold</label>
+                    <input type="number" class="form-control" id="information_theoretic_selection_param_significance_threshold" name="information_theoretic_selection_param_significance_threshold" value="0.05" step="0.001" min="0.001" max="0.2">
+                    <div class="form-text" bis_skin_checked="1">P-value threshold for significance</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_boruta_algorithm" name="policy_card_boruta_algorithm" data-policy-key="boruta_algorithm" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_boruta_algorithm" name="policy_boruta_algorithm">
+                      <label class="form-check-label" for="policy_boruta_algorithm">
+                        Boruta Algorithm
+                        <small class="text-muted d-block">Iterative algorithm using random forest to identify all features with predictive relevance</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('boruta_algorithm')" id="btn_btn-outline-info_btn-sm_19" name="btn_btn-outline-info_btn-sm_19">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_boruta_algorithm" name="policy_body_boruta_algorithm" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="boruta_algorithm_param_max_iterations">Maximum Iterations</label>
+                    <input type="number" class="form-control" id="boruta_algorithm_param_max_iterations" name="boruta_algorithm_param_max_iterations" value="100" step="10" min="10" max="1000">
+                    <div class="form-text" bis_skin_checked="1">Maximum iterations for Boruta algorithm</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="boruta_algorithm_param_num_shadow_features">Shadow Features per Real Feature</label>
+                    <input type="number" class="form-control" id="boruta_algorithm_param_num_shadow_features" name="boruta_algorithm_param_num_shadow_features" value="3" step="1" min="1" max="10">
+                    <div class="form-text" bis_skin_checked="1">Number of randomized shadow features to create</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="boruta_algorithm_param_rf_num_trees">Random Forest Trees</label>
+                    <input type="number" class="form-control" id="boruta_algorithm_param_rf_num_trees" name="boruta_algorithm_param_rf_num_trees" value="1000" step="100" min="100" max="10000">
+                    <div class="form-text" bis_skin_checked="1">Number of trees in random forest</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_elastic_net_regularization" name="policy_card_elastic_net_regularization" data-policy-key="elastic_net_regularization" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_elastic_net_regularization" name="policy_elastic_net_regularization">
+                      <label class="form-check-label" for="policy_elastic_net_regularization">
+                        Elastic Net Regularization
+                        <small class="text-muted d-block">Use L1/L2 regularized regression to automatically select taxa with PFS predictive value</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('elastic_net_regularization')" id="btn_btn-outline-info_btn-sm_20" name="btn_btn-outline-info_btn-sm_20">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_elastic_net_regularization" name="policy_body_elastic_net_regularization" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="elastic_net_regularization_param_convergence_tolerance">Convergence Tolerance</label>
+                    <input type="number" class="form-control" id="elastic_net_regularization_param_convergence_tolerance" name="elastic_net_regularization_param_convergence_tolerance" value="0.0001" step="0.00001" min="1e-8" max="0.01">
+                    <div class="form-text" bis_skin_checked="1">Tolerance for convergence in optimization</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="elastic_net_regularization_param_l1_ratio">L1 Ratio</label>
+                    <input type="number" class="form-control" id="elastic_net_regularization_param_l1_ratio" name="elastic_net_regularization_param_l1_ratio" value="0.5" step="0.1" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Balance between L1 (0) and L2 (1) regularization</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="elastic_net_regularization_param_max_iterations">Maximum Iterations</label>
+                    <input type="number" class="form-control" id="elastic_net_regularization_param_max_iterations" name="elastic_net_regularization_param_max_iterations" value="1000" step="100" min="100" max="10000">
+                    <div class="form-text" bis_skin_checked="1">Maximum iterations for optimization</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+            <div class="col-12 mb-4" bis_skin_checked="1">
+              <div class="card discarding-policy-card" id="policy_card_combined_multi_method" name="policy_card_combined_multi_method" data-policy-key="combined_multi_method" bis_skin_checked="1">
+                <div class="card-header" bis_skin_checked="1">
+                  <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                    <div class="form-check" bis_skin_checked="1">
+                      <input class="form-check-input" type="checkbox" id="policy_combined_multi_method" name="policy_combined_multi_method">
+                      <label class="form-check-label" for="policy_combined_multi_method">
+                        Combined Multi-Method Selection
+                        <small class="text-muted d-block">Apply multiple selection methods and take consensus to identify robustly selected taxa</small>
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('combined_multi_method')" id="btn_btn-outline-info_btn-sm_21" name="btn_btn-outline-info_btn-sm_21">
+                      <i class="fas fa-info-circle me-1"></i>Info
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body" id="policy_body_combined_multi_method" name="policy_body_combined_multi_method" style="display: none" bis_skin_checked="1">
+                  <div class="row" bis_skin_checked="1">
+                    <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="combined_multi_method_param_consensus_rule">Consensus Rule</label>
+                    <select class="form-select" id="combined_multi_method_param_consensus_rule" name="combined_multi_method_param_consensus_rule"><option value="intersection" selected="">Intersection (ALL methods)</option><option value="union">Union (ANY method)</option><option value="weighted">Weighted Voting</option></select>
+                    <div class="form-text" bis_skin_checked="1">How to combine results from multiple methods</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="combined_multi_method_param_min_agreement">Minimum Agreement</label>
+                    <input type="number" class="form-control" id="combined_multi_method_param_min_agreement" name="combined_multi_method_param_min_agreement" value="2" step="1" min="1" max="5">
+                    <div class="form-text" bis_skin_checked="1">Minimum number of methods that must agree (for weighted voting)</div>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+                    </div>
+
+                    <!-- Discarding Policy Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="discardingPolicySummary" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="discardingPolicySummaryText">No discarding policies configured</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <button type="button" class="btn btn-outline-success btn-sm me-2" onclick="calculateRemainingAttributes()" id="btn_btn-outline-success_btn-sm_me-2_22" name="btn_btn-outline-success_btn-sm_me-2_22">
+                            <i class="fas fa-calculator me-1"></i>Calculate Remaining
+                          </button>
+                          <span class="badge bg-primary" id="totalDiscardingPoliciesCount">0 policies</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Microbial Discarding Policy -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_23">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-bacteria me-2"></i>
+                        Microbial Discarding Policy
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleMicrobialDiscardingPolicyBtn" onclick="toggleMicrobialDiscardingPolicy()" name="toggleMicrobialDiscardingPolicyBtn">
+                          <i class="fas fa-eye me-1"></i>Show Policies
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">Configure policies for discarding microbial taxa based on abundance thresholds and prevalence criteria.</p>
+
+                    <!-- Microbial Discarding Policies Container -->
+                    <div id="microbialDiscardingPolicyContent" style="display: none" bis_skin_checked="1">
+                      <div class="row" id="microbialDiscardingPolicyContainer" bis_skin_checked="1">
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_prevalence_filtering" name="microbial_policy_card_prevalence_filtering" data-policy-key="prevalence_filtering" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_prevalence_filtering" name="microbial_policy_prevalence_filtering">
+                                    <label class="form-check-label" for="microbial_policy_prevalence_filtering">
+                                        Prevalence Filtering
+                                        <small class="text-muted d-block">Discard taxa present in fewer than a specified percentage of samples</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('prevalence_filtering')" id="btn_btn-outline-info_btn-sm_24" name="btn_btn-outline-info_btn-sm_24">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_prevalence_filtering" name="microbial_policy_body_prevalence_filtering" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="prevalence_filtering_param_detection_threshold">Detection Threshold</label>
+                    <input type="number" class="form-control" id="prevalence_filtering_param_detection_threshold" name="prevalence_filtering_param_detection_threshold" value="0" step="0.001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum abundance to consider taxon present (default: &gt;0)</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="prevalence_filtering_param_min_prevalence">Minimum Prevalence (%)</label>
+                    <input type="number" class="form-control" id="prevalence_filtering_param_min_prevalence" name="prevalence_filtering_param_min_prevalence" value="0.1" step="0.01" min="0.01" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum fraction of samples where taxon must be present</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_abundance_filtering" name="microbial_policy_card_abundance_filtering" data-policy-key="abundance_filtering" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_abundance_filtering" name="microbial_policy_abundance_filtering">
+                                    <label class="form-check-label" for="microbial_policy_abundance_filtering">
+                                        Abundance Filtering
+                                        <small class="text-muted d-block">Discard taxa with consistently low abundance across samples</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('abundance_filtering')" id="btn_btn-outline-info_btn-sm_25" name="btn_btn-outline-info_btn-sm_25">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_abundance_filtering" name="microbial_policy_body_abundance_filtering" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="abundance_filtering_param_min_mean_abundance">Minimum Mean Abundance (%)</label>
+                    <input type="number" class="form-control" id="abundance_filtering_param_min_mean_abundance" name="abundance_filtering_param_min_mean_abundance" value="0.0001" step="0.00001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum mean relative abundance threshold</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="abundance_filtering_param_min_median_abundance">Minimum Median Abundance (%)</label>
+                    <input type="number" class="form-control" id="abundance_filtering_param_min_median_abundance" name="abundance_filtering_param_min_median_abundance" value="0.00005" step="0.00001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum median relative abundance threshold</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_taxonomic_rarity_filtering" name="microbial_policy_card_taxonomic_rarity_filtering" data-policy-key="taxonomic_rarity_filtering" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_taxonomic_rarity_filtering" name="microbial_policy_taxonomic_rarity_filtering">
+                                    <label class="form-check-label" for="microbial_policy_taxonomic_rarity_filtering">
+                                        Taxonomic Rarity Filtering
+                                        <small class="text-muted d-block">Filter out rare taxa that appear in very few samples regardless of abundance</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('taxonomic_rarity_filtering')" id="btn_btn-outline-info_btn-sm_26" name="btn_btn-outline-info_btn-sm_26">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_taxonomic_rarity_filtering" name="microbial_policy_body_taxonomic_rarity_filtering" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="taxonomic_rarity_filtering_param_min_sample_count">Minimum Sample Count</label>
+                    <input type="number" class="form-control" id="taxonomic_rarity_filtering_param_min_sample_count" name="taxonomic_rarity_filtering_param_min_sample_count" value="3" step="1" min="1" max="50">
+                    <div class="form-text" bis_skin_checked="1">Minimum number of samples where taxon must be detected</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="taxonomic_rarity_filtering_param_rarity_threshold">Rarity Threshold</label>
+                    <input type="number" class="form-control" id="taxonomic_rarity_filtering_param_rarity_threshold" name="taxonomic_rarity_filtering_param_rarity_threshold" value="0.01" step="0.001" min="0.001" max="0.1">
+                    <div class="form-text" bis_skin_checked="1">Maximum proportion of samples where rare taxa are allowed</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_low_abundance_taxa_removal" name="microbial_policy_card_low_abundance_taxa_removal" data-policy-key="low_abundance_taxa_removal" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_low_abundance_taxa_removal" name="microbial_policy_low_abundance_taxa_removal">
+                                    <label class="form-check-label" for="microbial_policy_low_abundance_taxa_removal">
+                                        Low Abundance Taxa Removal
+                                        <small class="text-muted d-block">Remove taxa that never exceed a specified abundance threshold in any sample</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('low_abundance_taxa_removal')" id="btn_btn-outline-info_btn-sm_27" name="btn_btn-outline-info_btn-sm_27">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_low_abundance_taxa_removal" name="microbial_policy_body_low_abundance_taxa_removal" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="low_abundance_taxa_removal_param_keep_top_n">Keep Top N Taxa</label>
+                    <input type="number" class="form-control" id="low_abundance_taxa_removal_param_keep_top_n" name="low_abundance_taxa_removal_param_keep_top_n" value="100" step="10" min="10" max="1000">
+                    <div class="form-text" bis_skin_checked="1">Always retain the N most abundant taxa regardless of threshold</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="low_abundance_taxa_removal_param_max_abundance_threshold">Maximum Abundance Threshold (%)</label>
+                    <input type="number" class="form-control" id="low_abundance_taxa_removal_param_max_abundance_threshold" name="low_abundance_taxa_removal_param_max_abundance_threshold" value="0.001" step="0.0001" min="0" max="0.1">
+                    <div class="form-text" bis_skin_checked="1">Taxa exceeding this threshold in any sample will be retained</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_contaminant_filtering" name="microbial_policy_card_contaminant_filtering" data-policy-key="contaminant_filtering" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_contaminant_filtering" name="microbial_policy_contaminant_filtering">
+                                    <label class="form-check-label" for="microbial_policy_contaminant_filtering">
+                                        Contaminant Filtering
+                                        <small class="text-muted d-block">Remove potential contaminants based on prevalence in negative controls</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('contaminant_filtering')" id="btn_btn-outline-info_btn-sm_28" name="btn_btn-outline-info_btn-sm_28">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_contaminant_filtering" name="microbial_policy_body_contaminant_filtering" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="contaminant_filtering_param_control_abundance_threshold">Control Abundance Threshold (%)</label>
+                    <input type="number" class="form-control" id="contaminant_filtering_param_control_abundance_threshold" name="contaminant_filtering_param_control_abundance_threshold" value="0.01" step="0.001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Maximum abundance allowed in negative controls</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="contaminant_filtering_param_control_prevalence_threshold">Control Prevalence Threshold (%)</label>
+                    <input type="number" class="form-control" id="contaminant_filtering_param_control_prevalence_threshold" name="contaminant_filtering_param_control_prevalence_threshold" value="0.5" step="0.01" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Maximum prevalence allowed in negative controls</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_singleton_filtering" name="microbial_policy_card_singleton_filtering" data-policy-key="singleton_filtering" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_singleton_filtering" name="microbial_policy_singleton_filtering">
+                                    <label class="form-check-label" for="microbial_policy_singleton_filtering">
+                                        Singleton Filtering
+                                        <small class="text-muted d-block">Remove taxa that appear as singletons (detected in only one sample)</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('singleton_filtering')" id="btn_btn-outline-info_btn-sm_29" name="btn_btn-outline-info_btn-sm_29">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_singleton_filtering" name="microbial_policy_body_singleton_filtering" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="singleton_filtering_param_remove_singletons">Singleton Removal Strategy</label>
+                    <select class="form-select" id="singleton_filtering_param_remove_singletons" name="singleton_filtering_param_remove_singletons"><option value="strict" selected="">Strict (remove all singletons)</option><option value="lenient">Lenient (keep if abundance &gt; threshold)</option><option value="none">Keep all singletons</option></select>
+                    <div class="form-text" bis_skin_checked="1">How to handle taxa detected in only one sample</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="singleton_filtering_param_singleton_abundance_threshold">Singleton Abundance Threshold (%)</label>
+                    <input type="number" class="form-control" id="singleton_filtering_param_singleton_abundance_threshold" name="singleton_filtering_param_singleton_abundance_threshold" value="0.01" step="0.001" min="0" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum abundance to retain singletons (for lenient mode)</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_variance_based_selection" name="microbial_policy_card_variance_based_selection" data-policy-key="variance_based_selection" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_variance_based_selection" name="microbial_policy_variance_based_selection">
+                                    <label class="form-check-label" for="microbial_policy_variance_based_selection">
+                                        Variance-Based Selection
+                                        <small class="text-muted d-block">Select taxa with highest variance across samples</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('variance_based_selection')" id="btn_btn-outline-info_btn-sm_30" name="btn_btn-outline-info_btn-sm_30">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_variance_based_selection" name="microbial_policy_body_variance_based_selection" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="variance_based_selection_param_num_taxa_to_select">Number of Taxa to Select</label>
+                    <input type="number" class="form-control" id="variance_based_selection_param_num_taxa_to_select" name="variance_based_selection_param_num_taxa_to_select" value="50" step="5" min="5" max="200">
+                    <div class="form-text" bis_skin_checked="1">Maximum number of most variable taxa to retain</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="variance_based_selection_param_variance_metric">Variance Metric</label>
+                    <select class="form-select" id="variance_based_selection_param_variance_metric" name="variance_based_selection_param_variance_metric"><option value="total_variance">Total Variance</option><option value="coefficient_of_variation" selected="">Coefficient of Variation</option></select>
+                    <div class="form-text" bis_skin_checked="1">Method to measure taxon variability</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_taxonomic_level_filtering" name="microbial_policy_card_taxonomic_level_filtering" data-policy-key="taxonomic_level_filtering" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_taxonomic_level_filtering" name="microbial_policy_taxonomic_level_filtering">
+                                    <label class="form-check-label" for="microbial_policy_taxonomic_level_filtering">
+                                        Taxonomic Level Filtering
+                                        <small class="text-muted d-block">Filter taxa based on their taxonomic classification level</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('taxonomic_level_filtering')" id="btn_btn-outline-info_btn-sm_31" name="btn_btn-outline-info_btn-sm_31">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_taxonomic_level_filtering" name="microbial_policy_body_taxonomic_level_filtering" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="taxonomic_level_filtering_param_min_taxonomic_level">Minimum Taxonomic Level</label>
+                    <select class="form-select" id="taxonomic_level_filtering_param_min_taxonomic_level" name="taxonomic_level_filtering_param_min_taxonomic_level"><option value="kingdom">Kingdom</option><option value="phylum">Phylum</option><option value="class">Class</option><option value="order">Order</option><option value="family">Family</option><option value="genus" selected="">Genus</option><option value="species">Species</option></select>
+                    <div class="form-text" bis_skin_checked="1">Require taxa to be classified at least to this level</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="taxonomic_level_filtering_param_remove_unclassified">Unclassified Taxa Handling</label>
+                    <select class="form-select" id="taxonomic_level_filtering_param_remove_unclassified" name="taxonomic_level_filtering_param_remove_unclassified"><option value="strict" selected="">Remove all unclassified</option><option value="lenient">Keep if identified at higher levels</option><option value="none">Keep all taxa</option></select>
+                    <div class="form-text" bis_skin_checked="1">How to handle taxa without complete classification</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_core_microbiome_filtering" name="microbial_policy_card_core_microbiome_filtering" data-policy-key="core_microbiome_filtering" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_core_microbiome_filtering" name="microbial_policy_core_microbiome_filtering">
+                                    <label class="form-check-label" for="microbial_policy_core_microbiome_filtering">
+                                        Core Microbiome Filtering
+                                        <small class="text-muted d-block">Retain only taxa that are part of the core microbiome</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('core_microbiome_filtering')" id="btn_btn-outline-info_btn-sm_32" name="btn_btn-outline-info_btn-sm_32">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_core_microbiome_filtering" name="microbial_policy_body_core_microbiome_filtering" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="core_microbiome_filtering_param_core_abundance_threshold">Core Abundance Threshold (%)</label>
+                    <input type="number" class="form-control" id="core_microbiome_filtering_param_core_abundance_threshold" name="core_microbiome_filtering_param_core_abundance_threshold" value="0.01" step="0.001" min="0" max="0.1">
+                    <div class="form-text" bis_skin_checked="1">Minimum abundance to be considered core microbiome</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="core_microbiome_filtering_param_core_prevalence_threshold">Core Prevalence Threshold (%)</label>
+                    <input type="number" class="form-control" id="core_microbiome_filtering_param_core_prevalence_threshold" name="core_microbiome_filtering_param_core_prevalence_threshold" value="0.8" step="0.01" min="0.5" max="1">
+                    <div class="form-text" bis_skin_checked="1">Minimum prevalence to be considered core microbiome</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+        <div class="col-12 mb-4" bis_skin_checked="1">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_combined_microbial_selection" name="microbial_policy_card_combined_microbial_selection" data-policy-key="combined_microbial_selection" bis_skin_checked="1">
+                        <div class="card-header" bis_skin_checked="1">
+                            <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                                <div class="form-check" bis_skin_checked="1">
+                                    <input class="form-check-input" type="checkbox" id="microbial_policy_combined_microbial_selection" name="microbial_policy_combined_microbial_selection">
+                                    <label class="form-check-label" for="microbial_policy_combined_microbial_selection">
+                                        Combined Microbial Selection
+                                        <small class="text-muted d-block">Apply multiple microbial selection methods and take consensus</small>
+                                    </label>
+                                </div>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('combined_microbial_selection')" id="btn_btn-outline-info_btn-sm_33" name="btn_btn-outline-info_btn-sm_33">
+                                    <i class="fas fa-info-circle me-1"></i>Info
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" id="microbial_policy_body_combined_microbial_selection" name="microbial_policy_body_combined_microbial_selection" style="display: none" bis_skin_checked="1">
+                            <div class="row" bis_skin_checked="1">
+                                <div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="combined_microbial_selection_param_consensus_rule">Consensus Rule</label>
+                    <select class="form-select" id="combined_microbial_selection_param_consensus_rule" name="combined_microbial_selection_param_consensus_rule"><option value="intersection" selected="">Intersection (ALL methods)</option><option value="union">Union (ANY method)</option><option value="weighted">Weighted Voting</option></select>
+                    <div class="form-text" bis_skin_checked="1">How to combine results from multiple methods</div>
+                  </div><div class="col-md-6 mb-2" bis_skin_checked="1">
+                    <label class="form-label fw-bold" for="combined_microbial_selection_param_min_agreement">Minimum Agreement</label>
+                    <input type="number" class="form-control" id="combined_microbial_selection_param_min_agreement" name="combined_microbial_selection_param_min_agreement" value="2" step="1" min="1" max="5">
+                    <div class="form-text" bis_skin_checked="1">Minimum number of methods that must agree (for weighted voting)</div>
+                  </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                    </div>
+
+                    <!-- Microbial Discarding Policy Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="microbialDiscardingPolicySummary" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="microbialDiscardingPolicySummaryText">No microbial discarding policies configured</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <button type="button" class="btn btn-outline-success btn-sm me-2" onclick="calculateRemainingMicrobes()" id="btn_btn-outline-success_btn-sm_me-2_34" name="btn_btn-outline-success_btn-sm_me-2_34">
+                            <i class="fas fa-calculator me-1"></i>Calculate Remaining
+                          </button>
+                          <span class="badge bg-primary" id="totalMicrobialDiscardingPoliciesCount">0 policies</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Microbial Grouping -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_35">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-object-group me-2"></i>
+                        Microbial Grouping
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleMicrobialGroupingBtn" onclick="toggleMicrobialGrouping()" name="toggleMicrobialGroupingBtn">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">Configure how microbial taxa should be grouped for analysis (e.g., by functional categories or custom groupings).</p>
+
+                    <!-- Microbial Grouping Container -->
+                    <div id="microbialGroupingContent" style="display: none" bis_skin_checked="1">
+                      <div class="row" id="microbialGroupingContainer" bis_skin_checked="1">
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_not_grouping" name="microbial_grouping_card_not_grouping" data-method-key="not_grouping" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_not_grouping" value="not_grouping">
+                    <label class="form-check-label" for="microbial_grouping_not_grouping">
+                      No Grouping
+                      <small class="text-muted d-block">Do not group microbes; analyze all taxa individually.</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('not_grouping')" id="btn_btn-outline-info_btn-sm_36" name="btn_btn-outline-info_btn-sm_36">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_not_grouping" name="microbial_grouping_body_not_grouping" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">No grouping will be applied.</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li>All taxa will be analyzed as individual features</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_scfa_producers" name="microbial_grouping_card_scfa_producers" data-method-key="scfa_producers" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_scfa_producers" value="scfa_producers">
+                    <label class="form-check-label" for="microbial_grouping_scfa_producers">
+                      SCFA Producers
+                      <small class="text-muted d-block">Group bacteria capable of producing short-chain fatty acids (butyrate, propionate, acetate)</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('scfa_producers')" id="btn_btn-outline-info_btn-sm_37" name="btn_btn-outline-info_btn-sm_37">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_scfa_producers" name="microbial_grouping_body_scfa_producers" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">SCFA Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>Butyrate producers:</strong> Faecalibacterium, Roseburia, Eubacterium, Coprococcus</li><li><strong>Propionate producers:</strong> Bacteroides, Veillonella, Akkermansia, Phascolarctobacterium</li><li><strong>Acetate producers:</strong> Bifidobacterium, Lactobacillus, Prevotella, Streptococcus</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_pathogenic_bacteria" name="microbial_grouping_card_pathogenic_bacteria" data-method-key="pathogenic_bacteria" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_pathogenic_bacteria" value="pathogenic_bacteria">
+                    <label class="form-check-label" for="microbial_grouping_pathogenic_bacteria">
+                      Pathogenic Bacteria
+                      <small class="text-muted d-block">Group bacteria with known pathogenic potential in immunocompromised patients</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('pathogenic_bacteria')" id="btn_btn-outline-info_btn-sm_38" name="btn_btn-outline-info_btn-sm_38">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_pathogenic_bacteria" name="microbial_grouping_body_pathogenic_bacteria" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">Pathogen Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>Enteric pathogens:</strong> Salmonella, Shigella, Campylobacter, Yersinia, Clostridium difficile</li><li><strong>Opportunistic pathogens:</strong> Pseudomonas, Staphylococcus, Enterococcus, Klebsiella, Acinetobacter</li><li><strong>Translocation risks:</strong> bacteria associated with gut barrier breach</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_immunomodulatory_bacteria" name="microbial_grouping_card_immunomodulatory_bacteria" data-method-key="immunomodulatory_bacteria" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_immunomodulatory_bacteria" value="immunomodulatory_bacteria">
+                    <label class="form-check-label" for="microbial_grouping_immunomodulatory_bacteria">
+                      Immunomodulatory Bacteria
+                      <small class="text-muted d-block">Group bacteria that directly or indirectly modulate immune system function</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('immunomodulatory_bacteria')" id="btn_btn-outline-info_btn-sm_39" name="btn_btn-outline-info_btn-sm_39">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_immunomodulatory_bacteria" name="microbial_grouping_body_immunomodulatory_bacteria" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">Immunomodulatory Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>Anti-inflammatory taxa:</strong> Faecalibacterium prausnitzii, Bifidobacterium spp</li><li>, Lactobacillus spp</li><li><strong>Treg inducers:</strong> Clostridia clusters IV and XIVa, Bacteroides fragilis</li><li><strong>Innate immunity modulators:</strong> Akkermansia muciniphila, certain Bacteroides strains</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_vitamin_synthesis" name="microbial_grouping_card_vitamin_synthesis" data-method-key="vitamin_synthesis" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_vitamin_synthesis" value="vitamin_synthesis">
+                    <label class="form-check-label" for="microbial_grouping_vitamin_synthesis">
+                      Vitamin Synthesis
+                      <small class="text-muted d-block">Group bacteria capable of synthesizing essential vitamins (B vitamins, vitamin K)</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('vitamin_synthesis')" id="btn_btn-outline-info_btn-sm_40" name="btn_btn-outline-info_btn-sm_40">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_vitamin_synthesis" name="microbial_grouping_body_vitamin_synthesis" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">Vitamin Synthesis Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>B vitamin producers:</strong> Bifidobacterium, Lactobacillus, Enterococcus, certain Clostridia</li><li><strong>Vitamin K producers:</strong> Bacteroides, Enterococcus, certain Escherichia coli</li><li><strong>Folate producers:</strong> Bifidobacterium, Lactobacillus, certain Lactobacilli</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_bile_acid_metabolism" name="microbial_grouping_card_bile_acid_metabolism" data-method-key="bile_acid_metabolism" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_bile_acid_metabolism" value="bile_acid_metabolism">
+                    <label class="form-check-label" for="microbial_grouping_bile_acid_metabolism">
+                      Bile Acid Metabolism
+                      <small class="text-muted d-block">Group bacteria involved in bile acid transformation and secondary bile acid production</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('bile_acid_metabolism')" id="btn_btn-outline-info_btn-sm_41" name="btn_btn-outline-info_btn-sm_41">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_bile_acid_metabolism" name="microbial_grouping_body_bile_acid_metabolism" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">Bile Acid Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>Primary to secondary converters:</strong> 7α-dehydroxylating bacteria (Clostridium, Eubacterium)</li><li><strong>Bile acid deconjugators:</strong> certain Bacteroides, Lactobacillus, Bifidobacterium</li><li><strong>Hydroxylation modifiers:</strong> various gut anaerobes</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_mucin_degraders" name="microbial_grouping_card_mucin_degraders" data-method-key="mucin_degraders" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_mucin_degraders" value="mucin_degraders">
+                    <label class="form-check-label" for="microbial_grouping_mucin_degraders">
+                      Mucin Degraders
+                      <small class="text-muted d-block">Group bacteria capable of degrading mucin glycoproteins in the gut mucus layer</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('mucin_degraders')" id="btn_btn-outline-info_btn-sm_42" name="btn_btn-outline-info_btn-sm_42">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_mucin_degraders" name="microbial_grouping_body_mucin_degraders" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">Mucin Degrader Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>Primary mucin specialists:</strong> Akkermansia muciniphila</li><li><strong>Mucin utilizers:</strong> certain Bacteroides, Prevotella, Ruminococcus</li><li><strong>Mucus layer modifiers:</strong> various gut anaerobes affecting mucus thickness</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_antibiotic_resistance_carriers" name="microbial_grouping_card_antibiotic_resistance_carriers" data-method-key="antibiotic_resistance_carriers" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_antibiotic_resistance_carriers" value="antibiotic_resistance_carriers">
+                    <label class="form-check-label" for="microbial_grouping_antibiotic_resistance_carriers">
+                      Antibiotic Resistance Carriers
+                      <small class="text-muted d-block">Group bacteria carrying antibiotic resistance genes or exhibiting resistance phenotypes</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('antibiotic_resistance_carriers')" id="btn_btn-outline-info_btn-sm_43" name="btn_btn-outline-info_btn-sm_43">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_antibiotic_resistance_carriers" name="microbial_grouping_body_antibiotic_resistance_carriers" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">Antibiotic Resistance Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>Intrinsic resistance:</strong> Enterococcus, Pseudomonas</li><li><strong>Acquired resistance:</strong> mobile genetic elements</li><li><strong>Multi-drug resistance:</strong> bacteria resistant to multiple classes</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <div class="col-12 mb-4" bis_skin_checked="1">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_disease_associated_microbiome" name="microbial_grouping_card_disease_associated_microbiome" data-method-key="disease_associated_microbiome" bis_skin_checked="1">
+              <div class="card-header" bis_skin_checked="1">
+                <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_disease_associated_microbiome" value="disease_associated_microbiome">
+                    <label class="form-check-label" for="microbial_grouping_disease_associated_microbiome">
+                      Disease-Associated Microbiome Patterns
+                      <small class="text-muted d-block">Group bacteria associated with other diseases that may share mechanisms with Multiple Myeloma</small>
+                    </label>
+                  </div>
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('disease_associated_microbiome')" id="btn_btn-outline-info_btn-sm_44" name="btn_btn-outline-info_btn-sm_44">
+                    <i class="fas fa-info-circle me-1"></i>Info
+                  </button>
+                </div>
+              </div>
+              <div class="card-body" id="microbial_grouping_body_disease_associated_microbiome" name="microbial_grouping_body_disease_associated_microbiome" style="display: none" bis_skin_checked="1">
+                <div class="row" bis_skin_checked="1">
+                  <div class="col-12 mb-2" bis_skin_checked="1">
+                      <label class="form-label fw-bold">Disease-Associated Subgroups</label>
+                      <div class="form-text" bis_skin_checked="1"><ul class="mb-0 ps-3"><li><strong>Autoimmune-associated:</strong> bacteria linked to rheumatoid arthritis, IBD</li><li><strong>Metabolic syndrome:</strong> bacteria associated with insulin resistance, obesity</li><li><strong>Cardiovascular:</strong> TMAO producers, bile acid metabolizers</li><li><strong>Cancer-associated:</strong> Fusobacterium, certain Streptococcus</li></ul></div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+                    </div>
+
+                    <!-- Microbial Grouping Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="microbialGroupingSummary" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="microbialGroupingSummaryText">No microbial grouping method selected</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <span class="badge bg-primary" id="totalMicrobialGroupingMethodsCount">0 methods</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Clustering - Policy -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_45">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        Clustering - Policy
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleClusteringBtn" onclick="toggleClustering()" name="toggleClusteringBtn">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="resetClusteringToDefaults()" id="btn_btn-outline-primary_46" name="btn_btn-outline-primary_46">
+                          <i class="fas fa-undo me-1"></i>Reset to Defaults
+                        </button>
+                        <button type="button" class="btn btn-outline-success" onclick="applyBestComponents()" id="btn_btn-outline-success_47" name="btn_btn-outline-success_47">
+                          <i class="fas fa-magic me-1"></i>Apply Best Components
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">
+                      Configure clustering methods and parameters for variable clustering analysis:
+                    </p>
+
+                    <!-- Clustering Method Selection -->
+                    <div class="row mb-3" bis_skin_checked="1">
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <label for="clusteringMethodSelect" class="form-label">
+                          <i class="fas fa-cogs text-primary me-2"></i>
+                          Clustering Method
+                        </label>
+                        <select class="form-select" id="clusteringMethodSelect" name="clusteringMethodSelect" onchange="updateClusteringParameters()">
+                          <option value="">Select clustering method...</option>
+                          <!-- Options will be populated dynamically -->
+                        <option value="dbscan">DBSCAN</option><option value="gaussian_mixture">Gaussian Mixture Model</option><option value="hierarchical">Hierarchical Clustering</option><option value="kmeans">K-Means Clustering</option><option value="spectral">Spectral Clustering</option></select>
+                        <div class="form-text" id="clusteringMethodDescription" bis_skin_checked="1">Partitions data into k clusters by minimizing within-cluster sum of squares</div>
+                      </div>
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <label class="form-label">Method Status</label>
+                        <div class="d-flex align-items-center" bis_skin_checked="1">
+                          <span class="badge bg-success me-2" id="clusteringMethodStatus">Method configured</span>
+                          <button type="button" class="btn btn-outline-info btn-sm" onclick="showClusteringInfo()" id="btn_btn-outline-info_btn-sm_48" name="btn_btn-outline-info_btn-sm_48">
+                            <i class="fas fa-info-circle me-1"></i>Info
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Clustering Parameters Container -->
+                    <div id="clusteringParametersContainer" style="display: none" bis_skin_checked="1">
+                      <div class="row" bis_skin_checked="1">
+                        <div class="col-12" bis_skin_checked="1">
+                          <h6 class="mb-3">
+                            <i class="fas fa-sliders-h me-2"></i>
+                            Method Parameters
+                          </h6>
+                          <div id="clusteringParametersForm" bis_skin_checked="1"><div class="row" bis_skin_checked="1">
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <label for="clustering_param_max_iter" class="form-label">
+                    <i class="fas fa-cog text-primary me-2"></i>
+                    Maximum Iterations
+                </label>
+        
+                <input type="number" class="form-control" id="clustering_param_max_iter" value="300" min="100" max="1000" step="1" onchange="updateClusteringSummary()" name="clustering_param_max_iter">
+            
+                <div class="form-text" bis_skin_checked="1">
+                    Maximum number of iterations
+                    <br><small class="text-success"><i class="fas fa-star me-1"></i>Best: 300</small>
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <label for="clustering_param_n_clusters" class="form-label">
+                    <i class="fas fa-cog text-primary me-2"></i>
+                    Number of Clusters
+                </label>
+        
+                <input type="number" class="form-control" id="clustering_param_n_clusters" value="3" min="2" max="20" step="1" onchange="updateClusteringSummary()" name="clustering_param_n_clusters">
+            
+                <div class="form-text" bis_skin_checked="1">
+                    Number of clusters to form
+                    
+                </div>
+            </div>
+        
+            <div class="col-md-6 mb-3" bis_skin_checked="1">
+                <label for="clustering_param_random_state" class="form-label">
+                    <i class="fas fa-cog text-primary me-2"></i>
+                    Random State
+                </label>
+        
+                <input type="number" class="form-control" id="clustering_param_random_state" value="42" min="0" max="1000" step="1" onchange="updateClusteringSummary()" name="clustering_param_random_state">
+            
+                <div class="form-text" bis_skin_checked="1">
+                    Random seed for reproducibility
+                    <br><small class="text-success"><i class="fas fa-star me-1"></i>Best: 42</small>
+                </div>
+            </div>
+        </div></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Clustering Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="clusteringSummary" style="display: block;" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="clusteringSummaryText">K-Means Clustering configured with 3 parameters</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <span class="badge bg-primary" id="clusteringParametersCount">3 parameters</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Clustering - Naming -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_49">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Clustering - Naming
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleClusterRepBtn" onclick="toggleClusterRepresentative()" name="toggleClusterRepBtn">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="resetClusterRepresentativeToDefault()" id="btn_btn-outline-primary_50" name="btn_btn-outline-primary_50">
+                          <i class="fas fa-undo me-1"></i>Reset to Default
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <div class="row" bis_skin_checked="1">
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <label class="form-label">Representative Method</label>
+                        <select class="form-select" id="clusterRepresentativeMethod" name="clusterRepresentativeMethod" onchange="updateClusterRepresentativeMethod()">
+                          <option value="">Select a method...</option>
+                        <option value="abundance_highest">Highest Mean Abundance</option><option value="abundance_lowest">Lowest Mean Abundance</option><option value="alphabetical_first">Alphabetically First</option><option value="alphabetical_last">Alphabetically Last</option><option value="class_priority">Class Priority</option><option value="clinical_importance">Clinical Importance</option><option value="family_priority">Family Priority</option><option value="genus_priority">Genus Priority</option><option value="median_abundance">Median Abundance</option><option value="mode_abundance">Mode Abundance</option><option value="order_priority">Order Priority</option><option value="pathogenicity_highest">Highest Pathogenicity</option><option value="pathogenicity_lowest">Lowest Pathogenicity</option><option value="phylum_priority">Phylum Priority</option><option value="prevalence_highest">Highest Prevalence</option><option value="prevalence_lowest">Lowest Prevalence</option><option value="random_selection">Random Selection</option><option value="research_popularity">Research Popularity</option><option value="species_completeness">Species Completeness</option><option value="taxonomic_level_highest">Highest Taxonomic Level</option><option value="taxonomic_level_lowest">Lowest Taxonomic Level</option><option value="variance_highest">Highest Variance</option><option value="variance_lowest">Lowest Variance</option></select>
+                      </div>
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <label class="form-label">Method Status</label>
+                        <div class="d-flex align-items-center" bis_skin_checked="1">
+                          <span class="badge bg-success me-2" id="clusterRepMethodStatus">Method selected</span>
+                          <button type="button" class="btn btn-outline-info btn-sm" onclick="showClusterRepresentativeInfo()" id="btn_btn-outline-info_btn-sm_51" name="btn_btn-outline-info_btn-sm_51">
+                            <i class="fas fa-info-circle me-1"></i>Info
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Cluster Representative Container -->
+                    <div id="clusterRepresentativeContainer" style="display: none" bis_skin_checked="1">
+                      <div class="row mt-3" bis_skin_checked="1">
+                        <div class="col-12" bis_skin_checked="1">
+                          <h6 class="mb-3">
+                            <i class="fas fa-cog me-2"></i>
+                            Method Details
+                          </h6>
+                          <div id="clusterRepresentativeDetails" bis_skin_checked="1">
+        <div class="row" bis_skin_checked="1">
+            <div class="col-md-6" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_52">
+                    <div class="card-body" bis_skin_checked="1">
+                        <h6 class="card-title">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Method Information
+                        </h6>
+                        <p class="card-text"><strong>Name:</strong> Highest Mean Abundance</p>
+                        <p class="card-text"><strong>Description:</strong> Select the taxonomy with the highest mean abundance across all patients</p>
+                        <p class="card-text"><strong>Method Type:</strong> abundance</p>
+                        <p class="card-text"><strong>Direction:</strong> max</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_53">
+                    <div class="card-body" bis_skin_checked="1">
+                        <h6 class="card-title">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Explanation
+                        </h6>
+                        <p class="card-text">Chooses the most abundant taxonomy as representative, useful for identifying dominant species</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Cluster Representative Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="clusterRepSummary" style="display: block;" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="clusterRepSummaryText">Using "Highest Mean Abundance" method for cluster representative selection</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <span class="badge bg-primary" id="clusterRepMethodName">Highest Mean Abundance</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analysis Editor Tab -->
+          <div class="tab-pane fade" id="analysis-editor" role="tabpanel" aria-labelledby="analysis-editor-tab" bis_skin_checked="1">
+            <!-- Analysis Type Selection -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_54">
+                  <div class="card-header" bis_skin_checked="1">
+                    <h6 class="mb-0">
+                      <i class="fas fa-flask me-2"></i>
+                      Analysis Type
+                    </h6>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">Select the analysis method and configure its parameters:</p>
+
+                    <!-- Analysis Method Selection -->
+                    <div class="row mb-4" bis_skin_checked="1">
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <label for="analysisMethodSelect" class="form-label">
+                          <i class="fas fa-cogs text-primary me-2"></i>
+                          Analysis Method
+                        </label>
+                        <select class="form-select" id="analysisMethodSelect" name="analysisMethodSelect" onchange="updateAnalysisMethod()"><option value="">Select analysis method...</option><option value="accelerated_failure_time">Accelerated Failure Time (AFT) Model</option><option value="competing_risks">Competing Risks Analysis</option><option value="cox_proportional_hazards">Cox Proportional Hazards Regression</option><option value="frailty_model">Frailty Model</option><option value="gradient_boosting_survival">Gradient Boosting Survival Analysis</option><option value="kaplan_meier">Kaplan-Meier Estimator</option><option value="log_rank_test">Log-Rank Test</option><option value="random_survival_forest">Random Survival Forest</option><option value="restricted_mean_survival_time">Restricted Mean Survival Time (RMST)</option></select>
+                        <div class="form-text" id="analysisMethodDescription" bis_skin_checked="1">Semi-parametric survival analysis method that models the hazard ratio as a function of covariates while allowing the baseline hazard to be unspecified.</div>
+                      </div>
+                      <div class="col-md-6" bis_skin_checked="1">
+                        <label class="form-label">Method Status</label>
+                        <div class="d-flex align-items-center" bis_skin_checked="1">
+                          <span class="badge bg-success me-2" id="analysisMethodStatus">Cox Proportional Hazards Regression</span>
+                          <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo()" id="btn_btn-outline-info_btn-sm_55" name="btn_btn-outline-info_btn-sm_55">
+                            <i class="fas fa-info-circle me-1"></i>Info
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Analysis Method Parameters Container -->
+                    <div id="analysisMethodParametersContainer" style="display: block;" bis_skin_checked="1">
+                      <div class="row" bis_skin_checked="1">
+                        <div class="col-12" bis_skin_checked="1">
+                          <h6 class="mb-3">
+                            <i class="fas fa-sliders-h me-2"></i>
+                            Method Parameters
+                          </h6>
+                          <div id="analysisMethodParametersForm" bis_skin_checked="1"><div class="row mb-3" bis_skin_checked="1"><div class="col-md-6" bis_skin_checked="1"><div class="mb-3" bis_skin_checked="1"><label class="form-label" for="analysisParam_alpha">Significance Level</label><input type="number" class="form-control" id="analysisParam_alpha" name="analysisParam_alpha" min="0.001" max="0.1" step="0.001"><div class="form-text" bis_skin_checked="1">Alpha level for statistical significance testing</div></div></div><div class="col-md-6" bis_skin_checked="1"><div class="mb-3" bis_skin_checked="1"><label class="form-label" for="analysisParam_l1_ratio">L1 Ratio</label><input type="number" class="form-control" id="analysisParam_l1_ratio" name="analysisParam_l1_ratio" min="0" max="1" step="0.1"><div class="form-text" bis_skin_checked="1">Ratio of L1 to L2 penalty (0 = pure L2, 1 = pure L1)</div></div></div></div><div class="row mb-3" bis_skin_checked="1"><div class="col-md-6" bis_skin_checked="1"><div class="mb-3" bis_skin_checked="1"><label class="form-label" for="analysisParam_max_iter">Maximum Iterations</label><input type="number" class="form-control" id="analysisParam_max_iter" name="analysisParam_max_iter" min="100" max="10000" step="100"><div class="form-text" bis_skin_checked="1">Maximum number of iterations for convergence</div></div></div><div class="col-md-6" bis_skin_checked="1"><div class="mb-3" bis_skin_checked="1"><label class="form-label" for="analysisParam_penalizer">L2 Penalty</label><input type="number" class="form-control" id="analysisParam_penalizer" name="analysisParam_penalizer" min="0" max="1" step="0.01"><div class="form-text" bis_skin_checked="1">L2 regularization penalty to prevent overfitting</div></div></div></div><div class="row mb-3" bis_skin_checked="1"><div class="col-md-6" bis_skin_checked="1"><div class="mb-3" bis_skin_checked="1"><label class="form-label" for="analysisParam_tolerance">Convergence Tolerance</label><input type="number" class="form-control" id="analysisParam_tolerance" name="analysisParam_tolerance" min="1e-8" max="0.001" step="0.0001"><div class="form-text" bis_skin_checked="1">Tolerance for convergence criteria</div></div></div></div></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Analysis Method Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="analysisMethodSummary" style="display: block;" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="analysisMethodSummaryText">Analysis method: Cox Proportional Hazards Regression</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <span class="badge bg-primary" id="analysisMethodParametersCount">5 parameters configured</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Post-Analysis Editor Tab -->
+          <div class="tab-pane fade" id="postanalysis-editor" role="tabpanel" aria-labelledby="postanalysis-editor-tab" bis_skin_checked="1">
+            <!-- Population Sectors Comparison -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_56">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-layer-group me-2"></i>
+                        Population Sectors Comparison
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleStratificationBtn" onclick="toggleStratification()" name="toggleStratificationBtn">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="selectAllStratifications()" id="btn_btn-outline-primary_57" name="btn_btn-outline-primary_57">
+                          <i class="fas fa-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllStratifications()" id="btn_btn-outline-secondary_58" name="btn_btn-outline-secondary_58">
+                          <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">
+                      Select stratification methods to divide the population into subgroups for comparative analysis:
+                    </p>
+                    <div id="stratificationContainer" style="display: none" bis_skin_checked="1"><div class="row" bis_skin_checked="1">
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_0_demographics_age" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_0_demographics_age">
+                <strong>Demographics — Age Stratification</strong>
+                <small class="text-muted d-block"></small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>Young (≤50 years):</strong> <span class="text-muted">Age ≤ 50</span></li><li><strong>Middle-aged (51-65 years):</strong> <span class="text-muted">51 ≤ Age ≤ 65</span></li><li><strong>Elderly (&gt;65 years):</strong> <span class="text-muted">Age &gt; 65</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_1_demographics_bmi" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_1_demographics_bmi">
+                <strong>Demographics — BMI Stratification</strong>
+                <small class="text-muted d-block"></small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>Underweight (BMI &lt;18.5):</strong> <span class="text-muted">BMI &lt; 18.5</span></li><li><strong>Normal (BMI 18.5-24.9):</strong> <span class="text-muted">18.5 ≤ BMI &lt; 25</span></li><li><strong>Overweight (BMI 25-29.9):</strong> <span class="text-muted">25 ≤ BMI &lt; 30</span></li><li><strong>Obese (BMI ≥30):</strong> <span class="text-muted">BMI ≥ 30</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_2_demographics_smoking" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_2_demographics_smoking">
+                <strong>Demographics — Smoking Stratification</strong>
+                <small class="text-muted d-block"></small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>Never:</strong> <span class="text-muted">values in ['Never','0','No']</span></li><li><strong>Former:</strong> <span class="text-muted">values in ['Former','1','Yes']</span></li><li><strong>Current:</strong> <span class="text-muted">values in ['Current','2']</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_3_disease_characteristics" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_3_disease_characteristics">
+                <strong>Disease Characteristics Stratification</strong>
+                <small class="text-muted d-block"></small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>Low Risk:</strong> <span class="text-muted">ISS I or R-ISS I, no high-risk mutations, normal labs</span></li><li><strong>Intermediate Risk:</strong> <span class="text-muted">ISS II or R-ISS II, or single high-risk feature</span></li><li><strong>High Risk:</strong> <span class="text-muted">ISS III or R-ISS III, multiple high-risk mutations, abnormal labs</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_4_fish_indicators" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_4_fish_indicators">
+                <strong>FISH Indicators Stratification</strong>
+                <small class="text-muted d-block"></small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>High-Risk:</strong> <span class="text-muted">t(4;14), t(14;16), t(14;20), or del(17p) present</span></li><li><strong>Intermediate-Risk:</strong> <span class="text-muted">1q+ or del(1p32) present, but no high-risk markers</span></li><li><strong>Favorable:</strong> <span class="text-muted">del(13q) or t(11;14) only; no high/intermediate-risk markers</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_5_genomic_markers" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_5_genomic_markers">
+                <strong>Genomic Markers Stratification</strong>
+                <small class="text-muted d-block">Molecular markers grouped by functional pathways</small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"><ul class="mb-0 ps-3"><li>**TP53 Mutated:** Any pathogenic TP53 mutation or deletion.</li><li>**MYC Rearranged:** Presence of MYC rearrangement.</li><li>**Cyclin D Abnormal:** D1/D2/D3 overexpression or rearrangement.</li><li>**MAF Rearranged:** MAF/MAFB rearrangement.</li><li>  - **Assignment Rule:** Patient is assigned to all matching groups based on detected mutations.</li></ul></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>TP53 Mutated:</strong> <span class="text-muted">Pathogenic TP53 mutation or deletion present</span></li><li><strong>MYC Rearranged:</strong> <span class="text-muted">MYC rearrangement present</span></li><li><strong>Cyclin D Abnormal:</strong> <span class="text-muted">D1/D2/D3 overexpression or rearrangement present</span></li><li><strong>MAF Rearranged:</strong> <span class="text-muted">MAF/MAFB rearrangement present</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_6_laboratory_values" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_6_laboratory_values">
+                <strong>Laboratory Values Stratification</strong>
+                <small class="text-muted d-block">Lab parameters grouped by organ system function</small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"><ul class="mb-0 ps-3"><li>**Normal Function:** All labs within reference range.</li><li>**Mild Abnormality:** One or more labs mildly outside reference.</li><li>**Severe Abnormality:** One or more labs severely abnormal.</li><li>  - **Assignment Rule:** Lab values are compared to clinical or population thresholds as defined in parameters.</li></ul></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>Normal Function:</strong> <span class="text-muted">All labs within reference range</span></li><li><strong>Mild Abnormality:</strong> <span class="text-muted">One or more labs mildly outside reference</span></li><li><strong>Severe Abnormality:</strong> <span class="text-muted">One or more labs severely abnormal</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_7_none" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_7_none">
+                <strong>Standard Analysis</strong>
+                <small class="text-muted d-block"></small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>All Patients:</strong> <span class="text-muted">No stratification; all included in one group.</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    
+      <div class="col-md-6 col-lg-4 mb-3" bis_skin_checked="1">
+        <div class="card" bis_skin_checked="1">
+          <div class="card-body" bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input" type="checkbox" id="strat_8_treatment_response" onchange="(window.analysisManager &amp;&amp; window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <label class="form-check-label" for="strat_8_treatment_response">
+                <strong>Treatment Response Stratification</strong>
+                <small class="text-muted d-block">Treatment variables grouped by response patterns</small>
+              </label>
+            </div>
+            <div class="mt-2" bis_skin_checked="1"><ul class="mb-0 ps-3"><li>**Complete Response (CR):** Meets IMWG/EBMT criteria for CR.</li><li>**Partial Response (PR):** Meets criteria for PR.</li><li>**No Response (NR):** Does not meet PR or CR.</li><li>**Transplant Status:** Single, double, or no transplant.</li><li>  - **Assignment Rule:** Response and treatment data are evaluated per selected criteria.</li></ul></div>
+            <div class="mt-2" bis_skin_checked="1"><strong>Subgroups:</strong><ul class="mb-0 ps-3"><li><strong>Complete Response (CR):</strong> <span class="text-muted">Meets IMWG/EBMT criteria for CR</span></li><li><strong>Partial Response (PR):</strong> <span class="text-muted">Meets criteria for PR</span></li><li><strong>No Response (NR):</strong> <span class="text-muted">Does not meet PR or CR</span></li><li><strong>Transplant: Single:</strong> <span class="text-muted">Single transplant performed</span></li><li><strong>Transplant: Double:</strong> <span class="text-muted">Double transplant performed</span></li><li><strong>Transplant: None:</strong> <span class="text-muted">No transplant performed</span></li></ul></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+
+                    <!-- Stratification Summary -->
+                    <div class="mt-3 p-3 bg-light rounded" id="stratificationSummary" bis_skin_checked="1">
+                      <div class="row align-items-center" bis_skin_checked="1">
+                        <div class="col-md-8" bis_skin_checked="1">
+                          <div class="d-flex align-items-center" bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="stratificationSummaryText">No stratifications selected</span>
+                          </div>
+                        </div>
+                        <div class="col-md-4 text-end" bis_skin_checked="1">
+                          <span class="badge bg-primary" id="stratificationCount">0 stratifications</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sample Timepoints Comparison -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_59">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-timeline me-2"></i>
+                        Sample Timepoints Comparison
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleSampleTimepointsBtn" onclick="toggleSampleTimepoints()" name="toggleSampleTimepointsBtn">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="selectAllSampleTimepoints()" id="btn_btn-outline-primary_60" name="btn_btn-outline-primary_60">
+                          <i class="fas fa-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllSampleTimepoints()" id="btn_btn-outline-secondary_61" name="btn_btn-outline-secondary_61">
+                          <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">Configure comparison of analysis results across different sample timepoints.</p>
+                    <!-- Sample Timepoints Comparison content -->
+                    <div id="sampleTimepointsCard" bis_skin_checked="1">
+                      <div class="row mb-2" bis_skin_checked="1">
+                        <div class="col-md-4 d-flex align-items-center" bis_skin_checked="1">
+                          <div class="w-100" bis_skin_checked="1">
+                            <span class="form-text">Timepoint selected in Data Source: <strong id="selectedTimePointDisplay">Select a Time Point...</strong></span>
+                          </div>
+                        </div>
+                        <div class="col-md-8 text-end align-self-end" bis_skin_checked="1">
+                          <!-- header buttons shown above; keep this space for possible future controls -->
+                        </div>
+                      </div>
+
+                      <div id="sampleTimepointsContainer" style="display: none; grid-template-columns: repeat(2, 1fr); gap: .5rem;" bis_skin_checked="1"><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100" id="sample_tp_card_Pre-engraftment" name="sample_tp_card_Pre-engraftment" bis_skin_checked="1">
+        <div class="form-check" bis_skin_checked="1">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="Pre-engraftment" id="sample_tp_Pre-engraftment" name="sample_tp_Pre-engraftment">
+          <label class="form-check-label" for="sample_tp_Pre-engraftment">
+            <strong>Pre-engraftment</strong>
+            <div class="text-muted small" bis_skin_checked="1">The pre-engraftment timepoint represents the baseline microbial composition before hematopoietic stem cell transplantati...</div>
+          </label>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100" id="sample_tp_card_2 months after engraftment" name="sample_tp_card_2 months after engraftment" bis_skin_checked="1">
+        <div class="form-check" bis_skin_checked="1">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="2 months after engraftment" id="sample_tp_2 months after engraftment" name="sample_tp_2 months after engraftment">
+          <label class="form-check-label" for="sample_tp_2 months after engraftment">
+            <strong>2m post-engraft</strong>
+            <div class="text-muted small" bis_skin_checked="1">Collected two months post-engraftment, this timepoint captures early post-transplant microbial landscape. Engraftment ma...</div>
+          </label>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100" id="sample_tp_card_24 months after engraftment" name="sample_tp_card_24 months after engraftment" bis_skin_checked="1">
+        <div class="form-check" bis_skin_checked="1">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="24 months after engraftment" id="sample_tp_24 months after engraftment" name="sample_tp_24 months after engraftment">
+          <label class="form-check-label" for="sample_tp_24 months after engraftment">
+            <strong>24m post-engraft</strong>
+            <div class="text-muted small" bis_skin_checked="1">This long-term sample at 24 months post-engraftment represents stabilized post-transplant microbial ecosystem. Microbiot...</div>
+          </label>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100" id="sample_tp_card_delta_to_engraftment" name="sample_tp_card_delta_to_engraftment" bis_skin_checked="1">
+        <div class="form-check" bis_skin_checked="1">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="delta_to_engraftment" id="sample_tp_delta_to_engraftment" name="sample_tp_delta_to_engraftment">
+          <label class="form-check-label" for="sample_tp_delta_to_engraftment">
+            <strong>Delta E to P</strong>
+            <div class="text-muted small" bis_skin_checked="1">This delta measures microbial changes from 2-month post-engraftment to pre-engraftment baseline. Quantifies immediate tr...</div>
+          </label>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100" id="sample_tp_card_delta_after_engraftment" name="sample_tp_card_delta_after_engraftment" bis_skin_checked="1">
+        <div class="form-check" bis_skin_checked="1">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="delta_after_engraftment" id="sample_tp_delta_after_engraftment" name="sample_tp_delta_after_engraftment">
+          <label class="form-check-label" for="sample_tp_delta_after_engraftment">
+            <strong>Delta 24m to 2m</strong>
+            <div class="text-muted small" bis_skin_checked="1">This delta measures microbial evolution from 2 to 24 months post-engraftment, capturing long-term recovery trajectory. Q...</div>
+          </label>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100" id="sample_tp_card_delta_pre_pos" name="sample_tp_card_delta_pre_pos" bis_skin_checked="1">
+        <div class="form-check" bis_skin_checked="1">
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="delta_pre_pos" id="sample_tp_delta_pre_pos" name="sample_tp_delta_pre_pos">
+          <label class="form-check-label" for="sample_tp_delta_pre_pos">
+            <strong>Delta 24m to P</strong>
+            <div class="text-muted small" bis_skin_checked="1">This delta encompasses total microbial transformation from pre-engraftment to 24 months post-engraftment, offering compr...</div>
+          </label>
+        </div>
+      </div></div></div>
+
+                      <div class="mt-3 p-2 bg-light rounded" id="sampleTimepointsSummary" bis_skin_checked="1">
+                        <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                          <div bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="sampleTimepointsSummaryText">No timepoints selected</span>
+                          </div>
+                          <div bis_skin_checked="1">
+                            <span class="badge bg-primary" id="sampleTimepointsCount">0 selected</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Microbial Grouping Comparison removed -->
+
+            <!-- Analysis Methods Comparison -->
+            <div class="row mb-4" bis_skin_checked="1">
+              <div class="col-12" bis_skin_checked="1">
+                <div class="card" bis_skin_checked="1" id="card_62">
+                  <div class="card-header" bis_skin_checked="1">
+                    <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                      <h6 class="mb-0">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        Analysis Methods Comparison
+                      </h6>
+                      <div class="btn-group btn-group-sm" bis_skin_checked="1">
+                        <button type="button" class="btn btn-outline-secondary" id="toggleAnalysisMethodsBtn" onclick="toggleAnalysisMethods()" name="toggleAnalysisMethodsBtn">
+                          <i class="fas fa-eye me-1"></i>Show Options
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="selectAllAnalysisMethods()" id="btn_btn-outline-primary_63" name="btn_btn-outline-primary_63">
+                          <i class="fas fa-check-all me-1"></i>Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllAnalysisMethods()" id="btn_btn-outline-secondary_64" name="btn_btn-outline-secondary_64">
+                          <i class="fas fa-times me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body" bis_skin_checked="1">
+                    <p class="text-muted mb-3">Configure comparison of results produced by different analysis methods.</p>
+
+                    <div id="analysisMethodsCard" bis_skin_checked="1">
+                      <div class="row mb-2" bis_skin_checked="1">
+                        <div class="col-12 d-flex align-items-center" bis_skin_checked="1">
+                          <div class="w-100" bis_skin_checked="1">
+                            <span class="form-text">MVA Method selected in Analysis: <strong id="selectedAnalysisMethodDisplay">Select analysis method...</strong></span>
+                          </div>
+                        </div>
+                        <div class="col-12 text-end align-self-end" bis_skin_checked="1">
+                          <!-- header buttons shown above; reserved space -->
+                        </div>
+                      </div>
+                      <div id="analysisMethodsContainer" style="display: none; grid-template-columns: repeat(2, 1fr); gap: .5rem;" bis_skin_checked="1"><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_accelerated_failure_time" name="analysis_method_card_accelerated_failure_time" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="accelerated_failure_time" id="analysis_method_accelerated_failure_time" name="analysis_method_accelerated_failure_time">
+              <label class="form-check-label" for="analysis_method_accelerated_failure_time"><strong>Accelerated Failure Time (AFT) Model</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Parametric survival analysis method that models the logarithm of survival time as a linear function of covariates.</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('accelerated_failure_time')" id="btn_btn-outline-info_btn-sm_65" name="btn_btn-outline-info_btn-sm_65">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_competing_risks" name="analysis_method_card_competing_risks" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="competing_risks" id="analysis_method_competing_risks" name="analysis_method_competing_risks">
+              <label class="form-check-label" for="analysis_method_competing_risks"><strong>Competing Risks Analysis</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Method for analyzing time-to-event data when multiple types of events can occur, where the occurrence of one event preve...</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('competing_risks')" id="btn_btn-outline-info_btn-sm_66" name="btn_btn-outline-info_btn-sm_66">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_cox_proportional_hazards" name="analysis_method_card_cox_proportional_hazards" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="cox_proportional_hazards" id="analysis_method_cox_proportional_hazards" name="analysis_method_cox_proportional_hazards">
+              <label class="form-check-label" for="analysis_method_cox_proportional_hazards"><strong>Cox Proportional Hazards Regression</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Semi-parametric survival analysis method that models the hazard ratio as a function of covariates while allowing the bas...</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('cox_proportional_hazards')" id="btn_btn-outline-info_btn-sm_67" name="btn_btn-outline-info_btn-sm_67">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_frailty_model" name="analysis_method_card_frailty_model" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="frailty_model" id="analysis_method_frailty_model" name="analysis_method_frailty_model">
+              <label class="form-check-label" for="analysis_method_frailty_model"><strong>Frailty Model</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Extension of Cox regression that accounts for unobserved heterogeneity or clustering in survival data.</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('frailty_model')" id="btn_btn-outline-info_btn-sm_68" name="btn_btn-outline-info_btn-sm_68">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_gradient_boosting_survival" name="analysis_method_card_gradient_boosting_survival" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="gradient_boosting_survival" id="analysis_method_gradient_boosting_survival" name="analysis_method_gradient_boosting_survival">
+              <label class="form-check-label" for="analysis_method_gradient_boosting_survival"><strong>Gradient Boosting Survival Analysis</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Machine learning method that combines multiple weak learners to create a strong survival prediction model.</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('gradient_boosting_survival')" id="btn_btn-outline-info_btn-sm_69" name="btn_btn-outline-info_btn-sm_69">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_kaplan_meier" name="analysis_method_card_kaplan_meier" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="kaplan_meier" id="analysis_method_kaplan_meier" name="analysis_method_kaplan_meier">
+              <label class="form-check-label" for="analysis_method_kaplan_meier"><strong>Kaplan-Meier Estimator</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Non-parametric method for estimating survival probabilities over time, providing the foundation for survival curve visua...</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('kaplan_meier')" id="btn_btn-outline-info_btn-sm_70" name="btn_btn-outline-info_btn-sm_70">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_log_rank_test" name="analysis_method_card_log_rank_test" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="log_rank_test" id="analysis_method_log_rank_test" name="analysis_method_log_rank_test">
+              <label class="form-check-label" for="analysis_method_log_rank_test"><strong>Log-Rank Test</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Non-parametric statistical test for comparing survival distributions between two or more groups.</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('log_rank_test')" id="btn_btn-outline-info_btn-sm_71" name="btn_btn-outline-info_btn-sm_71">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_random_survival_forest" name="analysis_method_card_random_survival_forest" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="random_survival_forest" id="analysis_method_random_survival_forest" name="analysis_method_random_survival_forest">
+              <label class="form-check-label" for="analysis_method_random_survival_forest"><strong>Random Survival Forest</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Machine learning method that extends random forests to survival data, handling high-dimensional covariates and complex i...</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('random_survival_forest')" id="btn_btn-outline-info_btn-sm_72" name="btn_btn-outline-info_btn-sm_72">Info</button>
+          </div>
+        </div>
+      </div></div><div class="col mb-2" bis_skin_checked="1"><div class="card p-2 h-100 analysis-method-card" id="analysis_method_card_restricted_mean_survival_time" name="analysis_method_card_restricted_mean_survival_time" bis_skin_checked="1">
+        <div class="d-flex justify-content-between align-items-start" bis_skin_checked="1">
+          <div bis_skin_checked="1">
+            <div class="form-check" bis_skin_checked="1">
+              <input class="form-check-input analysis-method-checkbox" type="checkbox" value="restricted_mean_survival_time" id="analysis_method_restricted_mean_survival_time" name="analysis_method_restricted_mean_survival_time">
+              <label class="form-check-label" for="analysis_method_restricted_mean_survival_time"><strong>Restricted Mean Survival Time (RMST)</strong></label>
+            </div>
+            <div class="text-muted small" bis_skin_checked="1">Non-parametric method that estimates the mean survival time up to a specified time point, providing an alternative to ha...</div>
+            <div class="text-muted small" bis_skin_checked="1"><em>Uses default parameter values</em></div>
+          </div>
+          <div bis_skin_checked="1">
+            <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo('restricted_mean_survival_time')" id="btn_btn-outline-info_btn-sm_73" name="btn_btn-outline-info_btn-sm_73">Info</button>
+          </div>
+        </div>
+      </div></div></div>
+
+                      <div class="mt-3 p-2 bg-light rounded" id="analysisMethodsSummary" bis_skin_checked="1">
+                        <div class="d-flex align-items-center justify-content-between" bis_skin_checked="1">
+                          <div bis_skin_checked="1">
+                            <i class="fas fa-info-circle text-primary me-2"></i>
+                            <span id="analysisMethodsSummaryText">No methods selected</span>
+                          </div>
+                          <div bis_skin_checked="1">
+                            <span class="badge bg-primary" id="analysisMethodsCount">0 selected</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Output Options Editor Tab -->
+          <div class="tab-pane fade" id="output-editor" role="tabpanel" aria-labelledby="output-editor-tab" bis_skin_checked="1">
+            <div class="row" bis_skin_checked="1">
+              <div class="col-md-6" bis_skin_checked="1">
+                <h6 class="mb-3">
+                  <i class="fas fa-file-pdf me-2"></i>
+                  Report Format
+                </h6>
+                <div class="mb-3" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="reportPDF" name="reportPDF" checked="">
+                    <label class="form-check-label" for="reportPDF"> PDF Report </label>
+                  </div>
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="reportHTML" name="reportHTML">
+                    <label class="form-check-label" for="reportHTML"> HTML Report </label>
+                  </div>
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="reportCSV" name="reportCSV">
+                    <label class="form-check-label" for="reportCSV"> CSV Data Export </label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6" bis_skin_checked="1">
+                <h6 class="mb-3">
+                  <i class="fas fa-chart-pie me-2"></i>
+                  Report Contents
+                </h6>
+                <div class="mb-3" bis_skin_checked="1">
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="includeSummary" name="includeSummary" checked="">
+                    <label class="form-check-label" for="includeSummary"> Summary Statistics </label>
+                  </div>
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="includePlots" name="includePlots" checked="">
+                    <label class="form-check-label" for="includePlots"> Visualization Plots </label>
+                  </div>
+                  <div class="form-check" bis_skin_checked="1">
+                    <input class="form-check-input" type="checkbox" id="includeRawData" name="includeRawData">
+                    <label class="form-check-label" for="includeRawData"> Raw Data Tables </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editor Action Buttons -->
+        <div class="border-top pt-3 mt-3" bis_skin_checked="1">
+          <div class="d-flex justify-content-end" bis_skin_checked="1">
+            <div class="btn-group" bis_skin_checked="1">
+              <button type="button" class="btn btn-outline-secondary" onclick="cancelAnalysisEdit()" id="btn_btn-outline-secondary_74" name="btn_btn-outline-secondary_74">
+                <i class="fas fa-times me-1"></i>Close
+              </button>
+              <button type="button" class="btn btn-success" onclick="saveAnalysis()" id="btn_btn-success_75" name="btn_btn-success_75">
+                <i class="fas fa-save me-1"></i>Save
+              </button>
+              <button type="button" class="btn btn-primary" onclick="runAnalysisFromEditor()" id="btn_btn-primary_76" name="btn_btn-primary_76">
+                <i class="fas fa-play me-1"></i>Run Analysis
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

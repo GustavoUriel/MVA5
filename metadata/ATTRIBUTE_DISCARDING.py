@@ -2,6 +2,7 @@ ATTRIBUTE_DISCARDING = {
     'prevalence_filtering': {
         'name': 'Prevalence Filtering',
         'description': 'Discard taxa present in fewer than a specified percentage of samples',
+        'param_prefix': 'AtDi_Preval_',
         'parameters': {
             'detection_threshold': {
                 'type': 'float',
@@ -10,7 +11,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1.0,
                 'step': 0.001,
                 'label': 'Detection Threshold',
-                'description': 'Minimum abundance to consider taxon present (default: >0)'
+                'description': 'Minimum abundance to consider taxon present (default: >0)',
+                'control_name': 'AtDi_Preval_detection_threshold'
             },
             'min_prevalence': {
                 'type': 'float',
@@ -19,7 +21,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1.0,
                 'step': 0.01,
                 'label': 'Minimum Prevalence (%)',
-                'description': 'Minimum fraction of samples where taxon must be present'
+                'description': 'Minimum fraction of samples where taxon must be present',
+                'control_name': 'AtDi_Preval_min_prevalence'
             }
         },
         'enabled': False,
@@ -57,6 +60,7 @@ ATTRIBUTE_DISCARDING = {
     'abundance_filtering': {
         'name': 'Abundance Filtering',
         'description': 'Discard taxa with consistently low abundance across samples',
+        'param_prefix': 'AtDi_Abun_',
         'parameters': {
             'min_mean_abundance': {
                 'type': 'float',
@@ -65,7 +69,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1.0,
                 'step': 0.00001,
                 'label': 'Minimum Mean Abundance (%)',
-                'description': 'Minimum mean relative abundance threshold'
+                'description': 'Minimum mean relative abundance threshold',
+                'control_name': 'AtDi_Abun_min_mean_abundance'
             },
             'min_median_abundance': {
                 'type': 'float',
@@ -74,7 +79,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1.0,
                 'step': 0.00001,
                 'label': 'Minimum Median Abundance (%)',
-                'description': 'Minimum median relative abundance threshold'
+                'description': 'Minimum median relative abundance threshold',
+                'control_name': 'AtDi_Abun_min_median_abundance'
             }
         },
         'enabled': False,
@@ -112,6 +118,7 @@ ATTRIBUTE_DISCARDING = {
     'variance_based_selection': {
         'name': 'Variance-Based Selection',
         'description': 'Select taxa with highest variance across samples',
+        'param_prefix': 'AtDi_Variance_',
         'parameters': {
             'num_taxa_to_select': {
                 'type': 'int',
@@ -120,7 +127,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 200,
                 'step': 5,
                 'label': 'Number of Taxa to Select',
-                'description': 'Maximum number of most variable taxa to retain'
+                'description': 'Maximum number of most variable taxa to retain',
+                'control_name': 'AtDi_Variance_num_taxa_to_select'
             },
             'variance_metric': {
                 'type': 'select',
@@ -130,7 +138,8 @@ ATTRIBUTE_DISCARDING = {
                     {'value': 'coefficient_of_variation', 'label': 'Coefficient of Variation'}
                 ],
                 'label': 'Variance Metric',
-                'description': 'Method to measure taxon variability'
+                'description': 'Method to measure taxon variability',
+                'control_name': 'AtDi_Variance_variance_metric'
             }
         },
         'enabled': False,
@@ -169,6 +178,7 @@ ATTRIBUTE_DISCARDING = {
     'univariate_pfs_screening': {
         'name': 'Univariate PFS Screening',
         'description': 'Test each taxon individually against PFS using statistical models',
+        'param_prefix': 'AtDi_UniPFS_',
         'parameters': {
             'statistical_test': {
                 'type': 'select',
@@ -178,7 +188,8 @@ ATTRIBUTE_DISCARDING = {
                     {'value': 'log_rank_test', 'label': 'Log-Rank Test'}
                 ],
                 'label': 'Statistical Test',
-                'description': 'Method for testing PFS association'
+                'description': 'Method for testing PFS association',
+                'control_name': 'AtDi_UniPFS_statistical_test'
             },
             'significance_threshold': {
                 'type': 'float',
@@ -187,7 +198,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 0.2,
                 'step': 0.001,
                 'label': 'Significance Threshold',
-                'description': 'P-value threshold for significance'
+                'description': 'P-value threshold for significance',
+                'control_name': 'AtDi_UniPFS_significance_threshold'
             },
             'multiple_testing_correction': {
                 'type': 'select',
@@ -198,7 +210,8 @@ ATTRIBUTE_DISCARDING = {
                     {'value': 'fdr', 'label': 'False Discovery Rate'}
                 ],
                 'label': 'Multiple Testing Correction',
-                'description': 'Method to correct for multiple hypothesis testing'
+                'description': 'Method to correct for multiple hypothesis testing',
+                'control_name': 'AtDi_UniPFS_multiple_testing_correction'
             }
         },
         'enabled': False,
@@ -238,6 +251,7 @@ ATTRIBUTE_DISCARDING = {
     'multivariate_pfs_screening': {
         'name': 'Multivariate PFS Screening',
         'description': 'Test taxa in multivariate models including clinical variables',
+        'param_prefix': 'AtDi_MultiPFS_',
         'parameters': {
             'significance_threshold': {
                 'type': 'float',
@@ -246,7 +260,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 0.2,
                 'step': 0.001,
                 'label': 'Significance Threshold',
-                'description': 'P-value threshold for significance after clinical adjustment'
+                'description': 'P-value threshold for significance after clinical adjustment',
+                'control_name': 'AtDi_MultiPFS_significance_threshold'
             },
             'regularization_strength': {
                 'type': 'float',
@@ -255,7 +270,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1.0,
                 'step': 0.01,
                 'label': 'Regularization Strength',
-                'description': 'Penalty strength for numerical stability'
+                'description': 'Penalty strength for numerical stability',
+                'control_name': 'AtDi_MultiPFS_regularization_strength'
             },
             'max_iterations': {
                 'type': 'int',
@@ -264,7 +280,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 50,
                 'step': 1,
                 'label': 'Maximum Iterations',
-                'description': 'Maximum iterations for iterative refinement'
+                'description': 'Maximum iterations for iterative refinement',
+                'control_name': 'AtDi_MultiPFS_max_iterations'
             },
             'min_taxa_retain': {
                 'type': 'int',
@@ -273,7 +290,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 20,
                 'step': 1,
                 'label': 'Minimum Taxa to Retain',
-                'description': 'Minimum number of taxa to keep for model stability'
+                'description': 'Minimum number of taxa to keep for model stability',
+                'control_name': 'AtDi_MultiPFS_min_taxa_retain'
             }
         },
         'enabled': False,
@@ -314,6 +332,7 @@ ATTRIBUTE_DISCARDING = {
     'stability_selection': {
         'name': 'Stability Selection',
         'description': 'Use bootstrap resampling to identify taxa with consistently significant PFS associations',
+        'param_prefix': 'AtDi_Stability_',
         'parameters': {
             'num_bootstraps': {
                 'type': 'int',
@@ -322,7 +341,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1000,
                 'step': 50,
                 'label': 'Number of Bootstraps',
-                'description': 'Number of bootstrap samples for stability assessment'
+                'description': 'Number of bootstrap samples for stability assessment',
+                'control_name': 'AtDi_Stability_num_bootstraps'
             },
             'stability_threshold': {
                 'type': 'float',
@@ -331,7 +351,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 0.95,
                 'step': 0.05,
                 'label': 'Stability Threshold',
-                'description': 'Minimum fraction of bootstraps where taxon must be significant'
+                'description': 'Minimum fraction of bootstraps where taxon must be significant',
+                'control_name': 'AtDi_Stability_stability_threshold'
             },
             'bootstrap_sample_size': {
                 'type': 'float',
@@ -340,7 +361,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1.0,
                 'step': 0.05,
                 'label': 'Bootstrap Sample Size (%)',
-                'description': 'Fraction of original sample size for each bootstrap'
+                'description': 'Fraction of original sample size for each bootstrap',
+                'control_name': 'AtDi_Stability_bootstrap_sample_size'
             }
         },
         'enabled': False,
@@ -380,6 +402,7 @@ ATTRIBUTE_DISCARDING = {
     'information_theoretic_selection': {
         'name': 'Information-Theoretic Selection',
         'description': 'Select taxa based on mutual information with PFS outcomes',
+        'param_prefix': 'AtDi_InfoTheo_',
         'parameters': {
             'mi_estimator': {
                 'type': 'select',
@@ -389,7 +412,8 @@ ATTRIBUTE_DISCARDING = {
                     {'value': 'knn', 'label': 'K-Nearest Neighbors'}
                 ],
                 'label': 'Mutual Information Estimator',
-                'description': 'Method for estimating mutual information'
+                'description': 'Method for estimating mutual information',
+                'control_name': 'AtDi_InfoTheo_mi_estimator'
             },
             'num_permutations': {
                 'type': 'int',
@@ -398,7 +422,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 10000,
                 'step': 100,
                 'label': 'Number of Permutations',
-                'description': 'Number of permutations for significance testing'
+                'description': 'Number of permutations for significance testing',
+                'control_name': 'AtDi_InfoTheo_num_permutations'
             },
             'significance_threshold': {
                 'type': 'float',
@@ -407,7 +432,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 0.2,
                 'step': 0.001,
                 'label': 'Significance Threshold',
-                'description': 'P-value threshold for significance'
+                'description': 'P-value threshold for significance',
+                'control_name': 'AtDi_InfoTheo_significance_threshold'
             }
         },
         'enabled': False,
@@ -447,6 +473,7 @@ ATTRIBUTE_DISCARDING = {
     'boruta_algorithm': {
         'name': 'Boruta Algorithm',
         'description': 'Iterative algorithm using random forest to identify all features with predictive relevance',
+        'param_prefix': 'AtDi_Boruta_',
         'parameters': {
             'num_shadow_features': {
                 'type': 'int',
@@ -455,7 +482,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 10,
                 'step': 1,
                 'label': 'Shadow Features per Real Feature',
-                'description': 'Number of randomized shadow features to create'
+                'description': 'Number of randomized shadow features to create',
+                'control_name': 'AtDi_Boruta_num_shadow_features'
             },
             'max_iterations': {
                 'type': 'int',
@@ -464,7 +492,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1000,
                 'step': 10,
                 'label': 'Maximum Iterations',
-                'description': 'Maximum iterations for Boruta algorithm'
+                'description': 'Maximum iterations for Boruta algorithm',
+                'control_name': 'AtDi_Boruta_max_iterations'
             },
             'rf_num_trees': {
                 'type': 'int',
@@ -473,7 +502,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 10000,
                 'step': 100,
                 'label': 'Random Forest Trees',
-                'description': 'Number of trees in random forest'
+                'description': 'Number of trees in random forest',
+                'control_name': 'AtDi_Boruta_rf_num_trees'
             }
         },
         'enabled': False,
@@ -513,6 +543,7 @@ ATTRIBUTE_DISCARDING = {
     'elastic_net_regularization': {
         'name': 'Elastic Net Regularization',
         'description': 'Use L1/L2 regularized regression to automatically select taxa with PFS predictive value',
+        'param_prefix': 'AtDi_ElasticNet_',
         'parameters': {
             'l1_ratio': {
                 'type': 'float',
@@ -521,7 +552,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1.0,
                 'step': 0.1,
                 'label': 'L1 Ratio',
-                'description': 'Balance between L1 (0) and L2 (1) regularization'
+                'description': 'Balance between L1 (0) and L2 (1) regularization',
+                'control_name': 'AtDi_ElasticNet_l1_ratio'
             },
             'max_iterations': {
                 'type': 'int',
@@ -530,7 +562,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 10000,
                 'step': 100,
                 'label': 'Maximum Iterations',
-                'description': 'Maximum iterations for optimization'
+                'description': 'Maximum iterations for optimization',
+                'control_name': 'AtDi_ElasticNet_max_iterations'
             },
             'convergence_tolerance': {
                 'type': 'float',
@@ -539,7 +572,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 1e-2,
                 'step': 1e-5,
                 'label': 'Convergence Tolerance',
-                'description': 'Tolerance for convergence in optimization'
+                'description': 'Tolerance for convergence in optimization',
+                'control_name': 'AtDi_ElasticNet_convergence_tolerance'
             }
         },
         'enabled': False,
@@ -580,6 +614,7 @@ ATTRIBUTE_DISCARDING = {
     'combined_multi_method': {
         'name': 'Combined Multi-Method Selection',
         'description': 'Apply multiple selection methods and take consensus to identify robustly selected taxa',
+        'param_prefix': 'AtDi_CombMulti_',
         'parameters': {
             'consensus_rule': {
                 'type': 'select',
@@ -590,7 +625,8 @@ ATTRIBUTE_DISCARDING = {
                     {'value': 'weighted', 'label': 'Weighted Voting'}
                 ],
                 'label': 'Consensus Rule',
-                'description': 'How to combine results from multiple methods'
+                'description': 'How to combine results from multiple methods',
+                'control_name': 'AtDi_CombMulti_consensus_rule'
             },
             'min_agreement': {
                 'type': 'int',
@@ -599,7 +635,8 @@ ATTRIBUTE_DISCARDING = {
                 'max': 5,
                 'step': 1,
                 'label': 'Minimum Agreement',
-                'description': 'Minimum number of methods that must agree (for weighted voting)'
+                'description': 'Minimum number of methods that must agree (for weighted voting)',
+                'control_name': 'AtDi_CombMulti_min_agreement'
             }
         },
         'enabled': False,
@@ -637,16 +674,3 @@ ATTRIBUTE_DISCARDING = {
     }
 }
 
-# Default settings for quick start
-DEFAULT_DISCARDING_SETTINGS = {
-    'prevalence_filtering': {
-        'enabled': True,
-        'detection_threshold': 0.0,
-        'min_prevalence': 0.1
-    },
-    'abundance_filtering': {
-        'enabled': True,
-        'min_mean_abundance': 0.0001,
-        'min_median_abundance': 0.00005
-    }
-}
