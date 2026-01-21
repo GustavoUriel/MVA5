@@ -21,6 +21,7 @@ class DatasetAnalysisManager {
     await this.loadBrackenTimePoints();
     await this.loadStratifications();
     await this.loadClusteringMethods();
+    await this.loadClusterRepresentativeMethods();
     await this.loadAnalysisMethods();
     // Ensure all editor elements have ids and matching names
     try { this.ensureEditorIdsAndNames(); } catch (e) { /* ignore */ }
@@ -62,6 +63,12 @@ class DatasetAnalysisManager {
     const selectionModeToggle = document.getElementById("extremes_mode");
     if (selectionModeToggle) {
       selectionModeToggle.addEventListener("change", () => this.toggleSelectionMode());
+    }
+
+    // Clustering method selection
+    const clusteringMethodSelect = document.getElementById("clusteringMethodSelect");
+    if (clusteringMethodSelect) {
+      clusteringMethodSelect.addEventListener("change", () => this.updateClusteringParameters());
     }
   }
 
@@ -707,8 +714,13 @@ class DatasetAnalysisManager {
       const data = await DatasetUtils.api.call(`/dataset/${this.datasetId}/metadata/attribute-discarding`);
 
       if (data.success) {
-        this.displayDiscardingPolicies(data.discarding_policies);
-        this.discardingPoliciesData = data.discarding_policies;
+        // Use the new API structure with attribute_discarding_policies array
+        let policiesArray = [];
+        if (Array.isArray(data.attribute_discarding_policies)) {
+          policiesArray = data.attribute_discarding_policies;
+        }
+        this.displayDiscardingPolicies(policiesArray);
+        this.discardingPoliciesData = policiesArray;
       } else {
         this.showDiscardingPoliciesError(data.message);
       }
@@ -767,27 +779,27 @@ class DatasetAnalysisManager {
 
     const policiesHTML = policies
       .map((policy) => {
-        const parameterInputs = this.generateParameterInputs(policy.key, policy.parameters);
+        const parameterInputs = this.generateParameterInputs(policy.policy_key, policy.parameters);
         const isEnabled = policy.enabled ? 'checked' : '';
 
         return `
             <div class="col-12 mb-4">
-              <div class="card discarding-policy-card" id="policy_card_${policy.key}" name="policy_card_${policy.key}" data-policy-key="${policy.key}">
+              <div class="card discarding-policy-card" id="policy_card_${policy.policy_key}" name="policy_card_${policy.policy_key}" data-policy-key="${policy.policy_key}">
                 <div class="card-header">
                   <div class="d-flex align-items-center justify-content-between">
                     <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="policy_${policy.key}" name="policy_${policy.key}" ${isEnabled}>
-                      <label class="form-check-label" for="policy_${policy.key}">
-                        ${policy.name}
+                      <input class="form-check-input" type="checkbox" id="policy_${policy.policy_key}" name="policy_${policy.policy_key}" ${isEnabled}>
+                      <label class="form-check-label" for="policy_${policy.policy_key}">
+                        ${policy.label}
                         <small class="text-muted d-block">${policy.description}</small>
                       </label>
                     </div>
-                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('${policy.key}')">
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="showDiscardingPolicyInfo('${policy.policy_key}')">
                       <i class="fas fa-info-circle me-1"></i>Info
                     </button>
                   </div>
                 </div>
-                <div class="card-body" id="policy_body_${policy.key}" name="policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
+                <div class="card-body" id="policy_body_${policy.policy_key}" name="policy_body_${policy.policy_key}" style="display: ${policy.enabled ? 'block' : 'none'}">
                   <div class="row">
                     ${parameterInputs}
                   </div>
@@ -802,9 +814,9 @@ class DatasetAnalysisManager {
 
     // Add event listeners for policy checkboxes
     policies.forEach((policy) => {
-      const checkbox = document.getElementById(`policy_${policy.key}`);
+      const checkbox = document.getElementById(`policy_${policy.policy_key}`);
       if (checkbox) {
-        checkbox.addEventListener('change', () => this.togglePolicyBody(policy.key));
+        checkbox.addEventListener('change', () => this.togglePolicyBody(policy.policy_key));
       }
     });
 
@@ -1168,7 +1180,26 @@ class DatasetAnalysisManager {
       const data = await DatasetUtils.api.getClusteringMethods(this.datasetId);
 
       if (data.success) {
-        this.displayClusteringMethods(data.methods);
+        // Handle new API structure with array of methods and default_method
+        let methodsArray = [];
+        let defaultMethod = null;
+
+        if (Array.isArray(data.clustering_methods)) {
+          methodsArray = data.clustering_methods;
+          defaultMethod = data.default_method;
+        } else if (Array.isArray(data.methods)) {
+          // Fallback for old structure
+          methodsArray = data.methods;
+        } else if (data.methods) {
+          // Convert old object format to array
+          methodsArray = Object.entries(data.methods).map(([key, method]) => ({
+            method_key: key,
+            name: method.name,
+            parameters: method.parameters || {}
+          }));
+        }
+
+        this.displayClusteringMethods(methodsArray, defaultMethod);
       } else {
         this.showClusteringError(data.message);
       }
@@ -1184,18 +1215,32 @@ class DatasetAnalysisManager {
 
     if (!methodSelect) return;
 
-    // Clear existing options except first
-    while (methodSelect.children.length > 1) {
-      methodSelect.removeChild(methodSelect.lastChild);
+    // Clear all existing options
+    methodSelect.innerHTML = '';
+
+    // Store clustering methods data for parameter updates
+    this.clusteringMethodsData = clusteringMethods;
+
+    // Handle array format from new API
+    let methodsArray = [];
+    if (Array.isArray(clusteringMethods)) {
+      methodsArray = clusteringMethods;
+    } else if (typeof clusteringMethods === 'object' && clusteringMethods !== null) {
+      // Fallback for old object format
+      methodsArray = Object.entries(clusteringMethods).map(([key, method]) => ({
+        method_key: key,
+        name: method.name,
+        ...method
+      }));
     }
 
     // Add method options
-    Object.entries(clusteringMethods).forEach(([key, method]) => {
+    methodsArray.forEach((method) => {
       const option = document.createElement("option");
-      option.value = key;
+      option.value = method.method_key;
       option.textContent = method.name;
 
-      if (defaultMethod && key === defaultMethod) {
+      if (defaultMethod && method.method_key === defaultMethod) {
         option.selected = true;
       }
 
@@ -1210,6 +1255,104 @@ class DatasetAnalysisManager {
   // Show clustering error
   showClusteringError(message) {
     DatasetUtils.showAlert(`Failed to load clustering methods: ${message}`, "warning");
+  }
+
+  // Update clustering parameters when method is selected
+  updateClusteringParameters() {
+    const methodSelect = document.getElementById("clusteringMethodSelect");
+    const parametersForm = document.getElementById("clusteringParametersForm");
+    const methodDescription = document.getElementById("clusteringMethodDescription");
+
+    if (!methodSelect || !parametersForm || !this.clusteringMethodsData) return;
+
+    const selectedMethodKey = methodSelect.value;
+    if (!selectedMethodKey) {
+      parametersForm.innerHTML = "";
+      // Clear description when no method is selected
+      if (methodDescription) methodDescription.textContent = "";
+      return;
+    }
+
+    // Find the selected method
+    const selectedMethod = this.clusteringMethodsData.find(method => method.method_key === selectedMethodKey);
+    if (!selectedMethod || !selectedMethod.parameters) {
+      parametersForm.innerHTML = "";
+      if (methodDescription) methodDescription.textContent = "";
+      return;
+    }
+
+    // Update description with the selected method's description
+    if (methodDescription) {
+      methodDescription.textContent = selectedMethod.description || "";
+    }
+
+    // Generate parameter inputs
+    const parameterInputs = this.generateClusteringParameterInputs(selectedMethod.parameters);
+    parametersForm.innerHTML = `
+      <div class="row">
+        ${parameterInputs}
+      </div>
+    `;
+  }
+
+  // Generate parameter inputs for clustering methods
+  generateClusteringParameterInputs(parameters) {
+    if (!parameters) return "";
+
+    return Object.entries(parameters).map(([paramKey, paramConfig]) => {
+      const paramId = `clustering_param_${paramKey}`;
+      const label = paramConfig.name || paramKey;
+      const description = paramConfig.description || "";
+      const defaultValue = paramConfig.default !== undefined ? paramConfig.default : "";
+      const colClass = Object.keys(parameters).length > 2 ? "col-md-6" : "col-md-4";
+
+      if (paramConfig.type === "select" && paramConfig.options) {
+        const options = paramConfig.options.map(option => {
+          const isSelected = option === defaultValue ? "selected" : "";
+          const isBest = option === paramConfig.best_component ? " (Best)" : "";
+          return `<option value="${option}" ${isSelected}>${option}${isBest}</option>`;
+        }).join("");
+
+        return `
+          <div class="${colClass} mb-3">
+            <label for="${paramId}" class="form-label">
+              <i class="fas fa-cog text-primary me-2"></i>
+              ${label}
+            </label>
+            <select class="form-select" id="${paramId}" name="${paramId}" onchange="updateClusteringSummary()">
+              <option value="">Select ${label.toLowerCase()}...</option>
+              ${options}
+            </select>
+            <div class="form-text">
+              ${description}
+              ${paramConfig.best_component && paramConfig.best_component !== "auto" ? `<br><small class="text-success"><i class="fas fa-star me-1"></i>Best: ${paramConfig.best_component}</small>` : ""}
+            </div>
+          </div>
+        `;
+      } else if (paramConfig.type === "number") {
+        const step = paramConfig.step || 1;
+        const min = paramConfig.min !== undefined ? `min="${paramConfig.min}"` : "";
+        const max = paramConfig.max !== undefined ? `max="${paramConfig.max}"` : "";
+
+        return `
+          <div class="${colClass} mb-3">
+            <label for="${paramId}" class="form-label">
+              <i class="fas fa-cog text-primary me-2"></i>
+              ${label}
+            </label>
+            <input type="number" class="form-control" id="${paramId}" name="${paramId}"
+                   value="${defaultValue}" step="${step}" ${min} ${max}
+                   onchange="updateClusteringSummary()">
+            <div class="form-text">
+              ${description}
+              ${paramConfig.best_component && paramConfig.best_component !== "auto" ? `<br><small class="text-success"><i class="fas fa-star me-1"></i>Best: ${paramConfig.best_component}</small>` : ""}
+            </div>
+          </div>
+        `;
+      }
+
+      return "";
+    }).join("");
   }
 
   // Load analysis methods
@@ -1878,14 +2021,10 @@ class DatasetAnalysisManager {
       const data = await DatasetUtils.api.call(`/dataset/${this.datasetId}/metadata/microbial-discarding`);
 
       if (data.success) {
-        // Convert dictionary to array, skipping any default settings key
+        // Use the new API structure with microbial_discarding_policies array
         let policiesArray = [];
-        if (data.discarding_policies && typeof data.discarding_policies === 'object' && !Array.isArray(data.discarding_policies)) {
-          policiesArray = Object.entries(data.discarding_policies)
-            .filter(([key, _]) => key !== 'DEFAULT_MICROBIAL_DISCARDING_SETTINGS')
-            .map(([key, value]) => ({ key, ...value }));
-        } else if (Array.isArray(data.discarding_policies)) {
-          policiesArray = data.discarding_policies;
+        if (Array.isArray(data.microbial_discarding_policies)) {
+          policiesArray = data.microbial_discarding_policies;
         }
         this.displayMicrobialDiscardingPolicies(policiesArray);
         this.microbialDiscardingPoliciesData = policiesArray;
@@ -1906,27 +2045,27 @@ class DatasetAnalysisManager {
 
     const policiesHTML = policies
       .map((policy) => {
-        const parameterInputs = this.generateParameterInputs(policy.control_name, policy.parameters);
+        const parameterInputs = this.generateParameterInputs(policy.policy_key, policy.parameters);
         const isEnabled = policy.enabled ? 'checked' : '';
 
         return `
         <div class="col-12 mb-4">
-          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_${policy.key}" name="microbial_policy_card_${policy.key}" data-policy-key="${policy.key}">
+          <div class="card microbial-discarding-policy-card" id="microbial_policy_card_${policy.policy_key}" name="microbial_policy_card_${policy.policy_key}" data-policy-key="${policy.policy_key}">
             <div class="card-header">
               <div class="d-flex align-items-center justify-content-between">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="${policy.control_name}" name="${policy.control_name}" ${isEnabled}>
-                  <label class="form-check-label" for="${policy.control_name}">
-                    ${policy.name}
+                  <input class="form-check-input" type="checkbox" id="microbial_policy_${policy.policy_key}" name="microbial_policy_${policy.policy_key}" ${isEnabled}>
+                  <label class="form-check-label" for="microbial_policy_${policy.policy_key}">
+                    ${policy.label}
                     <small class="text-muted d-block">${policy.description}</small>
                   </label>
                 </div>
-                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('${policy.key}')">
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('${policy.policy_key}')">
                   <i class="fas fa-info-circle me-1"></i>Info
                 </button>
               </div>
             </div>
-            <div class="card-body" id="microbial_policy_body_${policy.key}" name="microbial_policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
+            <div class="card-body" id="microbial_policy_body_${policy.policy_key}" name="microbial_policy_body_${policy.policy_key}" style="display: ${policy.enabled ? 'block' : 'none'}">
               <div class="row">
                 ${parameterInputs}
               </div>
@@ -1941,9 +2080,9 @@ class DatasetAnalysisManager {
 
     // Add event listeners for policy checkboxes
     policies.forEach((policy) => {
-      const checkbox = document.getElementById(`microbial_policy_${policy.key}`);
+      const checkbox = document.getElementById(`microbial_policy_${policy.policy_key}`);
       if (checkbox) {
-        checkbox.addEventListener('change', () => this.toggleMicrobialPolicyBody(policy.key));
+        checkbox.addEventListener('change', () => this.toggleMicrobialPolicyBody(policy.policy_key));
       }
     });
 
@@ -2009,8 +2148,8 @@ class DatasetAnalysisManager {
       const data = await DatasetUtils.api.call(`/dataset/${this.datasetId}/metadata/microbial-grouping`);
 
       if (data.success) {
-        this.displayMicrobialGroupingPolicies(data.grouping_methods);
-        this.microbialGroupingData = data.grouping_methods;
+        this.displayMicrobialGroupingPolicies(data.microbial_grouping_methods);
+        this.microbialGroupingData = data.microbial_grouping_methods;
       } else {
         this.showMicrobialGroupingError(data.message);
       }
@@ -2028,26 +2167,26 @@ class DatasetAnalysisManager {
 
     const methodsHTML = methods
       .map((method) => {
-      const parameterInputs = this.generateParameterInputs(method.key, method.parameters);
+      const parameterInputs = this.generateParameterInputs(method.method_key, method.parameters);
       const isChecked = method.enabled ? 'checked' : '';
       return `
           <div class="col-12 mb-4">
-            <div class="card microbial-grouping-card" id="microbial_grouping_card_${method.key}" name="microbial_grouping_card_${method.key}" data-method-key="${method.key}">
+            <div class="card microbial-grouping-card" id="microbial_grouping_card_${method.method_key}" name="microbial_grouping_card_${method.method_key}" data-method-key="${method.method_key}">
               <div class="card-header">
                 <div class="d-flex align-items-center justify-content-between">
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="microbial_grouping_${method.key}" value="${method.key}" ${isChecked}>
-                    <label class="form-check-label" for="microbial_grouping_${method.key}">
+                    <input class="form-check-input" type="radio" name="microbialGroupingMethod" id="${method.control_name}" value="${method.method_key}" ${isChecked}>
+                    <label class="form-check-label" for="${method.control_name}">
                       ${method.name}
                       <small class="text-muted d-block">${method.description}</small>
                     </label>
                   </div>
-                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('${method.key}')">
+                  <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialGroupingInfo('${method.method_key}')">
                     <i class="fas fa-info-circle me-1"></i>Info
                   </button>
                 </div>
               </div>
-              <div class="card-body" id="microbial_grouping_body_${method.key}" name="microbial_grouping_body_${method.key}" style="display: ${method.enabled ? 'block' : 'none'}">
+              <div class="card-body" id="microbial_grouping_body_${method.method_key}" name="microbial_grouping_body_${method.method_key}" style="display: ${method.enabled ? 'block' : 'none'}">
                 <div class="row">
                   ${parameterInputs}
                 </div>
@@ -2062,9 +2201,9 @@ class DatasetAnalysisManager {
 
     // Add event listeners for method radio buttons
     methods.forEach((method) => {
-      const radio = document.getElementById(`microbial_grouping_${method.key}`);
+      const radio = document.getElementById(`${method.control_name}`);
       if (radio) {
-        radio.addEventListener('change', () => this.toggleMicrobialGroupingBody(method.key));
+        radio.addEventListener('change', () => this.toggleMicrobialGroupingBody(method.method_key));
       }
     });
 
@@ -2177,6 +2316,286 @@ class DatasetAnalysisManager {
     }
 
     this.updateMicrobialGroupingSummary();
+  }
+
+  // Load cluster representative methods
+  async loadClusterRepresentativeMethods() {
+    try {
+      const data = await DatasetUtils.api.call(`/dataset/${this.datasetId}/metadata/cluster-representative-methods`);
+
+      if (data.success) {
+        this.displayClusterRepresentativeMethods(data.cluster_representative_methods, data.default_method);
+        // Load all method details for the details section
+        this.loadAllClusterRepresentativeMethodDetails(data.cluster_representative_methods);
+        this.clusterRepresentativeMethodsData = data.cluster_representative_methods;
+      } else {
+        this.showClusterRepresentativeError(data.message);
+      }
+    } catch (error) {
+      console.error("Failed to load cluster representative methods:", error);
+      this.showClusterRepresentativeError("Failed to load cluster representative methods");
+    }
+  }
+
+  // Display cluster representative methods
+  displayClusterRepresentativeMethods(clusterRepMethods, defaultMethod = null) {
+    const methodSelect = document.getElementById("clusterRepresentativeMethod");
+    if (!methodSelect) return;
+
+    // Clear existing options (except the first one)
+    while (methodSelect.children.length > 1) {
+      methodSelect.removeChild(methodSelect.lastChild);
+    }
+
+    // Add methods to dropdown
+    if (Array.isArray(clusterRepMethods)) {
+      // Handle array format from API
+      clusterRepMethods.forEach((method) => {
+        const option = document.createElement("option");
+        option.value = method.method_key;
+        option.textContent = method.name;
+        methodSelect.appendChild(option);
+      });
+    } else {
+      // Handle object format (legacy)
+      Object.entries(clusterRepMethods).forEach(([methodKey, methodConfig]) => {
+        const option = document.createElement("option");
+        option.value = methodKey;
+        option.textContent = methodConfig.name;
+        methodSelect.appendChild(option);
+      });
+    }
+
+    // Set default method if provided
+    if (defaultMethod) {
+      methodSelect.value = defaultMethod;
+      this.updateClusterRepresentativeMethod();
+    }
+
+    console.log(`Loaded ${Array.isArray(clusterRepMethods) ? clusterRepMethods.length : Object.keys(clusterRepMethods).length} cluster representative methods`);
+  }
+
+  // Update cluster representative method
+  updateClusterRepresentativeMethod() {
+    const methodSelect = document.getElementById("clusterRepresentativeMethod");
+    const container = document.getElementById("clusterRepresentativeContainer");
+    const descriptionElement = document.getElementById("clusterRepresentativeDescription");
+
+    if (!methodSelect || !container || !descriptionElement) return;
+
+    const selectedMethod = methodSelect.value;
+
+    // Hide all method cards
+    const allCards = document.querySelectorAll('[id^="clusterRepCard_"]');
+    allCards.forEach(card => card.style.display = 'none');
+
+    if (!selectedMethod) {
+      descriptionElement.textContent = "Select a method to see its description";
+      return;
+    }
+
+    // Show the selected method's card
+    const selectedCard = document.getElementById(`clusterRepCard_${selectedMethod}`);
+    if (selectedCard) {
+      selectedCard.style.display = 'block';
+    }
+
+    // Update description
+    if (this.clusterRepresentativeMethodsData) {
+      const method = Array.isArray(this.clusterRepresentativeMethodsData)
+        ? this.clusterRepresentativeMethodsData.find(m => m.method_key === selectedMethod)
+        : this.clusterRepresentativeMethodsData[selectedMethod];
+
+      if (method) {
+        descriptionElement.textContent = method.description;
+        this.updateClusterRepresentativeSummary();
+      } else {
+        descriptionElement.textContent = "Method description not available";
+      }
+    }
+  }
+
+  // Load all cluster representative method details
+  loadAllClusterRepresentativeMethodDetails(methods) {
+    const detailsContainer = document.getElementById("clusterRepresentativeDetails");
+    if (!detailsContainer) return;
+
+    let html = '';
+
+    if (Array.isArray(methods)) {
+      // Handle array format from API
+      methods.forEach((method) => {
+        html += `
+          <div id="clusterRepCard_${method.method_key}" class="card" style="display: none;">
+              <div class="card-body">
+                  <h6 class="card-title">
+                      <i class="fas fa-info-circle me-2"></i>
+                      ${method.name}
+                  </h6>
+                  <p class="card-text"><strong>Method Type:</strong> ${method.method}</p>
+                  <p class="card-text"><strong>Direction:</strong> ${method.direction}</p>
+                  <p class="card-text"><strong>Explanation:</strong> ${method.explanation}</p>
+              </div>
+          </div>
+        `;
+      });
+    } else {
+      // Handle object format (legacy)
+      const methodKeys = Object.keys(methods);
+      methodKeys.forEach((methodKey) => {
+        const method = methods[methodKey];
+        html += `
+          <div id="clusterRepCard_${methodKey}" class="card" style="display: none;">
+              <div class="card-body">
+                  <h6 class="card-title">
+                      <i class="fas fa-info-circle me-2"></i>
+                      ${method.name}
+                  </h6>
+                  <p class="card-text"><strong>Method Type:</strong> ${method.method}</p>
+                  <p class="card-text"><strong>Direction:</strong> ${method.direction}</p>
+                  <p class="card-text"><strong>Explanation:</strong> ${method.explanation}</p>
+              </div>
+          </div>
+        `;
+      });
+    }
+
+    detailsContainer.innerHTML = html;
+  }
+
+  // Show cluster representative error
+  showClusterRepresentativeError(message) {
+    const detailsContainer = document.getElementById("clusterRepresentativeDetails");
+    if (!detailsContainer) return;
+
+    detailsContainer.innerHTML = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+  }
+
+  // Update cluster representative summary
+  updateClusterRepresentativeSummary() {
+    const methodSelect = document.getElementById("clusterRepresentativeMethod");
+    const summaryText = document.getElementById("clusterRepSummaryText");
+    const methodName = document.getElementById("clusterRepMethodName");
+
+    if (!methodSelect || !summaryText || !methodName) return;
+
+    const selectedMethod = methodSelect.value;
+    const selectedOption = methodSelect.options[methodSelect.selectedIndex];
+
+    if (selectedMethod && selectedOption) {
+      summaryText.textContent = `Using "${selectedOption.textContent}" method for cluster representative selection`;
+      methodName.textContent = selectedOption.textContent;
+    } else {
+      summaryText.textContent = "No representative method configured";
+      methodName.textContent = "No method";
+    }
+  }
+
+  // Show cluster representative info
+  showClusterRepresentativeInfo() {
+    const methodSelect = document.getElementById("clusterRepresentativeMethod");
+    if (!methodSelect || !methodSelect.value) {
+      DatasetUtils.showAlert("Please select a cluster representative method first", "warning");
+      return;
+    }
+
+    const selectedMethod = methodSelect.value;
+
+    // Find method in stored data
+    if (this.clusterRepresentativeMethodsData) {
+      const method = Array.isArray(this.clusterRepresentativeMethodsData)
+        ? this.clusterRepresentativeMethodsData.find(m => m.method_key === selectedMethod)
+        : this.clusterRepresentativeMethodsData[selectedMethod];
+
+      if (method) {
+        this.showClusterRepresentativeInfoModal(method);
+      } else {
+        DatasetUtils.showAlert("Method information not available", "error");
+      }
+    }
+  }
+
+  // Show cluster representative info modal
+  showClusterRepresentativeInfoModal(method) {
+    // Create modal HTML
+    const modalHtml = `
+        <div class="modal fade" id="clusterRepInfoModal" tabindex="-1" aria-labelledby="clusterRepInfoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="clusterRepInfoModalLabel">
+                            <i class="fas fa-users me-2"></i>
+                            Cluster Representative Method Information
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-info-circle me-2"></i>Method Details</h6>
+                                <p><strong>Name:</strong> ${method.name}</p>
+                                <p><strong>Description:</strong> ${method.description}</p>
+                                <p><strong>Method Type:</strong> ${method.method}</p>
+                                <p><strong>Direction:</strong> ${method.direction}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-lightbulb me-2"></i>Explanation</h6>
+                                <p>${method.explanation}</p>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6><i class="fas fa-question-circle me-2"></i>How it works</h6>
+                                <p>This method will be used to select a representative taxonomy from each cluster when performing clustering analysis. The selected representative will be used as the cluster name and for further multivariate analysis.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById("clusterRepInfoModal");
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to body
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById("clusterRepInfoModal"));
+    modal.show();
+
+    // Remove modal from DOM when hidden and fix focus
+    document.getElementById("clusterRepInfoModal").addEventListener("hidden.bs.modal", function () {
+      // Remove focus from any focused elements before removing modal
+      if (document.activeElement && document.activeElement.blur) {
+        document.activeElement.blur();
+      }
+      this.remove();
+    });
+  }
+
+  // Reset cluster representative to default
+  resetClusterRepresentativeToDefault() {
+    const methodSelect = document.getElementById("clusterRepresentativeMethod");
+    if (!methodSelect) return;
+
+    // Reset to default method (abundance_highest)
+    methodSelect.value = "abundance_highest";
+    this.updateClusterRepresentativeMethod();
+
+    DatasetUtils.showAlert("Cluster representative method reset to default (Highest Mean Abundance)", "success");
   }
 
   // Load analysis from file
@@ -2497,7 +2916,7 @@ window.toggleClusterRepresentative = function () {
   if (container && button) {
     const isVisible = container.style.display !== "none";
     container.style.display = isVisible ? "none" : "block";
-    button.innerHTML = `<i class="fas fa-eye me-1"></i>${isVisible ? "Show" : "Hide"} Options`;
+    button.innerHTML = `<i class="fas fa-eye me-1"></i>${isVisible ? "Show" : "Hide"} Details`;
   }
 };
 
@@ -2696,8 +3115,25 @@ window.DatasetAnalysisManager = DatasetAnalysisManager;
 function getDiscardingPolicyInfo(policyKey) {
   // Get the policy data from the global analysis manager
   if (window.analysisManager && window.analysisManager.discardingPoliciesData) {
-    const policy = window.analysisManager.discardingPoliciesData.find(p => p.key === policyKey);
-    return policy ? policy.info : null;
+    const policy = window.analysisManager.discardingPoliciesData.find(p => p.policy_key === policyKey);
+    if (policy && policy.info) {
+      // Build modal info structure compatible with showPolicyInfoModal
+      const params = policy.parameters ? Object.entries(policy.parameters).map(([key, param]) => ({
+        name: param.label || key,
+        default: param.default !== undefined ? param.default : '',
+        description: param.description || ''
+      })) : [];
+      return {
+        title: policy.info.title || policy.label || policyKey,
+        description: policy.info.description || '',
+        algorithm: policy.info.algorithm || '',
+        parameters: params,
+        pros: policy.info.pros || [],
+        cons: policy.info.cons || [],
+        limitations: policy.info.limitations || [],
+        expectations: policy.info.expectations || ''
+      };
+    }
   }
   return null;
 }
@@ -2705,8 +3141,25 @@ function getDiscardingPolicyInfo(policyKey) {
 function getMicrobialDiscardingPolicyInfo(policyKey) {
   // Get the policy data from the global analysis manager
   if (window.analysisManager && window.analysisManager.microbialDiscardingPoliciesData) {
-    const policy = window.analysisManager.microbialDiscardingPoliciesData.find(p => p.key === policyKey);
-    return policy ? policy.info : null;
+    const policy = window.analysisManager.microbialDiscardingPoliciesData.find(p => p.policy_key === policyKey);
+    if (policy && policy.info) {
+      // Build modal info structure compatible with showPolicyInfoModal
+      const params = policy.parameters ? Object.entries(policy.parameters).map(([key, param]) => ({
+        name: param.label || key,
+        default: param.default !== undefined ? param.default : '',
+        description: param.description || ''
+      })) : [];
+      return {
+        title: policy.info.title || policy.label || policyKey,
+        description: policy.info.description || '',
+        algorithm: policy.info.algorithm || '',
+        parameters: params,
+        pros: policy.info.pros || [],
+        cons: policy.info.cons || [],
+        limitations: policy.info.limitations || [],
+        expectations: policy.info.expectations || ''
+      };
+    }
   }
   return null;
 }
@@ -2714,10 +3167,34 @@ function getMicrobialDiscardingPolicyInfo(policyKey) {
 function getMicrobialGroupingInfo(methodKey) {
   // Get the method data from the global analysis manager
   if (window.analysisManager && window.analysisManager.microbialGroupingData) {
-    const method = window.analysisManager.microbialGroupingData.find(m => m.key === methodKey);
+    const method = window.analysisManager.microbialGroupingData.find(m => m.method_key === methodKey);
     return method ? method.info : null;
   }
   return null;
+}
+
+function getClusteringMethodInfo(methodKey) {
+  // Find the method in the stored data
+  const method = window.analysisManager ? window.analysisManager.clusteringMethodsData.find(m => m.method_key === methodKey) : null;
+  if (!method) return null;
+
+  // Build policy info for modal
+  const params = method.parameters ? Object.entries(method.parameters).map(([key, param]) => ({
+    name: param.name || key,
+    default: param.default !== undefined ? param.default : '',
+    description: param.description || ''
+  })) : [];
+
+  return {
+    title: method.name || methodKey,
+    description: method.description || '',
+    algorithm: method.method_key || '',
+    parameters: params,
+    pros: method.pros || [],
+    cons: method.cons || [],
+    limitations: method.limitations || [],
+    expectations: method.expectations ? method.expectations.join('; ') : ''
+  };
 }
 
 function showPolicyInfoModal(policyInfo) {
@@ -2813,5 +3290,28 @@ function showPolicyInfoModal(policyInfo) {
 window.updateAnalysisMethod = function() {
   if (window.analysisManager) {
     window.analysisManager.updateAnalysisMethod();
+  }
+};
+
+window.showClusteringMethodInfo = function (methodKey) {
+  const info = getClusteringMethodInfo(methodKey);
+  if (info) showPolicyInfoModal(info);
+};
+
+window.updateClusterRepresentativeMethod = function () {
+  if (window.analysisManager) {
+    window.analysisManager.updateClusterRepresentativeMethod();
+  }
+};
+
+window.resetClusterRepresentativeToDefault = function () {
+  if (window.analysisManager) {
+    window.analysisManager.resetClusterRepresentativeToDefault();
+  }
+};
+
+window.showClusterRepresentativeInfo = function () {
+  if (window.analysisManager) {
+    window.analysisManager.showClusterRepresentativeInfo();
   }
 };

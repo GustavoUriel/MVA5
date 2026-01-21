@@ -2,17 +2,18 @@ MICROBIAL_GROUPING = {
     'not_grouping': {
         'name': 'No Grouping',
         'description': 'Do not group microbes; analyze all taxa individually.',
+        'control_name': 'MiGr_No_Grouping',
         'parameters': {
             'subgroups': {
                 'type': 'static',
-                'label': 'No grouping will be applied.',
-                'description': 'All taxa will be analyzed as individual features.'
+                'label': 'Default - No grouping applied',
+                'description': ''
             }
         },
-        'enabled': False,
+        'enabled': True,
         'order': 0,
         'info': {
-            'title': 'No Grouping',
+            'title': 'No Grouping2',
             'description': 'No grouping strategy is applied. Each microbial taxon is treated as a separate feature in the analysis.',
             'algorithm': 'No grouping or aggregation is performed.',
             'parameters': [
@@ -35,9 +36,11 @@ MICROBIAL_GROUPING = {
             'expectations': 'All available taxa are included as separate features.'
         }
     },
+
     'scfa_producers': {
         'name': 'SCFA Producers',
         'description': 'Group bacteria capable of producing short-chain fatty acids (butyrate, propionate, acetate)',
+        'control_name': 'MiGr_SCFA_Producers',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -81,6 +84,7 @@ MICROBIAL_GROUPING = {
     'pathogenic_bacteria': {
         'name': 'Pathogenic Bacteria',
         'description': 'Group bacteria with known pathogenic potential in immunocompromised patients',
+        'control_name': 'MiGr_Pathogenic_Bacteria',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -124,6 +128,7 @@ MICROBIAL_GROUPING = {
     'immunomodulatory_bacteria': {
         'name': 'Immunomodulatory Bacteria',
         'description': 'Group bacteria that directly or indirectly modulate immune system function',
+        'control_name': 'MiGr_Immunomodulatory_Bacteria',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -167,6 +172,7 @@ MICROBIAL_GROUPING = {
     'vitamin_synthesis': {
         'name': 'Vitamin Synthesis',
         'description': 'Group bacteria capable of synthesizing essential vitamins (B vitamins, vitamin K)',
+        'control_name': 'MiGr_Vitamin_Synthesis',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -210,6 +216,7 @@ MICROBIAL_GROUPING = {
     'bile_acid_metabolism': {
         'name': 'Bile Acid Metabolism',
         'description': 'Group bacteria involved in bile acid transformation and secondary bile acid production',
+        'control_name': 'MiGr_Bile_Acid_Metabolism',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -253,6 +260,7 @@ MICROBIAL_GROUPING = {
     'mucin_degraders': {
         'name': 'Mucin Degraders',
         'description': 'Group bacteria capable of degrading mucin glycoproteins in the gut mucus layer',
+        'control_name': 'MiGr_Mucin_Degraders',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -296,6 +304,7 @@ MICROBIAL_GROUPING = {
     'antibiotic_resistance_carriers': {
         'name': 'Antibiotic Resistance Carriers',
         'description': 'Group bacteria carrying antibiotic resistance genes or exhibiting resistance phenotypes',
+        'control_name': 'MiGr_Antibiotic_Resistance_Carriers',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -339,6 +348,7 @@ MICROBIAL_GROUPING = {
     'disease_associated_microbiome': {
         'name': 'Disease-Associated Microbiome Patterns',
         'description': 'Group bacteria associated with other diseases that may share mechanisms with Multiple Myeloma',
+        'control_name': 'MiGr_Disease_Associated_Microbiome',
         'parameters': {
             'subgroups': {
                 'type': 'static',
@@ -380,13 +390,3 @@ MICROBIAL_GROUPING = {
         }
     }
 }
-
-# # Default settings for quick start
-# DEFAULT_MICROBIAL_GROUPING_SETTINGS = {
-#     'scfa_producers': {
-#         'enabled': True,
-#         'include_butyrate_producers': True,
-#         'include_propionate_producers': True,
-#         'include_acetate_producers': True
-#     }
-# }

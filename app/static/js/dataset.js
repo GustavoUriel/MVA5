@@ -1317,20 +1317,25 @@ function showStratificationsError(error) {
 function loadClusteringMethods() {
   console.log("Loading clustering methods from metadata...");
 
-  fetch(`/dataset/${datasetId}/metadata/clustering-methods`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        displayClusteringMethods(data.methods, data.default_method);
-      } else {
-        console.error("Error loading clustering methods:", data.error);
-        showClusteringError(data.error);
-      }
-    })
-    .catch((error) => {
-      console.error("Error loading clustering methods:", error);
-      showClusteringError("Failed to load clustering methods");
-    });
+  if (window.analysisManager && typeof window.analysisManager.loadClusteringMethods === 'function') {
+    window.analysisManager.loadClusteringMethods();
+  } else {
+    // Fallback implementation
+    fetch(`/dataset/${datasetId}/metadata/clustering-methods`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          displayClusteringMethods(data.clustering_methods || data.methods, data.default_method);
+        } else {
+          console.error("Error loading clustering methods:", data.error);
+          showClusteringError(data.error);
+        }
+      })
+      .catch((error) => {
+        console.error("Error loading clustering methods:", error);
+        showClusteringError("Failed to load clustering methods");
+      });
+  }
 }
 
 function displayClusteringMethods(clusteringMethods, defaultMethod = null) {
@@ -1342,15 +1347,28 @@ function displayClusteringMethods(clusteringMethods, defaultMethod = null) {
     methodSelect.removeChild(methodSelect.lastChild);
   }
 
+  // Handle both array and object formats for backward compatibility
+  let methodsArray = [];
+  if (Array.isArray(clusteringMethods)) {
+    methodsArray = clusteringMethods;
+  } else if (typeof clusteringMethods === 'object') {
+    // Convert object to array for backward compatibility
+    methodsArray = Object.entries(clusteringMethods).map(([key, method]) => ({
+      method_key: key,
+      name: method.name,
+      description: method.description
+    }));
+  }
+
   // Add clustering method options
-  Object.entries(clusteringMethods).forEach(([key, method]) => {
+  methodsArray.forEach((method) => {
     const option = document.createElement("option");
-    option.value = key;
+    option.value = method.method_key;
     option.textContent = method.name;
     option.setAttribute("data-description", method.description);
 
     // Set as selected if it's the default
-    if (defaultMethod && key === defaultMethod) {
+    if (defaultMethod && method.method_key === defaultMethod) {
       option.selected = true;
     }
 
@@ -1369,58 +1387,63 @@ function displayClusteringMethods(clusteringMethods, defaultMethod = null) {
 }
 
 function updateClusteringParameters() {
-  const methodSelect = document.getElementById("clusteringMethodSelect");
-  const parametersContainer = document.getElementById("clusteringParametersContainer");
-  const parametersForm = document.getElementById("clusteringParametersForm");
-  const methodDescription = document.getElementById("clusteringMethodDescription");
-  const methodStatus = document.getElementById("clusteringMethodStatus");
-  const clusteringSummary = document.getElementById("clusteringSummary");
+  if (window.analysisManager && typeof window.analysisManager.updateClusteringParameters === 'function') {
+    window.analysisManager.updateClusteringParameters();
+  } else {
+    // Fallback implementation
+    const methodSelect = document.getElementById("clusteringMethodSelect");
+    const parametersContainer = document.getElementById("clusteringParametersContainer");
+    const parametersForm = document.getElementById("clusteringParametersForm");
+    const methodDescription = document.getElementById("clusteringMethodDescription");
+    const methodStatus = document.getElementById("clusteringMethodStatus");
+    const clusteringSummary = document.getElementById("clusteringSummary");
 
-  if (!methodSelect || !parametersContainer || !parametersForm) return;
+    if (!methodSelect || !parametersContainer || !parametersForm) return;
 
-  const selectedMethod = methodSelect.value;
+    const selectedMethod = methodSelect.value;
 
-  if (!selectedMethod) {
-    // Hide parameters and reset UI
-    parametersContainer.style.display = "none";
-    clusteringSummary.style.display = "none";
-    if (methodDescription) methodDescription.textContent = "Choose a clustering algorithm for variable grouping";
-    if (methodStatus) {
-      methodStatus.textContent = "No method selected";
-      methodStatus.className = "badge bg-secondary me-2";
-    }
-    return;
-  }
-
-  // Update method description and status
-  const selectedOption = methodSelect.options[methodSelect.selectedIndex];
-  const description = selectedOption.getAttribute("data-description") || "Clustering method selected";
-
-  if (methodDescription) methodDescription.textContent = description;
-  if (methodStatus) {
-    methodStatus.textContent = "Method configured";
-    methodStatus.className = "badge bg-success me-2";
-  }
-
-  // Load method parameters
-  fetch(`/dataset/${datasetId}/metadata/clustering-methods/${selectedMethod}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        displayClusteringParameters(data.method);
-        // Don't automatically show parameters container - keep it hidden
-        // parametersContainer.style.display = 'block';
-        clusteringSummary.style.display = "block";
-        updateClusteringSummary();
-      } else {
-        console.error("Error loading method parameters:", data.error);
-        showClusteringError(data.error);
+    if (!selectedMethod) {
+      // Hide parameters and reset UI
+      parametersContainer.style.display = "none";
+      clusteringSummary.style.display = "none";
+      if (methodDescription) methodDescription.textContent = "";
+      if (methodStatus) {
+        methodStatus.textContent = "No method selected";
+        methodStatus.className = "badge bg-secondary me-2";
       }
-    })
-    .catch((error) => {
-      console.error("Error loading method parameters:", error);
-      showClusteringError("Failed to load method parameters");
-    });
+      return;
+    }
+
+    // Update method description and status
+    const selectedOption = methodSelect.options[methodSelect.selectedIndex];
+    const description = selectedOption.getAttribute("data-description") || "Clustering method selected";
+
+    if (methodDescription) methodDescription.textContent = description;
+    if (methodStatus) {
+      methodStatus.textContent = "Method configured";
+      methodStatus.className = "badge bg-success me-2";
+    }
+
+    // Load method parameters
+    fetch(`/dataset/${datasetId}/metadata/clustering-methods/${selectedMethod}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          displayClusteringParameters(data.method);
+          // Don't automatically show parameters container - keep it hidden
+          // parametersContainer.style.display = 'block';
+          clusteringSummary.style.display = "block";
+          updateClusteringSummary();
+        } else {
+          console.error("Error loading method parameters:", data.error);
+          showClusteringError(data.error);
+        }
+      })
+      .catch((error) => {
+        console.error("Error loading method parameters:", error);
+        showClusteringError("Failed to load method parameters");
+      });
+  }
 }
 
 function displayClusteringParameters(method) {
@@ -1575,89 +1598,99 @@ function updateClusteringSummary() {
 }
 
 function showClusteringInfo() {
-  const methodSelect = document.getElementById("clusteringMethodSelect");
-  if (!methodSelect || !methodSelect.value) {
-    showToast("Please select a clustering method first", "warning");
-    return;
-  }
-
-  const selectedOption = methodSelect.options[methodSelect.selectedIndex];
-  const methodName = selectedOption.textContent;
-  const description = selectedOption.getAttribute("data-description") || "No description available";
-
-  // Create and show info modal
-  const modalHtml = `
-        <div class="modal fade" id="clusteringInfoModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            <i class="fas fa-info-circle me-2"></i>
-                            ${methodName} Information
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p><strong>Description:</strong></p>
-                        <p class="text-muted">${description}</p>
-                        <p><strong>Parameters:</strong></p>
-                        <ul id="clusteringParametersList">
-                            <!-- Parameters will be populated here -->
-                        </ul>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-  // Remove existing modal if any
-  const existingModal = document.getElementById("clusteringInfoModal");
-  if (existingModal) existingModal.remove();
-
-  // Add modal to body
-  document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-  // Load parameter details
-  fetch(`/dataset/${datasetId}/metadata/clustering-methods/${methodSelect.value}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success && data.method.parameters) {
-        const parametersList = document.getElementById("clusteringParametersList");
-        if (parametersList) {
-          parametersList.innerHTML = Object.entries(data.method.parameters)
-            .map(
-              ([key, param]) => `
-                            <li>
-                                <strong>${param.name}:</strong> ${param.description}
-                                ${
-                                  param.best_component && param.best_component !== "auto"
-                                    ? `<br><small class="text-success">Best value: ${param.best_component}</small>`
-                                    : ""
-                                }
-                            </li>
-                        `
-            )
-            .join("");
-        }
-      }
-    })
-    .catch((error) => console.error("Error loading parameter details:", error));
-
-  // Show modal
-  const modal = new bootstrap.Modal(document.getElementById("clusteringInfoModal"));
-  modal.show();
-
-  // Remove modal from DOM when hidden and fix focus
-  document.getElementById("clusteringInfoModal").addEventListener("hidden.bs.modal", function () {
-    // Remove focus from any focused elements before removing modal
-    if (document.activeElement && document.activeElement.blur) {
-      document.activeElement.blur();
+  if (window.showClusteringMethodInfo && typeof window.showClusteringMethodInfo === 'function') {
+    const methodSelect = document.getElementById("clusteringMethodSelect");
+    if (methodSelect && methodSelect.value) {
+      window.showClusteringMethodInfo(methodSelect.value);
+    } else {
+      showToast("Please select a clustering method first", "warning");
     }
-    this.remove();
-  });
+  } else {
+    // Fallback implementation
+    const methodSelect = document.getElementById("clusteringMethodSelect");
+    if (!methodSelect || !methodSelect.value) {
+      showToast("Please select a clustering method first", "warning");
+      return;
+    }
+
+    const selectedOption = methodSelect.options[methodSelect.selectedIndex];
+    const methodName = selectedOption.textContent;
+    const description = selectedOption.getAttribute("data-description") || "No description available";
+
+    // Create and show info modal
+    const modalHtml = `
+          <div class="modal fade" id="clusteringInfoModal" tabindex="-1">
+              <div class="modal-dialog">
+                  <div class="modal-content">
+                      <div class="modal-header">
+                          <h5 class="modal-title">
+                              <i class="fas fa-info-circle me-2"></i>
+                              ${methodName} Information
+                          </h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                          <p><strong>Description:</strong></p>
+                          <p class="text-muted">${description}</p>
+                          <p><strong>Parameters:</strong></p>
+                          <ul id="clusteringParametersList">
+                              <!-- Parameters will be populated here -->
+                          </ul>
+                      </div>
+                      <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById("clusteringInfoModal");
+    if (existingModal) existingModal.remove();
+
+    // Add modal to body
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+    // Load parameter details
+    fetch(`/dataset/${datasetId}/metadata/clustering-methods/${methodSelect.value}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success && data.method.parameters) {
+          const parametersList = document.getElementById("clusteringParametersList");
+          if (parametersList) {
+            parametersList.innerHTML = Object.entries(data.method.parameters)
+              .map(
+                ([key, param]) => `
+                              <li>
+                                  <strong>${param.name}:</strong> ${param.description}
+                                  ${
+                                    param.best_component && param.best_component !== "auto"
+                                      ? `<br><small class="text-success">Best value: ${param.best_component}</small>`
+                                      : ""
+                                  }
+                              </li>
+                          `
+              )
+              .join("");
+          }
+        }
+      })
+      .catch((error) => console.error("Error loading parameter details:", error));
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById("clusteringInfoModal"));
+    modal.show();
+
+    // Remove modal from DOM when hidden and fix focus
+    document.getElementById("clusteringInfoModal").addEventListener("hidden.bs.modal", function () {
+      // Remove focus from any focused elements before removing modal
+      if (document.activeElement && document.activeElement.blur) {
+        document.activeElement.blur();
+      }
+      this.remove();
+    });
+  }
 }
 
 function showClusteringError(error) {
@@ -1665,283 +1698,6 @@ function showClusteringError(error) {
   if (!parametersForm) return;
 
   parametersForm.innerHTML = `
-        <div class="alert alert-danger">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            ${error}
-        </div>
-    `;
-}
-
-// Cluster Representative Functions
-function loadClusterRepresentativeMethods() {
-  console.log("Loading cluster representative methods from metadata...");
-
-  fetch(`/dataset/${datasetId}/metadata/cluster-representative-methods`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        displayClusterRepresentativeMethods(data.cluster_representative_methods, data.default_method);
-      } else {
-        console.error("Error loading cluster representative methods:", data.error);
-        showClusterRepresentativeError(data.error);
-      }
-    })
-    .catch((error) => {
-      console.error("Error loading cluster representative methods:", error);
-      showClusterRepresentativeError("Failed to load cluster representative methods");
-    });
-}
-
-function displayClusterRepresentativeMethods(clusterRepMethods, defaultMethod = null) {
-  const methodSelect = document.getElementById("clusterRepresentativeMethod");
-  if (!methodSelect) return;
-
-  // Clear existing options (except the first one)
-  while (methodSelect.children.length > 1) {
-    methodSelect.removeChild(methodSelect.lastChild);
-  }
-
-  // Add methods to dropdown
-  Object.entries(clusterRepMethods).forEach(([methodKey, methodConfig]) => {
-    const option = document.createElement("option");
-    option.value = methodKey;
-    option.textContent = methodConfig.name;
-    methodSelect.appendChild(option);
-  });
-
-  // Set default method if provided
-  if (defaultMethod && clusterRepMethods[defaultMethod]) {
-    methodSelect.value = defaultMethod;
-    updateClusterRepresentativeMethod();
-  }
-
-  console.log(`Loaded ${Object.keys(clusterRepMethods).length} cluster representative methods`);
-}
-
-function updateClusterRepresentativeMethod() {
-  const methodSelect = document.getElementById("clusterRepresentativeMethod");
-  const methodStatus = document.getElementById("clusterRepMethodStatus");
-  const container = document.getElementById("clusterRepresentativeContainer");
-  const summary = document.getElementById("clusterRepSummary");
-
-  if (!methodSelect || !methodStatus || !container || !summary) return;
-
-  const selectedMethod = methodSelect.value;
-
-  if (!selectedMethod) {
-    methodStatus.textContent = "No method selected";
-    methodStatus.className = "badge bg-secondary me-2";
-    container.style.display = "none";
-    summary.style.display = "none";
-    return;
-  }
-
-  // Update status
-  methodStatus.textContent = "Method selected";
-  methodStatus.className = "badge bg-success me-2";
-
-  // Load method details
-  fetch(`/dataset/${datasetId}/metadata/cluster-representative-methods/${selectedMethod}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        displayClusterRepresentativeDetails(data.method);
-        summary.style.display = "block";
-        updateClusterRepresentativeSummary();
-      } else {
-        console.error("Error loading method details:", data.error);
-        showClusterRepresentativeError(data.error);
-      }
-    })
-    .catch((error) => {
-      console.error("Error loading method details:", error);
-      showClusterRepresentativeError("Failed to load method details");
-    });
-}
-
-function displayClusterRepresentativeDetails(method) {
-  const detailsContainer = document.getElementById("clusterRepresentativeDetails");
-  if (!detailsContainer || !method) return;
-
-  let html = `
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="card-title">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Method Information
-                        </h6>
-                        <p class="card-text"><strong>Name:</strong> ${method.name}</p>
-                        <p class="card-text"><strong>Description:</strong> ${method.description}</p>
-                        <p class="card-text"><strong>Method Type:</strong> ${method.method}</p>
-                        <p class="card-text"><strong>Direction:</strong> ${method.direction}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="card-title">
-                            <i class="fas fa-lightbulb me-2"></i>
-                            Explanation
-                        </h6>
-                        <p class="card-text">${method.explanation}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-  detailsContainer.innerHTML = html;
-}
-
-function toggleClusterRepresentative() {
-  const container = document.getElementById("clusterRepresentativeContainer");
-  const button = document.getElementById("toggleClusterRepBtn");
-
-  if (!container || !button) return;
-
-  const isVisible = container.style.display !== "none";
-
-  if (isVisible) {
-    container.style.display = "none";
-    button.innerHTML = '<i class="fas fa-eye me-1"></i>Show Options';
-    button.className = "btn btn-outline-secondary";
-  } else {
-    container.style.display = "block";
-    button.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Options';
-    button.className = "btn btn-outline-secondary";
-  }
-}
-
-function resetClusterRepresentativeToDefault() {
-  const methodSelect = document.getElementById("clusterRepresentativeMethod");
-  if (!methodSelect) return;
-
-  // Reset to default method (abundance_highest)
-  methodSelect.value = "abundance_highest";
-  updateClusterRepresentativeMethod();
-
-  showToast("Cluster representative method reset to default (Highest Mean Abundance)", "success");
-}
-
-function updateClusterRepresentativeSummary() {
-  const methodSelect = document.getElementById("clusterRepresentativeMethod");
-  const summaryText = document.getElementById("clusterRepSummaryText");
-  const methodName = document.getElementById("clusterRepMethodName");
-
-  if (!methodSelect || !summaryText || !methodName) return;
-
-  const selectedMethod = methodSelect.value;
-  const selectedOption = methodSelect.options[methodSelect.selectedIndex];
-
-  if (selectedMethod && selectedOption) {
-    summaryText.textContent = `Using "${selectedOption.textContent}" method for cluster representative selection`;
-    methodName.textContent = selectedOption.textContent;
-  } else {
-    summaryText.textContent = "No representative method configured";
-    methodName.textContent = "No method";
-  }
-}
-
-function showClusterRepresentativeInfo() {
-  const methodSelect = document.getElementById("clusterRepresentativeMethod");
-  if (!methodSelect || !methodSelect.value) {
-    showToast("Please select a cluster representative method first", "warning");
-    return;
-  }
-
-  const selectedMethod = methodSelect.value;
-
-  // Load method details for info modal
-  fetch(`/dataset/${datasetId}/metadata/cluster-representative-methods/${selectedMethod}`)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        // Create and show info modal
-        showClusterRepresentativeInfoModal(data.method);
-      } else {
-        console.error("Error loading method details:", data.error);
-        showToast("Error loading method information", "error");
-      }
-    })
-    .catch((error) => {
-      console.error("Error loading method details:", error);
-      showToast("Error loading method information", "error");
-    });
-}
-
-function showClusterRepresentativeInfoModal(method) {
-  // Create modal HTML
-  const modalHtml = `
-        <div class="modal fade" id="clusterRepInfoModal" tabindex="-1" aria-labelledby="clusterRepInfoModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="clusterRepInfoModalLabel">
-                            <i class="fas fa-users me-2"></i>
-                            Cluster Representative Method Information
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6><i class="fas fa-info-circle me-2"></i>Method Details</h6>
-                                <p><strong>Name:</strong> ${method.name}</p>
-                                <p><strong>Description:</strong> ${method.description}</p>
-                                <p><strong>Method Type:</strong> ${method.method}</p>
-                                <p><strong>Direction:</strong> ${method.direction}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6><i class="fas fa-lightbulb me-2"></i>Explanation</h6>
-                                <p>${method.explanation}</p>
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <h6><i class="fas fa-question-circle me-2"></i>How it works</h6>
-                                <p>This method will be used to select a representative taxonomy from each cluster when performing clustering analysis. The selected representative will be used as the cluster name and for further multivariate analysis.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-  // Remove existing modal if any
-  const existingModal = document.getElementById("clusterRepInfoModal");
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  // Add modal to body
-  document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-  // Show modal
-  const modal = new bootstrap.Modal(document.getElementById("clusterRepInfoModal"));
-  modal.show();
-
-  // Remove modal from DOM when hidden and fix focus
-  document.getElementById("clusterRepInfoModal").addEventListener("hidden.bs.modal", function () {
-    // Remove focus from any focused elements before removing modal
-    if (document.activeElement && document.activeElement.blur) {
-      document.activeElement.blur();
-    }
-    this.remove();
-  });
-}
-
-function showClusterRepresentativeError(error) {
-  const detailsContainer = document.getElementById("clusterRepresentativeDetails");
-  if (!detailsContainer) return;
-
-  detailsContainer.innerHTML = `
         <div class="alert alert-danger">
             <i class="fas fa-exclamation-triangle me-2"></i>
             ${error}

@@ -8,6 +8,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the highest variance across all patients',
         'method': 'variance',
         'direction': 'max',
+        'selected': True,
         'explanation': 'Chooses the most variable taxonomy as representative, useful for identifying highly dynamic species'
     },
     'variance_lowest': {
@@ -15,6 +16,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the lowest variance across all patients',
         'method': 'variance',
         'direction': 'min',
+        'selected': False,
         'explanation': 'Chooses the most stable taxonomy as representative, useful for identifying consistent species'
     },
     'abundance_highest': {
@@ -22,6 +24,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the highest mean abundance across all patients',
         'method': 'abundance',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses the most abundant taxonomy as representative, useful for identifying dominant species'
     },
     'abundance_lowest': {
@@ -29,6 +32,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the lowest mean abundance across all patients',
         'method': 'abundance',
         'direction': 'min',
+        'selected': False,
         'explanation': 'Chooses the least abundant taxonomy as representative, useful for identifying rare species'
     },
     'prevalence_highest': {
@@ -43,6 +47,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy present in the fewest patients',
         'method': 'prevalence',
         'direction': 'min',
+        'selected': False,
         'explanation': 'Chooses the least widespread taxonomy as representative, useful for identifying rare species'
     },
     'taxonomic_level_highest': {
@@ -50,6 +55,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the highest taxonomic level (most specific)',
         'method': 'taxonomic_level',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses the most specific taxonomy as representative, useful for detailed analysis'
     },
     'taxonomic_level_lowest': {
@@ -57,13 +63,15 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the lowest taxonomic level (most general)',
         'method': 'taxonomic_level',
         'direction': 'min',
-        'explanation': 'Chooses the most general taxonomy as representative, useful for broad analysis'
+        'selected': False,
+        'explanation': 'Chooses the most general taxonomy as representative, useful for broad analysis',
     },
     'genus_priority': {
         'name': 'Genus Priority',
         'description': 'Select the taxonomy with the most well-known genus',
         'method': 'genus_priority',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses taxonomy from the most clinically/biologically important genus'
     },
     'species_completeness': {
@@ -71,6 +79,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with complete species identification (not sp.)',
         'method': 'species_completeness',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Prefers taxonomies with complete species names over generic "sp." designations'
     },
     'clinical_importance': {
@@ -78,6 +87,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with highest clinical importance score',
         'method': 'clinical_importance',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses the most clinically relevant taxonomy as representative'
     },
     'pathogenicity_highest': {
@@ -85,6 +95,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the highest pathogenicity score',
         'method': 'pathogenicity',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses the most pathogenic taxonomy as representative, useful for disease analysis'
     },
     'pathogenicity_lowest': {
@@ -92,6 +103,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the lowest pathogenicity score',
         'method': 'pathogenicity',
         'direction': 'min',
+        'selected': False,
         'explanation': 'Chooses the least pathogenic taxonomy as representative, useful for beneficial species analysis'
     },
     'research_popularity': {
@@ -99,6 +111,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with highest research popularity based on genus/species',
         'method': 'research_popularity',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses the most researched taxonomy as representative, useful for well-studied species'
     },
     'alphabetical_first': {
@@ -106,6 +119,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy that comes first alphabetically by species name',
         'method': 'alphabetical',
         'direction': 'min',
+        'selected': False,
         'explanation': 'Chooses the first taxonomy alphabetically for consistent ordering'
     },
     'alphabetical_last': {
@@ -113,6 +127,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy that comes last alphabetically by species name',
         'method': 'alphabetical',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses the last taxonomy alphabetically for consistent ordering'
     },
     'phylum_priority': {
@@ -120,6 +135,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy from the most important phylum',
         'method': 'phylum_priority',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses taxonomy from the most clinically/biologically important phylum'
     },
     'class_priority': {
@@ -127,6 +143,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy from the most important class',
         'method': 'class_priority',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses taxonomy from the most clinically/biologically important class'
     },
     'order_priority': {
@@ -134,6 +151,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy from the most important order',
         'method': 'order_priority',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses taxonomy from the most clinically/biologically important order'
     },
     'family_priority': {
@@ -141,6 +159,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy from the most important family',
         'method': 'family_priority',
         'direction': 'max',
+        'selected': False,
         'explanation': 'Chooses taxonomy from the most clinically/biologically important family'
     },
     'median_abundance': {
@@ -148,6 +167,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the median abundance value',
         'method': 'abundance',
         'direction': 'median',
+        'selected': False,
         'explanation': 'Chooses the taxonomy with median abundance as representative, useful for balanced analysis'
     },
     'mode_abundance': {
@@ -155,6 +175,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Select the taxonomy with the most common abundance value',
         'method': 'abundance',
         'direction': 'mode',
+        'selected': False,
         'explanation': 'Chooses the taxonomy with the most common abundance as representative, useful for typical analysis'
     },
     'random_selection': {
@@ -162,6 +183,7 @@ CLUSTER_REPRESENTATIVE_METHODS = {
         'description': 'Randomly select a taxonomy from the cluster',
         'method': 'random',
         'direction': 'random',
+        'selected': False,
         'explanation': 'Randomly chooses a taxonomy as representative, useful for unbiased analysis'
     }
 }

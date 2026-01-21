@@ -605,7 +605,6 @@
                           Clustering Method
                         </label>
                         <select class="form-select" id="clusteringMethodSelect" name="clusteringMethodSelect" onchange="updateClusteringParameters()">
-                          <option value="">Select clustering method...</option>
                           <!-- Options will be populated dynamically -->
                         </select>
                         <div class="form-text" id="clusteringMethodDescription">
@@ -613,9 +612,8 @@
                         </div>
                       </div>
                       <div class="col-md-6">
-                        <label class="form-label">Method Status</label>
+                        <label class="form-label"></label>
                         <div class="d-flex align-items-center">
-                          <span class="badge bg-secondary me-2" id="clusteringMethodStatus">No method selected</span>
                           <button type="button" class="btn btn-outline-info btn-sm" onclick="showClusteringInfo()">
                             <i class="fas fa-info-circle me-1"></i>Info
                           </button>
@@ -697,9 +695,8 @@
                         </select>
                       </div>
                       <div class="col-md-6">
-                        <label class="form-label">Method Status</label>
+                        <label class="form-label"></label>
                         <div class="d-flex align-items-center">
-                          <span class="badge bg-secondary me-2" id="clusterRepMethodStatus">No method selected</span>
                           <button
                             type="button"
                             class="btn btn-outline-info btn-sm"
@@ -708,6 +705,11 @@
                           </button>
                         </div>
                       </div>
+                    </div>
+
+                    <!-- Method Description (always visible) -->
+                    <div class="mt-2 mb-3">
+                      <small class="text-muted" id="clusterRepresentativeDescription">Select a method to see its description</small>
                     </div>
 
                     <!-- Cluster Representative Container -->

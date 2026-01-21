@@ -1,0 +1,3 @@
+the clustering naming should not have a Select a method... placeholder.
+When no clustering method is selected the whole clustering naming section should be disabled
+
