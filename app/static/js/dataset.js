@@ -25,7 +25,7 @@ function initializeDatasetPage() {
     case "analysis":
       loadAnalysisTab();
       break;
-    case "reports":
+      // Validate required fields
       loadReportsTab();
       break;
     case "settings":
@@ -709,9 +709,9 @@ function collectAnalysisConfiguration() {
     patient_file: document.getElementById("editorPatientFileSelect")?.value || "",
     taxonomy_file: document.getElementById("editorTaxonomyFileSelect")?.value || "",
     bracken_file: document.getElementById("editorBrackenFileSelect")?.value || "",
-    selection_mode: document.getElementById("selectionModeToggle")?.checked || false,
-    top_percentage: document.getElementById("topPercentage")?.value || "",
-    bottom_percentage: document.getElementById("bottomPercentage")?.value || "",
+    selection_mode: document.getElementById("extremes_mode")?.checked || false,
+    top_percentage: document.getElementById("extremes_top")?.value || "",
+    bottom_percentage: document.getElementById("extremes_bottom")?.value || "",
     // Patient Data Column Groups
     column_groups: collectColumnGroups(),
     // Bracken Time Point Selection
@@ -1032,18 +1032,23 @@ function displayColumnGroups(columnGroups) {
   // columnGroups is now an ordered array from the backend
   columnGroups.forEach((group) => {
     const displayName = formatGroupName(group.name);
-    // Use the first line of the label (without spaces) as id/name
-    let baseId = (displayName || '').split('\n')[0].replace(/\s+/g, '');
-    if (!baseId) baseId = `colGroup${groupIndex}`;
-    let groupId = baseId;
-    let uniqCounter = 1;
-    // Ensure the id is unique within this render
-    while (usedIds.has(groupId) || document.getElementById(groupId)) {
-      groupId = `${baseId}_${uniqCounter}`;
-      uniqCounter++;
+    // Use control_name from metadata for id/name
+    let groupId = group.control_name;
+    if (!groupId) {
+      // Fallback if control_name is missing
+      let baseId = (displayName || '').split('\n')[0].replace(/\s+/g, '');
+      if (!baseId) baseId = `colGroup${groupIndex}`;
+      groupId = baseId;
+      let uniqCounter = 1;
+      // Ensure the id is unique within this render
+      while (usedIds.has(groupId) || document.getElementById(groupId)) {
+        groupId = `${baseId}_${uniqCounter}`;
+        uniqCounter++;
+      }
     }
     usedIds.add(groupId);
     const columnCount = group.columns.length;
+    const isChecked = group.default_value ? 'checked' : '';
 
     // Create a list of field names, sorted as they appear in the metadata file
     const fieldNames = group.columns
@@ -1053,7 +1058,7 @@ function displayColumnGroups(columnGroups) {
     html += `
             <div class="col-md-6 mb-3">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="${groupId}" name="${groupId}" checked onchange="updateColumnGroupsSummary()">
+                    <input class="form-check-input" type="checkbox" id="${groupId}" name="${groupId}" onchange="updateColumnGroupsSummary()" ${isChecked}>
                     <label class="form-check-label" for="${groupId}">
                         <strong>${displayName}</strong>
                         <small class="text-muted d-block">${columnCount} columns</small>
@@ -1185,9 +1190,9 @@ function displayStratifications(stratifications) {
 
   let html = "";
   let index = 0;
-  // Accepts flat dictionary format from backend
-  Object.entries(stratifications).forEach(([key, stratification]) => {
-    const stratId = `strat_${index}_${key}`;
+  // stratifications is now an ordered array from the backend
+  stratifications.forEach((stratification) => {
+    const stratId = `strat_${index}_${stratification.key}`;
     
     let groupInfoHtml = '';
     if (Array.isArray(stratification.group_info)) {
@@ -1204,7 +1209,7 @@ function displayStratifications(stratifications) {
         <div class="card">
           <div class="card-body">
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="${stratId}" onchange="(window.analysisManager && window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
+              <input class="form-check-input" type="checkbox" id="${stratId}" name="${stratId}" onchange="(window.analysisManager && window.analysisManager.updateStratificationSummary) ? window.analysisManager.updateStratificationSummary() : updateStratificationSummary()">
               <label class="form-check-label" for="${stratId}">
                 <strong>${stratification.name}</strong>
                 <small class="text-muted d-block">${stratification.description || ''}</small>
@@ -2224,13 +2229,13 @@ function setupAnalysisEditor() {
 
 // Extreme Time Point Functions
 function toggleSelectionMode() {
-  const toggle = document.getElementById("selectionModeToggle");
-  const modeLabel = document.getElementById("selectionModeLabel");
-  const modeDescription = document.getElementById("selectionModeDescription");
-  const topLabel = document.getElementById("topPercentageLabel");
-  const bottomLabel = document.getElementById("bottomPercentageLabel");
-  const topDescription = document.getElementById("topPercentageDescription");
-  const bottomDescription = document.getElementById("bottomPercentageDescription");
+  const toggle = document.getElementById("extremes_mode");
+  const modeLabel = document.getElementById("extremes_mode_label");
+  const modeDescription = document.getElementById("extremes_mode_description");
+  const topLabel = document.getElementById("extremes_top_label");
+  const bottomLabel = document.getElementById("extremes_bottom_label");
+  const topDescription = document.getElementById("extremes_top_description");
+  const bottomDescription = document.getElementById("extremes_bottom_description");
 
   if (!toggle || !modeLabel) return;
 
@@ -2259,12 +2264,14 @@ function toggleSelectionMode() {
   }
 
   // Update summary to reflect the new mode
-  updateExtremeTimePointSummary();
+  if (window.analysisManager) {
+    window.analysisManager.updateExtremeTimePointSummary();
+  }
 }
 
 function updateTopPercentage(value) {
-  const topPercentageValue = document.getElementById("topPercentageValue");
-  const linkCheckbox = document.getElementById("linkPercentages");
+  const topPercentageValue = document.getElementById("extremes_top_value");
+  const linkCheckbox = document.getElementById("extremes_linked");
 
   if (topPercentageValue) {
     topPercentageValue.textContent = value + "%";
@@ -2272,20 +2279,22 @@ function updateTopPercentage(value) {
 
   // If linked, update bottom percentage to match
   if (linkCheckbox && linkCheckbox.checked) {
-    const bottomPercentage = document.getElementById("bottomPercentage");
-    const bottomPercentageValue = document.getElementById("bottomPercentageValue");
+    const bottomPercentage = document.getElementById("extremes_bottom");
+    const bottomPercentageValue = document.getElementById("extremes_bottom_value");
     if (bottomPercentage && bottomPercentageValue) {
       bottomPercentage.value = value;
       bottomPercentageValue.textContent = value + "%";
     }
   }
 
-  updateExtremeTimePointSummary();
+  if (window.analysisManager) {
+    window.analysisManager.updateExtremeTimePointSummary();
+  }
 }
 
 function updateBottomPercentage(value) {
-  const bottomPercentageValue = document.getElementById("bottomPercentageValue");
-  const linkCheckbox = document.getElementById("linkPercentages");
+  const bottomPercentageValue = document.getElementById("extremes_bottom_value");
+  const linkCheckbox = document.getElementById("extremes_linked");
 
   if (bottomPercentageValue) {
     bottomPercentageValue.textContent = value + "%";
@@ -2293,21 +2302,23 @@ function updateBottomPercentage(value) {
 
   // If linked, update top percentage to match
   if (linkCheckbox && linkCheckbox.checked) {
-    const topPercentage = document.getElementById("topPercentage");
-    const topPercentageValue = document.getElementById("topPercentageValue");
+    const topPercentage = document.getElementById("extremes_top");
+    const topPercentageValue = document.getElementById("extremes_top_value");
     if (topPercentage && topPercentageValue) {
       topPercentage.value = value;
       topPercentageValue.textContent = value + "%";
     }
   }
 
-  updateExtremeTimePointSummary();
+  if (window.analysisManager) {
+    window.analysisManager.updateExtremeTimePointSummary();
+  }
 }
 
 function toggleLinkedPercentages() {
-  const linkCheckbox = document.getElementById("linkPercentages");
-  const topPercentage = document.getElementById("topPercentage");
-  const bottomPercentage = document.getElementById("bottomPercentage");
+  const linkCheckbox = document.getElementById("extremes_linked");
+  const topPercentage = document.getElementById("extremes_top");
+  const bottomPercentage = document.getElementById("extremes_bottom");
 
   if (linkCheckbox && linkCheckbox.checked) {
     // Link them by setting bottom to match top
@@ -2318,127 +2329,7 @@ function toggleLinkedPercentages() {
   }
 }
 
-function updateExtremeTimePointSummary() {
-  const topPercentage = document.getElementById("topPercentage");
-  const bottomPercentage = document.getElementById("bottomPercentage");
-  const summaryText = document.getElementById("extremeTimePointSummaryText");
-  const topPatientsCount = document.getElementById("topPatientsCount");
-  const bottomPatientsCount = document.getElementById("bottomPatientsCount");
-  const totalPatientsCount = document.getElementById("totalPatientsCount");
-  const selectionModeToggle = document.getElementById("selectionModeToggle");
 
-  if (!topPercentage || !bottomPercentage || !summaryText) return;
-
-  const topPercent = parseInt(topPercentage.value);
-  const bottomPercent = parseInt(bottomPercentage.value);
-  const isValueMode = selectionModeToggle ? selectionModeToggle.checked : false;
-
-  // Get total patient count from the selected patient file
-  const patientFileSelect = document.getElementById("editorPatientFileSelect");
-
-  if (patientFileSelect && patientFileSelect.value) {
-    // Fetch actual patient count from API
-    fetch(`/dataset/${datasetId}/file/${patientFileSelect.value}/patient-count`)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          const totalPatients = data.patient_count;
-
-          if (isValueMode) {
-            // Value-based selection mode
-            const topPatients = Math.round((topPercent / 100) * totalPatients);
-            const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
-
-            // Update summary text for value mode
-            summaryText.textContent = `Selecting patients with top ${topPercent}% and bottom ${bottomPercent}% of time variable value range for extreme analysis`;
-
-            // Update patient count badges
-            if (topPatientsCount) {
-              topPatientsCount.textContent = `~${topPatients} patients`;
-            }
-            if (bottomPatientsCount) {
-              bottomPatientsCount.textContent = `~${bottomPatients} patients`;
-            }
-            if (totalPatientsCount) {
-              totalPatientsCount.textContent = `${totalPatients} total`;
-            }
-          } else {
-            // Patient-based selection mode
-            const topPatients = Math.round((topPercent / 100) * totalPatients);
-            const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
-
-            // Update summary text for patient mode
-            summaryText.textContent = `Selecting ${topPercent}% top and ${bottomPercent}% bottom patients for extreme time point analysis`;
-
-            // Update patient count badges
-            if (topPatientsCount) {
-              topPatientsCount.textContent = `${topPatients} patients`;
-            }
-            if (bottomPatientsCount) {
-              bottomPatientsCount.textContent = `${bottomPatients} patients`;
-            }
-            if (totalPatientsCount) {
-              totalPatientsCount.textContent = `${totalPatients} total`;
-            }
-          }
-        } else {
-          console.error("Error loading patient count:", data.error);
-          updateExtremeTimePointSummaryFallback();
-        }
-      })
-      .catch((error) => {
-        console.error("Error loading patient count:", error);
-        updateExtremeTimePointSummaryFallback();
-      });
-  } else {
-    updateExtremeTimePointSummaryFallback();
-  }
-}
-
-function updateExtremeTimePointSummaryFallback() {
-  const topPercentage = document.getElementById("topPercentage");
-  const bottomPercentage = document.getElementById("bottomPercentage");
-  const summaryText = document.getElementById("extremeTimePointSummaryText");
-  const topPatientsCount = document.getElementById("topPatientsCount");
-  const bottomPatientsCount = document.getElementById("bottomPatientsCount");
-  const totalPatientsCount = document.getElementById("totalPatientsCount");
-  const selectionModeToggle = document.getElementById("selectionModeToggle");
-
-  if (!topPercentage || !bottomPercentage || !summaryText) return;
-
-  const topPercent = parseInt(topPercentage.value);
-  const bottomPercent = parseInt(bottomPercentage.value);
-  const isValueMode = selectionModeToggle ? selectionModeToggle.checked : false;
-
-  // Fallback when no file is selected
-  if (isValueMode) {
-    summaryText.textContent = "Select data files to see time variable value range analysis";
-  } else {
-    summaryText.textContent = "Select data files to see patient counts";
-  }
-
-  if (topPatientsCount) {
-    topPatientsCount.textContent = "0 patients";
-  }
-  if (bottomPatientsCount) {
-    bottomPatientsCount.textContent = "0 patients";
-  }
-  if (totalPatientsCount) {
-    totalPatientsCount.textContent = "0 total";
-  }
-}
-
-function loadPatientCount() {
-  // This function should be called when a patient file is selected
-  // to fetch the actual patient count from the server
-  const patientFileSelect = document.getElementById("editorPatientFileSelect");
-
-  if (patientFileSelect && patientFileSelect.value) {
-    // TODO: Implement API call to get patient count
-    // For now, using placeholder
-    updateExtremeTimePointSummary();
-  }
-}
 
 // Analysis Methods Functions
 function loadAnalysisMethods() {
@@ -2846,7 +2737,9 @@ function validateAnalysisEditor() {
   }
 
   // Update extreme time point summary when patient file changes
-  updateExtremeTimePointSummary();
+  if (window.analysisManager) {
+    window.analysisManager.updateExtremeTimePointSummary();
+  }
 
   return isValid;
 }

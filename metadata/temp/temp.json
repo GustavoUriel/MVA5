@@ -1,0 +1,724 @@
+{
+  "discarding_policies": [
+    {
+      "description": "Discard taxa present in fewer than a specified percentage of samples",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: prevalence = (abundance > detection_threshold).sum() / total_samples; if prevalence < min_prevalence_threshold: discard_taxon",
+        "cons": [
+          "May discard important taxa - Some biologically relevant microbes may be rare",
+          "Arbitrary thresholds - Prevalence cutoff is subjective",
+          "Context dependence - Optimal prevalence varies by study design and technology",
+          "False negatives - Rare pathogens or keystone species may be excluded"
+        ],
+        "description": "Discard microbial taxa present in fewer than a specified percentage of samples, removing unreliable measurements.",
+        "expectations": "Reduces taxa count by 20-60%, depending on threshold",
+        "limitations": [
+          "Doesn't consider abundance levels, only presence/absence",
+          "May be too conservative for some research questions",
+          "Threshold selection requires biological knowledge"
+        ],
+        "parameters": [
+          {
+            "default": ">0",
+            "description": "Minimum abundance to consider taxon present",
+            "name": "Detection threshold"
+          },
+          {
+            "default": "10% of samples",
+            "description": "Minimum fraction of samples where taxon must be present",
+            "name": "Minimum prevalence"
+          }
+        ],
+        "pros": [
+          "Data quality control - Eliminates measurement artifacts and rare taxa",
+          "Statistical reliability - Focuses on consistently detectable microbes",
+          "Computational efficiency - Reduces dataset size significantly",
+          "Reproducibility - Removes taxa with unreliable abundance estimates",
+          "Simple implementation - Easy to understand and apply"
+        ],
+        "title": "Prevalence Filtering"
+      },
+      "key": "prevalence_filtering",
+      "name": "Prevalence Filtering",
+      "order": 1,
+      "parameters": {
+        "detection_threshold": {
+          "control_name": "MiDi_Prevalence_detection_threshold",
+          "default": 0.0,
+          "description": "Minimum abundance to consider taxon present (default: >0)",
+          "label": "Detection Threshold",
+          "max": 1.0,
+          "min": 0.0,
+          "step": 0.001,
+          "type": "float"
+        },
+        "min_prevalence": {
+          "control_name": "MiDi_Prevalence_min_prevalence",
+          "default": 0.1,
+          "description": "Minimum fraction of samples where taxon must be present",
+          "label": "Minimum Prevalence (%)",
+          "max": 1.0,
+          "min": 0.01,
+          "step": 0.01,
+          "type": "float"
+        }
+      }
+    },
+    {
+      "description": "Discard taxa with consistently low abundance across samples",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: mean_abundance = taxon_abundances.mean(); median_abundance = taxon_abundances.median(); if mean_abundance < min_mean_threshold or median_abundance < min_median_threshold: discard_taxon",
+        "cons": [
+          "Context dependence - Abundance thresholds vary by sample type and technology",
+          "Functional bias - May exclude important low-abundance functional specialists",
+          "Normalization effects - Results depend on abundance transformation method",
+          "Sample variability - Abundance distributions vary across studies"
+        ],
+        "description": "Discard taxa with consistently low abundance across samples, focusing on ecologically important microbes.",
+        "expectations": "Reduces taxa count by 30-70%, depending on threshold and sample type",
+        "limitations": [
+          "Arbitrary thresholds - No universal abundance cutoff exists",
+          "Scale dependence - Results vary with sequencing depth and technology",
+          "Biological context - Some low-abundance taxa are functionally important"
+        ],
+        "parameters": [
+          {
+            "default": "0.01% relative abundance",
+            "description": "Minimum mean relative abundance threshold",
+            "name": "Minimum mean abundance"
+          },
+          {
+            "default": "0.005% relative abundance",
+            "description": "Minimum median relative abundance threshold",
+            "name": "Minimum median abundance"
+          }
+        ],
+        "pros": [
+          "Ecological relevance - Focuses on microbes that contribute meaningfully to community",
+          "Measurement precision - Removes taxa near detection limits",
+          "Biological signal - Prioritizes microbes with functional impact",
+          "Data normalization - Complements relative abundance transformations",
+          "Statistical power - Reduces noise in downstream analyses"
+        ],
+        "title": "Abundance Filtering"
+      },
+      "key": "abundance_filtering",
+      "name": "Abundance Filtering",
+      "order": 2,
+      "parameters": {
+        "min_mean_abundance": {
+          "control_name": "MiDi_Abundance_min_mean_abundance",
+          "default": 0.0001,
+          "description": "Minimum mean relative abundance threshold",
+          "label": "Minimum Mean Abundance (%)",
+          "max": 1.0,
+          "min": 0.0,
+          "step": 1e-05,
+          "type": "float"
+        },
+        "min_median_abundance": {
+          "control_name": "MiDi_Abundance_min_median_abundance",
+          "default": 5e-05,
+          "description": "Minimum median relative abundance threshold",
+          "label": "Minimum Median Abundance (%)",
+          "max": 1.0,
+          "min": 0.0,
+          "step": 1e-05,
+          "type": "float"
+        }
+      }
+    },
+    {
+      "description": "Filter out rare taxa that appear in very few samples regardless of abundance",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: sample_count = number of samples with abundance > detection_threshold; if sample_count < min_sample_count: discard_taxon",
+        "cons": [
+          "May be too conservative - Excludes biologically relevant rare taxa",
+          "Context dependence - Appropriate thresholds vary by study size",
+          "Sample size bias - Larger studies can retain rarer taxa",
+          "Technology dependence - Detection limits vary by sequencing platform"
+        ],
+        "description": "Filter out rare taxa that appear in very few samples regardless of abundance, focusing on consistently detectable microbes.",
+        "expectations": "Reduces taxa count by 15-40%, depending on study size and detection threshold",
+        "limitations": [
+          "Doesn't consider ecological importance of rare taxa",
+          "May exclude important low-prevalence pathogens",
+          "Threshold selection is somewhat arbitrary"
+        ],
+        "parameters": [
+          {
+            "default": "3 samples",
+            "description": "Minimum number of samples where taxon must be detected",
+            "name": "Minimum sample count"
+          },
+          {
+            "default": "1% of samples",
+            "description": "Maximum proportion of samples where rare taxa are allowed",
+            "name": "Rarity threshold"
+          }
+        ],
+        "pros": [
+          "Conservative approach - Ensures taxa are consistently detectable",
+          "Measurement reliability - Focuses on taxa with multiple measurements",
+          "Statistical stability - Reduces variance from sporadic detections",
+          "Quality control - Removes potential contamination artifacts",
+          "Simple and transparent - Easy to understand and communicate"
+        ],
+        "title": "Taxonomic Rarity Filtering"
+      },
+      "key": "taxonomic_rarity_filtering",
+      "name": "Taxonomic Rarity Filtering",
+      "order": 3,
+      "parameters": {
+        "min_sample_count": {
+          "control_name": "MiDi_Rarity_min_sample_count",
+          "default": 3,
+          "description": "Minimum number of samples where taxon must be detected",
+          "label": "Minimum Sample Count",
+          "max": 50,
+          "min": 1,
+          "step": 1,
+          "type": "int"
+        },
+        "rarity_threshold": {
+          "control_name": "MiDi_Rarity_rarity_threshold",
+          "default": 0.01,
+          "description": "Maximum proportion of samples where rare taxa are allowed",
+          "label": "Rarity Threshold",
+          "max": 0.1,
+          "min": 0.001,
+          "step": 0.001,
+          "type": "float"
+        }
+      }
+    },
+    {
+      "description": "Remove taxa that never exceed a specified abundance threshold in any sample",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: max_abundance = maximum abundance across all samples; if max_abundance < max_abundance_threshold: discard_taxon; keep top N most abundant taxa regardless",
+        "cons": [
+          "May exclude important taxa - Some functional specialists are low abundance",
+          "Context dependence - Abundance thresholds vary by ecosystem",
+          "Detection limit bias - Results depend on sequencing technology sensitivity",
+          "Temporal variability - Abundance peaks may be missed in sampling"
+        ],
+        "description": "Remove taxa that never exceed a specified abundance threshold in any sample, focusing on potentially impactful microbes.",
+        "expectations": "Reduces taxa count by 40-80%, depending on threshold and ecosystem",
+        "limitations": [
+          "Assumes abundance correlates with importance",
+          "May miss rare but ecologically important taxa",
+          "Threshold selection requires ecological knowledge"
+        ],
+        "parameters": [
+          {
+            "default": "0.1% relative abundance",
+            "description": "Taxa exceeding this threshold in any sample will be retained",
+            "name": "Maximum abundance threshold"
+          },
+          {
+            "default": "100 taxa",
+            "description": "Always retain the N most abundant taxa regardless of threshold",
+            "name": "Keep top N taxa"
+          }
+        ],
+        "pros": [
+          "Ecological focus - Prioritizes microbes that can dominate communities",
+          "Functional relevance - High abundance often correlates with ecological impact",
+          "Data quality - Removes taxa consistently near detection limits",
+          "Computational efficiency - Significantly reduces dataset size",
+          "Biological plausibility - Low abundance taxa may be ecologically irrelevant"
+        ],
+        "title": "Low Abundance Taxa Removal"
+      },
+      "key": "low_abundance_taxa_removal",
+      "name": "Low Abundance Taxa Removal",
+      "order": 4,
+      "parameters": {
+        "keep_top_n": {
+          "control_name": "MiDi_LowAbundance_keep_top_n",
+          "default": 100,
+          "description": "Always retain the N most abundant taxa regardless of threshold",
+          "label": "Keep Top N Taxa",
+          "max": 1000,
+          "min": 10,
+          "step": 10,
+          "type": "int"
+        },
+        "max_abundance_threshold": {
+          "control_name": "MiDi_LowAbundance_max_abundance_threshold",
+          "default": 0.001,
+          "description": "Taxa exceeding this threshold in any sample will be retained",
+          "label": "Maximum Abundance Threshold (%)",
+          "max": 0.1,
+          "min": 0.0,
+          "step": 0.0001,
+          "type": "float"
+        }
+      }
+    },
+    {
+      "description": "Remove potential contaminants based on prevalence in negative controls",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: control_prevalence = prevalence in negative controls; control_abundance = mean abundance in controls; if control_prevalence > threshold or control_abundance > threshold: discard_taxon",
+        "cons": [
+          "Requires controls - Not applicable without negative control samples",
+          "Control quality dependence - Results depend on control sample quality",
+          "Conservative approach - May remove true low-level contaminants",
+          "Control variability - Different labs may have different contamination profiles"
+        ],
+        "description": "Remove potential contaminants based on prevalence in negative controls, ensuring data quality.",
+        "expectations": "Removes 5-20% of taxa, depending on laboratory and sequencing conditions",
+        "limitations": [
+          "Limited to studies with proper negative controls",
+          "May not detect all contamination types",
+          "Control contamination may not reflect sample contamination"
+        ],
+        "parameters": [
+          {
+            "default": "50% of controls",
+            "description": "Maximum prevalence allowed in negative controls",
+            "name": "Control prevalence threshold"
+          },
+          {
+            "default": "1% relative abundance",
+            "description": "Maximum abundance allowed in negative controls",
+            "name": "Control abundance threshold"
+          }
+        ],
+        "pros": [
+          "Data quality assurance - Removes laboratory contamination artifacts",
+          "Experimental validity - Ensures microbial signal is biological, not technical",
+          "Reproducibility - Standardizes contamination removal across studies",
+          "Method validation - Uses experimental controls for quality control",
+          "Publication standards - Meets rigorous microbiome data quality requirements"
+        ],
+        "title": "Contaminant Filtering"
+      },
+      "key": "contaminant_filtering",
+      "name": "Contaminant Filtering",
+      "order": 5,
+      "parameters": {
+        "control_abundance_threshold": {
+          "control_name": "MiDi_Contaminant_control_abundance_threshold",
+          "default": 0.01,
+          "description": "Maximum abundance allowed in negative controls",
+          "label": "Control Abundance Threshold (%)",
+          "max": 1.0,
+          "min": 0.0,
+          "step": 0.001,
+          "type": "float"
+        },
+        "control_prevalence_threshold": {
+          "control_name": "MiDi_Contaminant_control_prevalence_threshold",
+          "default": 0.5,
+          "description": "Maximum prevalence allowed in negative controls",
+          "label": "Control Prevalence Threshold (%)",
+          "max": 1.0,
+          "min": 0.0,
+          "step": 0.01,
+          "type": "float"
+        }
+      }
+    },
+    {
+      "description": "Remove taxa that appear as singletons (detected in only one sample)",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: detection_count = number of samples with abundance > detection_threshold; if detection_count == 1: apply singleton strategy",
+        "cons": [
+          "May remove real taxa - Some microbes are legitimately rare",
+          "Overly conservative - Excludes potentially important low-prevalence taxa",
+          "Detection limit dependence - Results vary with sequencing sensitivity",
+          "Biological context ignored - All singletons treated equally"
+        ],
+        "description": "Remove taxa that appear as singletons (detected in only one sample), reducing potential artifacts.",
+        "expectations": "Removes 10-30% of taxa, depending on sequencing depth and technology",
+        "limitations": [
+          "Doesn't distinguish between true rarity and artifacts",
+          "May exclude important rare biosphere members",
+          "Threshold for \"singleton\" may not be biologically meaningful"
+        ],
+        "parameters": [
+          {
+            "default": "Strict removal",
+            "description": "How to handle taxa detected in only one sample",
+            "name": "Singleton removal strategy"
+          },
+          {
+            "default": "1% relative abundance",
+            "description": "Minimum abundance to retain singletons (for lenient mode)",
+            "name": "Singleton abundance threshold"
+          }
+        ],
+        "pros": [
+          "Artifact removal - Eliminates likely sequencing or PCR errors",
+          "Data quality - Focuses on consistently detectable taxa",
+          "Statistical reliability - Removes highly variable singleton measurements",
+          "Computational stability - Reduces noise in diversity calculations",
+          "Biological plausibility - Singletons may represent contamination"
+        ],
+        "title": "Singleton Filtering"
+      },
+      "key": "singleton_filtering",
+      "name": "Singleton Filtering",
+      "order": 6,
+      "parameters": {
+        "remove_singletons": {
+          "control_name": "MiDi_Singleton_remove_singletons",
+          "default": "strict",
+          "description": "How to handle taxa detected in only one sample",
+          "label": "Singleton Removal Strategy",
+          "options": [
+            {
+              "label": "Strict (remove all singletons)",
+              "value": "strict"
+            },
+            {
+              "label": "Lenient (keep if abundance > threshold)",
+              "value": "lenient"
+            },
+            {
+              "label": "Keep all singletons",
+              "value": "none"
+            }
+          ],
+          "type": "select"
+        },
+        "singleton_abundance_threshold": {
+          "control_name": "MiDi_Singleton_singleton_abundance_threshold",
+          "default": 0.01,
+          "description": "Minimum abundance to retain singletons (for lenient mode)",
+          "label": "Singleton Abundance Threshold (%)",
+          "max": 1.0,
+          "min": 0.0,
+          "step": 0.001,
+          "type": "float"
+        }
+      }
+    },
+    {
+      "description": "Select taxa with highest variance across samples",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: calculate variance metric (total variance or coefficient of variation); rank taxa by variance; select top N most variable taxa",
+        "cons": [
+          "May select noise - High variance doesn't always indicate biological signal",
+          "Context dependence - Important taxa may be consistently present",
+          "Scale dependence - Variance depends on abundance transformation",
+          "Confounding factors - Variance may reflect technical rather than biological factors"
+        ],
+        "description": "Select taxa with highest variance across samples, focusing on microbes that vary between conditions.",
+        "expectations": "Selects 50-200 most variable taxa, depending on desired subset size",
+        "limitations": [
+          "Assumes variable taxa are more important",
+          "May miss consistently important taxa",
+          "Variance calculation sensitive to outliers"
+        ],
+        "parameters": [
+          {
+            "default": "50 taxa",
+            "description": "Maximum number of most variable taxa to retain",
+            "name": "Number of taxa to select"
+          },
+          {
+            "default": "Coefficient of variation",
+            "description": "Method to measure taxon variability",
+            "name": "Variance metric"
+          }
+        ],
+        "pros": [
+          "Biological relevance - Variable taxa often respond to environmental changes",
+          "Differential abundance focus - Prioritizes taxa that differ between groups",
+          "Statistical power - Variable taxa are easier to detect as significant",
+          "Ecological insight - Highlights taxa involved in community dynamics",
+          "Data-driven approach - Uses empirical variability patterns"
+        ],
+        "title": "Variance-Based Selection"
+      },
+      "key": "variance_based_selection",
+      "name": "Variance-Based Selection",
+      "order": 7,
+      "parameters": {
+        "num_taxa_to_select": {
+          "control_name": "MiDi_Variance_num_taxa_to_select",
+          "default": 50,
+          "description": "Maximum number of most variable taxa to retain",
+          "label": "Number of Taxa to Select",
+          "max": 200,
+          "min": 5,
+          "step": 5,
+          "type": "int"
+        },
+        "variance_metric": {
+          "control_name": "MiDi_Variance_variance_metric",
+          "default": "coefficient_of_variation",
+          "description": "Method to measure taxon variability",
+          "label": "Variance Metric",
+          "options": [
+            {
+              "label": "Total Variance",
+              "value": "total_variance"
+            },
+            {
+              "label": "Coefficient of Variation",
+              "value": "coefficient_of_variation"
+            }
+          ],
+          "type": "select"
+        }
+      }
+    },
+    {
+      "description": "Filter taxa based on their taxonomic classification level",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: check taxonomic classification depth; if classification level < min_required_level: discard_taxon",
+        "cons": [
+          "Resolution loss - May exclude taxa only identifiable to higher levels",
+          "Database dependence - Results vary with classification database quality",
+          "Biological information loss - Higher-level taxa may be ecologically relevant",
+          "Conservative approach - May be too restrictive for some analyses"
+        ],
+        "description": "Filter taxa based on their taxonomic classification level, ensuring reliable taxonomic assignment.",
+        "expectations": "Retains 60-90% of taxa, depending on classification database and required level",
+        "limitations": [
+          "Depends on reference database completeness",
+          "May exclude novel or poorly characterized taxa",
+          "Arbitrary level cutoffs may not reflect biological reality"
+        ],
+        "parameters": [
+          {
+            "default": "Genus level",
+            "description": "Require taxa to be classified at least to this level",
+            "name": "Minimum taxonomic level"
+          },
+          {
+            "default": "Remove all unclassified",
+            "description": "How to handle taxa without complete classification",
+            "name": "Unclassified taxa handling"
+          }
+        ],
+        "pros": [
+          "Taxonomic reliability - Ensures taxa are properly identified",
+          "Comparative analysis - Enables cross-study comparisons",
+          "Biological interpretation - Provides meaningful taxonomic context",
+          "Database quality - Reflects quality of taxonomic reference database",
+          "Standardization - Creates consistent taxonomic resolution across studies"
+        ],
+        "title": "Taxonomic Level Filtering"
+      },
+      "key": "taxonomic_level_filtering",
+      "name": "Taxonomic Level Filtering",
+      "order": 8,
+      "parameters": {
+        "min_taxonomic_level": {
+          "control_name": "MiDi_TaxonomicLevel_min_taxonomic_level",
+          "default": "genus",
+          "description": "Require taxa to be classified at least to this level",
+          "label": "Minimum Taxonomic Level",
+          "options": [
+            {
+              "label": "Kingdom",
+              "value": "kingdom"
+            },
+            {
+              "label": "Phylum",
+              "value": "phylum"
+            },
+            {
+              "label": "Class",
+              "value": "class"
+            },
+            {
+              "label": "Order",
+              "value": "order"
+            },
+            {
+              "label": "Family",
+              "value": "family"
+            },
+            {
+              "label": "Genus",
+              "value": "genus"
+            },
+            {
+              "label": "Species",
+              "value": "species"
+            }
+          ],
+          "type": "select"
+        },
+        "remove_unclassified": {
+          "control_name": "MiDi_TaxonomicLevel_remove_unclassified",
+          "default": "strict",
+          "description": "How to handle taxa without complete classification",
+          "label": "Unclassified Taxa Handling",
+          "options": [
+            {
+              "label": "Remove all unclassified",
+              "value": "strict"
+            },
+            {
+              "label": "Keep if identified at higher levels",
+              "value": "lenient"
+            },
+            {
+              "label": "Keep all taxa",
+              "value": "none"
+            }
+          ],
+          "type": "select"
+        }
+      }
+    },
+    {
+      "description": "Retain only taxa that are part of the core microbiome",
+      "enabled": false,
+      "info": {
+        "algorithm": "For each taxon: calculate prevalence across all samples; if prevalence >= core_prevalence_threshold and mean_abundance >= core_abundance_threshold: retain_taxon",
+        "cons": [
+          "Context dependence - Core microbiome varies by ecosystem and condition",
+          "Temporal variability - Core taxa may change over time",
+          "Definition ambiguity - No universal definition of \"core\"",
+          "May miss important variable taxa - Focuses on presence, not change"
+        ],
+        "description": "Retain only taxa that are part of the core microbiome, focusing on consistently present microbes.",
+        "expectations": "Retains 10-30 core taxa, depending on ecosystem and thresholds",
+        "limitations": [
+          "Arbitrary thresholds for core definition",
+          "May exclude ecologically important but variable taxa",
+          "Core composition changes with environmental conditions"
+        ],
+        "parameters": [
+          {
+            "default": "80% of samples",
+            "description": "Minimum prevalence to be considered core microbiome",
+            "name": "Core prevalence threshold"
+          },
+          {
+            "default": "1% relative abundance",
+            "description": "Minimum abundance to be considered core microbiome",
+            "name": "Core abundance threshold"
+          }
+        ],
+        "pros": [
+          "Ecological stability - Focuses on consistently present community members",
+          "Functional importance - Core taxa often perform essential ecosystem functions",
+          "Comparative studies - Enables cross-sample and cross-study comparisons",
+          "Biological relevance - Core microbiome represents stable community structure",
+          "Robust analysis - Less sensitive to sampling variability"
+        ],
+        "title": "Core Microbiome Filtering"
+      },
+      "key": "core_microbiome_filtering",
+      "name": "Core Microbiome Filtering",
+      "order": 9,
+      "parameters": {
+        "core_abundance_threshold": {
+          "control_name": "MiDi_CoreMicrobiome_core_abundance_threshold",
+          "default": 0.01,
+          "description": "Minimum abundance to be considered core microbiome",
+          "label": "Core Abundance Threshold (%)",
+          "max": 0.1,
+          "min": 0.0,
+          "step": 0.001,
+          "type": "float"
+        },
+        "core_prevalence_threshold": {
+          "control_name": "MiDi_CoreMicrobiome_core_prevalence_threshold",
+          "default": 0.8,
+          "description": "Minimum prevalence to be considered core microbiome",
+          "label": "Core Prevalence Threshold (%)",
+          "max": 1.0,
+          "min": 0.5,
+          "step": 0.01,
+          "type": "float"
+        }
+      }
+    },
+    {
+      "description": "Apply multiple microbial selection methods and take consensus",
+      "enabled": false,
+      "info": {
+        "algorithm": "Apply multiple methods independently; combine results using specified consensus rule; retain taxa selected by consensus",
+        "cons": [
+          "Computational cost - Running multiple methods increases processing time",
+          "Result complexity - Different methods may give conflicting results",
+          "Decision complexity - Choosing appropriate consensus rule",
+          "Conservative bias - Strict consensus may miss valid taxa",
+          "Method dependence - Results depend on which methods are combined"
+        ],
+        "description": "Apply multiple microbial selection methods and take consensus to identify robustly selected taxa.",
+        "expectations": "Highly confident retention of 20-50 taxa supported by multiple quality criteria",
+        "limitations": [
+          "Requires careful selection of complementary methods",
+          "Consensus rules are somewhat subjective",
+          "May miss taxa only detectable by specific approaches",
+          "Interpretation becomes more complex with multiple criteria"
+        ],
+        "parameters": [
+          {
+            "default": "Intersection (ALL methods)",
+            "description": "How to combine results from multiple methods",
+            "name": "Consensus rule"
+          },
+          {
+            "default": "2 methods",
+            "description": "Minimum number of methods that must agree (for weighted voting)",
+            "name": "Minimum agreement"
+          }
+        ],
+        "pros": [
+          "Robust selection - Taxa selected by multiple methods are more reliable",
+          "Method validation - Cross-validation of different filtering approaches",
+          "Comprehensive evaluation - Considers multiple data quality aspects",
+          "Uncertainty reduction - Reduces method-specific biases",
+          "Confidence building - Multiple lines of evidence for retained taxa"
+        ],
+        "title": "Combined Microbial Selection"
+      },
+      "key": "combined_microbial_selection",
+      "name": "Combined Microbial Selection",
+      "order": 10,
+      "parameters": {
+        "consensus_rule": {
+          "control_name": "MiDi_CombinedSelection_consensus_rule",
+          "default": "intersection",
+          "description": "How to combine results from multiple methods",
+          "label": "Consensus Rule",
+          "options": [
+            {
+              "label": "Intersection (ALL methods)",
+              "value": "intersection"
+            },
+            {
+              "label": "Union (ANY method)",
+              "value": "union"
+            },
+            {
+              "label": "Weighted Voting",
+              "value": "weighted"
+            }
+          ],
+          "type": "select"
+        },
+        "min_agreement": {
+          "control_name": "MiDi_CombinedSelection_min_agreement",
+          "default": 2,
+          "description": "Minimum number of methods that must agree (for weighted voting)",
+          "label": "Minimum Agreement",
+          "max": 5,
+          "min": 1,
+          "step": 1,
+          "type": "int"
+        }
+      }
+    }
+  ],
+  "success": true
+}

@@ -499,7 +499,7 @@
                                                     <i class="fas fa-user-injured text-primary me-2"></i>
                                                     Patient Data File
                                                 </label>
-                                                <select class="form-select" id="editorPatientFileSelect" onchange="validateAnalysisEditor()">
+                                                <select class="form-select" id="editorPatientFileSelect" onchange="window.analysisManager && window.analysisManager.validateAnalysisEditor && window.analysisManager.validateAnalysisEditor()">
                                                     <option value="">Select patient file...</option>
                                                     <!-- Options will be populated dynamically -->
                                                 </select>
@@ -514,7 +514,7 @@
                                                     <i class="fas fa-sitemap text-info me-2"></i>
                                                     Taxonomy Data File
                                                 </label>
-                                                <select class="form-select" id="editorTaxonomyFileSelect" onchange="validateAnalysisEditor()">
+                                                <select class="form-select" id="editorTaxonomyFileSelect" onchange="window.analysisManager && window.analysisManager.validateAnalysisEditor && window.analysisManager.validateAnalysisEditor()">
                                                     <option value="">Select taxonomy file...</option>
                                                     <!-- Options will be populated dynamically -->
                                                 </select>
@@ -529,7 +529,7 @@
                                                     <i class="fas fa-chart-bar text-success me-2"></i>
                                                     Bracken Results File
                                                 </label>
-                                                <select class="form-select" id="editorBrackenFileSelect" onchange="validateAnalysisEditor()">
+                                                <select class="form-select" id="editorBrackenFileSelect" onchange="window.analysisManager && window.analysisManager.validateAnalysisEditor && window.analysisManager.validateAnalysisEditor()">
                                                     <option value="">Select bracken file...</option>
                                                     <!-- Options will be populated dynamically -->
                                                 </select>
@@ -594,7 +594,7 @@
                                                         <i class="fas fa-timeline text-warning me-2"></i>
                                                         Bracken Time Point
                                                     </label>
-                                                    <select class="form-select" id="editorBrackenTimePointSelect" onchange="updateTimePointDescription()">
+                                                    <select class="form-select" id="editorBrackenTimePointSelect" onchange="window.analysisManager && window.analysisManager.updateTimePointDescription && window.analysisManager.updateTimePointDescription()">
                                                         <option value="">Choose time point...</option>
                                                         <!-- Options will be populated dynamically -->
                                                     </select>
@@ -602,7 +602,7 @@
                                                 <div class="col-md-6">
                                                     <label class="form-label">Run Analysis</label>
                                                     <div>
-                                                        <button type="button" class="btn btn-primary w-100" onclick="runAnalysisFromEditor()">
+                                                        <button type="button" class="btn btn-primary w-100" onclick="window.analysisManager && window.analysisManager.runAnalysisFromEditor && window.analysisManager.runAnalysisFromEditor()">
                                                             <i class="fas fa-play me-1"></i>Run Analysis
                                                         </button>
                                                     </div>
@@ -773,7 +773,7 @@
                                                 <button type="button" class="btn btn-success" onclick="saveAnalysis()">
                                                     <i class="fas fa-save me-1"></i>Save
                                                 </button>
-                                                <button type="button" class="btn btn-primary" onclick="runAnalysisFromEditor()">
+                                                <button type="button" class="btn btn-primary" onclick="window.analysisManager && window.analysisManager.runAnalysisFromEditor && window.analysisManager.runAnalysisFromEditor()">
                                                     <i class="fas fa-play me-1"></i>Run Analysis
                                                 </button>
                                             </div>
@@ -2583,30 +2583,7 @@ window.initializeTimePoints = function() {
     });
 };
 
-window.updateTimePointDescription = function() {
-    const select = document.getElementById('editorBrackenTimePointSelect');
-    const descriptionDiv = document.getElementById('timePointDescription');
-    
-    if (select.value && TIME_POINTS[select.value]) {
-        const timePoint = TIME_POINTS[select.value];
-        descriptionDiv.innerHTML = `
-            <div class="mb-2">
-                <strong>Description:</strong> ${timePoint.description}
-            </div>
-            <div class="mb-2">
-                <strong>Suffix:</strong> <code>${timePoint.suffix || 'None'}</code>
-            </div>
-            <div class="mb-2">
-                <strong>Function:</strong> <code>${timePoint.function}</code>
-            </div>
-            <div>
-                <strong>Time Point:</strong> ${timePoint.timepoint}
-            </div>
-        `;
-    } else {
-        descriptionDiv.innerHTML = '<p class="mb-0">Select a time point to see detailed information about the sample timing and data processing.</p>';
-    }
-};
+// All time point description logic is now handled by window.analysisManager in dataset_analysis.js
 
 // Global alert function
 window.showAlert = function(message, type) {

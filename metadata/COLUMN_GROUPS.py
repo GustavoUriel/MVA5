@@ -1,13 +1,13 @@
 COLUMN_GROUPS = {
     'demographics': {
-        'title': 'Demographics1',
-        'name': 'Demographics2',
+        'title': 'Demographics',
+        'name': 'Demographics',
         'control_name': 'AttrGroup_Demographics',
         'columns': [
             'age', 'gender', 'race', 'ethnicity',
             'weight_kg', 'height_m', 'bmi', 'smoking', 'smoking_status'
         ],
-        'default_value': False
+        'default_value': True
     },
 
     'disease_characteristics': {

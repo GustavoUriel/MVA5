@@ -1,6 +1,7 @@
 ATTRIBUTE_DISCARDING = {
     'prevalence_filtering': {
-        'name': 'Prevalence Filtering',
+        'label': 'Prevalence Filtering',
+        'control_name': 'AtDi_Prevalence_Filtering',
         'description': 'Discard taxa present in fewer than a specified percentage of samples',
         'param_prefix': 'AtDi_Preval_',
         'parameters': {
@@ -32,8 +33,8 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Discard taxa present in fewer than a specified percentage of samples, removing unreliable measurements.',
             'algorithm': 'For each taxon: prevalence = (abundance > detection_threshold).sum() / total_samples; if prevalence < min_prevalence_threshold: discard_taxon',
             'parameters': [
-                {'name': 'Detection threshold', 'default': '>0', 'description': 'Minimum abundance to consider taxon present'},
-                {'name': 'Minimum prevalence', 'default': '10% of samples', 'description': 'Minimum fraction of samples where taxon must be present'}
+                {'label': 'Detection threshold', 'default': '>0', 'description': 'Minimum abundance to consider taxon present'},
+                {'label': 'Minimum prevalence', 'default': '10% of samples', 'description': 'Minimum fraction of samples where taxon must be present'}
             ],
             'pros': [
                 'Data quality control - Eliminates measurement artifacts and rare taxa',
@@ -58,7 +59,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'abundance_filtering': {
-        'name': 'Abundance Filtering',
+        'label': 'Abundance Filtering',
+        'control_name': 'AtDi_Abundance_Filtering',
         'description': 'Discard taxa with consistently low abundance across samples',
         'param_prefix': 'AtDi_Abun_',
         'parameters': {
@@ -90,8 +92,8 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Discard taxa with consistently low abundance across samples, focusing on ecologically important microbes.',
             'algorithm': 'For each taxon: mean_abundance = taxon_abundances.mean(); median_abundance = taxon_abundances.median(); if mean_abundance < min_mean_threshold or median_abundance < min_median_threshold: discard_taxon',
             'parameters': [
-                {'name': 'Minimum mean abundance', 'default': '0.01% relative abundance', 'description': 'Minimum mean relative abundance threshold'},
-                {'name': 'Minimum median abundance', 'default': '0.005% relative abundance', 'description': 'Minimum median relative abundance threshold'}
+                {'label': 'Minimum mean abundance', 'default': '0.01% relative abundance', 'description': 'Minimum mean relative abundance threshold'},
+                {'label': 'Minimum median abundance', 'default': '0.005% relative abundance', 'description': 'Minimum median relative abundance threshold'}
             ],
             'pros': [
                 'Ecological relevance - Focuses on microbes that contribute meaningfully to community',
@@ -116,7 +118,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'variance_based_selection': {
-        'name': 'Variance-Based Selection',
+        'label': 'Variance-Based Selection',
+        'control_name': 'AtDi_Variance_Selection',
         'description': 'Select taxa with highest variance across samples',
         'param_prefix': 'AtDi_Variance_',
         'parameters': {
@@ -149,8 +152,8 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Select taxa with highest variance across samples, identifying microbes that differ between patients or conditions.',
             'algorithm': 'For each taxon: variance = taxon_abundances.var(); coefficient_of_variation = variance / mean_abundance; rank_taxa_by_variance(); select_top_n_most_variable()',
             'parameters': [
-                {'name': 'Number of taxa to select', 'default': '50', 'description': 'Maximum number of most variable taxa to retain'},
-                {'name': 'Variance metric', 'default': 'Coefficient of Variation', 'description': 'Method to measure taxon variability'}
+                {'label': 'Number of taxa to select', 'default': '50', 'description': 'Maximum number of most variable taxa to retain'},
+                {'label': 'Variance metric', 'default': 'Coefficient of Variation', 'description': 'Method to measure taxon variability'}
             ],
             'pros': [
                 'Biological heterogeneity - Identifies taxa that vary between individuals',
@@ -176,7 +179,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'univariate_pfs_screening': {
-        'name': 'Univariate PFS Screening',
+        'label': 'Univariate PFS Screening',
+        'control_name': 'AtDi_Univariate_PFS_Screening',
         'description': 'Test each taxon individually against PFS using statistical models',
         'param_prefix': 'AtDi_UniPFS_',
         'parameters': {
@@ -221,9 +225,9 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Test each taxon individually against PFS using statistical models, keeping only those showing significant associations.',
             'algorithm': 'For each taxon: model = fit_statistical_model(pfs_outcomes, taxon_abundance); if p_value < significance_threshold: keep_taxon',
             'parameters': [
-                {'name': 'Statistical test', 'default': 'Cox Regression', 'description': 'Method for testing PFS association'},
-                {'name': 'Significance threshold', 'default': 'p < 0.05', 'description': 'P-value threshold for significance'},
-                {'name': 'Multiple testing correction', 'default': 'FDR', 'description': 'Method to correct for multiple hypothesis testing'}
+                {'label': 'Statistical test', 'default': 'Cox Regression', 'description': 'Method for testing PFS association'},
+                {'label': 'Significance threshold', 'default': 'p < 0.05', 'description': 'P-value threshold for significance'},
+                {'label': 'Multiple testing correction', 'default': 'FDR', 'description': 'Method to correct for multiple hypothesis testing'}
             ],
             'pros': [
                 'Direct clinical relevance - Only keeps taxa associated with outcomes',
@@ -249,7 +253,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'multivariate_pfs_screening': {
-        'name': 'Multivariate PFS Screening',
+        'label': 'Multivariate PFS Screening',
+        'control_name': 'AtDi_MultiPFS_Screening',
         'description': 'Test taxa in multivariate models including clinical variables',
         'param_prefix': 'AtDi_MultiPFS_',
         'parameters': {
@@ -301,10 +306,10 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Test taxa in multivariate models including clinical variables, selecting those significant after adjusting for confounders.',
             'algorithm': 'Fit full multivariate model: PFS ~ clinical_vars + all_taxa; Extract significant taxa (p < 0.05 after clinical adjustment)',
             'parameters': [
-                {'name': 'Significance threshold', 'default': 'p < 0.05', 'description': 'P-value threshold for significance after clinical adjustment'},
-                {'name': 'Regularization strength', 'default': '0.1', 'description': 'Penalty strength for numerical stability'},
-                {'name': 'Maximum iterations', 'default': '10', 'description': 'Maximum iterations for iterative refinement'},
-                {'name': 'Minimum taxa to retain', 'default': '5', 'description': 'Minimum number of taxa to keep for model stability'}
+                {'label': 'Significance threshold', 'default': 'p < 0.05', 'description': 'P-value threshold for significance after clinical adjustment'},
+                {'label': 'Regularization strength', 'default': '0.1', 'description': 'Penalty strength for numerical stability'},
+                {'label': 'Maximum iterations', 'default': '10', 'description': 'Maximum iterations for iterative refinement'},
+                {'label': 'Minimum taxa to retain', 'default': '5', 'description': 'Minimum number of taxa to keep for model stability'}
             ],
             'pros': [
                 'Clinically realistic - Considers clinical context and confounding',
@@ -330,7 +335,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'stability_selection': {
-        'name': 'Stability Selection',
+        'label': 'Stability Selection',
+        'control_name': 'AtDi_Stability_Selection',
         'description': 'Use bootstrap resampling to identify taxa with consistently significant PFS associations',
         'param_prefix': 'AtDi_Stability_',
         'parameters': {
@@ -372,9 +378,9 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Use bootstrap resampling to identify taxa with consistently significant PFS associations across multiple subsamples.',
             'algorithm': 'For each bootstrap sample: fit PFS model; calculate stability scores based on consistency across bootstraps; select taxa above stability threshold',
             'parameters': [
-                {'name': 'Number of bootstraps', 'default': '100', 'description': 'Number of bootstrap samples for stability assessment'},
-                {'name': 'Stability threshold', 'default': '0.7', 'description': 'Minimum fraction of bootstraps where taxon must be significant'},
-                {'name': 'Bootstrap sample size', 'default': '80%', 'description': 'Fraction of original sample size for each bootstrap'}
+                {'label': 'Number of bootstraps', 'default': '100', 'description': 'Number of bootstrap samples for stability assessment'},
+                {'label': 'Stability threshold', 'default': '0.7', 'description': 'Minimum fraction of bootstraps where taxon must be significant'},
+                {'label': 'Bootstrap sample size', 'default': '80%', 'description': 'Fraction of original sample size for each bootstrap'}
             ],
             'pros': [
                 'Robust identification - Finds consistently associated taxa',
@@ -400,7 +406,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'information_theoretic_selection': {
-        'name': 'Information-Theoretic Selection',
+        'label': 'Information-Theoretic Selection', 
+        'control_name': 'AtDi_Information_Theoretic_Selection',
         'description': 'Select taxa based on mutual information with PFS outcomes',
         'param_prefix': 'AtDi_InfoTheo_',
         'parameters': {
@@ -443,9 +450,9 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Select taxa based on mutual information with PFS outcomes, capturing non-linear and complex relationships.',
             'algorithm': 'For each taxon: calculate mutual information I(taxon_abundance; pfs_outcome); test significance against null distribution',
             'parameters': [
-                {'name': 'Mutual information estimator', 'default': 'K-Nearest Neighbors', 'description': 'Method for estimating mutual information'},
-                {'name': 'Number of permutations', 'default': '1000', 'description': 'Number of permutations for significance testing'},
-                {'name': 'Significance threshold', 'default': 'p < 0.05', 'description': 'P-value threshold for significance'}
+                {'label': 'Mutual information estimator', 'default': 'K-Nearest Neighbors', 'description': 'Method for estimating mutual information'},
+                {'label': 'Number of permutations', 'default': '1000', 'description': 'Number of permutations for significance testing'},
+                {'label': 'Significance threshold', 'default': 'p < 0.05', 'description': 'P-value threshold for significance'}
             ],
             'pros': [
                 'Non-linear relationships - Captures complex taxon-PFS associations',
@@ -471,7 +478,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'boruta_algorithm': {
-        'name': 'Boruta Algorithm',
+        'label': 'Boruta Algorithm',
+        'control_name': 'AtDi_Boruta_Algorithm',
         'description': 'Iterative algorithm using random forest to identify all features with predictive relevance',
         'param_prefix': 'AtDi_Boruta_',
         'parameters': {
@@ -513,9 +521,9 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Iterative algorithm using random forest to identify all features with predictive relevance, not just the strongest ones.',
             'algorithm': 'Add shadow features; train random forest; compare real vs shadow feature importance; iteratively remove features less important than best shadow',
             'parameters': [
-                {'name': 'Shadow features per real feature', 'default': '3', 'description': 'Number of randomized shadow features to create'},
-                {'name': 'Maximum iterations', 'default': '100', 'description': 'Maximum iterations for Boruta algorithm'},
-                {'name': 'Random forest trees', 'default': '1000', 'description': 'Number of trees in random forest'}
+                {'label': 'Shadow features per real feature', 'default': '3', 'description': 'Number of randomized shadow features to create'},
+                {'label': 'Maximum iterations', 'default': '100', 'description': 'Maximum iterations for Boruta algorithm'},
+                {'label': 'Random forest trees', 'default': '1000', 'description': 'Number of trees in random forest'}
             ],
             'pros': [
                 'All-relevant selection - Finds all predictive taxa, not just top performers',
@@ -541,7 +549,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'elastic_net_regularization': {
-        'name': 'Elastic Net Regularization',
+        'label': 'Elastic Net Regularization',
+        'control_name': 'AtDi_ElasticNet_Regularization',
         'description': 'Use L1/L2 regularized regression to automatically select taxa with PFS predictive value',
         'param_prefix': 'AtDi_ElasticNet_',
         'parameters': {
@@ -583,9 +592,9 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Use L1/L2 regularized regression to automatically select taxa with PFS predictive value through coefficient shrinkage.',
             'algorithm': 'Optimize elastic net: minimize loss + λ₁||β||₁ + λ₂||β||₂; select taxa with non-zero coefficients',
             'parameters': [
-                {'name': 'L1 ratio', 'default': '0.5', 'description': 'Balance between L1 (0) and L2 (1) regularization'},
-                {'name': 'Maximum iterations', 'default': '1000', 'description': 'Maximum iterations for optimization'},
-                {'name': 'Convergence tolerance', 'default': '1e-4', 'description': 'Tolerance for convergence in optimization'}
+                {'label': 'L1 ratio', 'default': '0.5', 'description': 'Balance between L1 (0) and L2 (1) regularization'},
+                {'label': 'Maximum iterations', 'default': '1000', 'description': 'Maximum iterations for optimization'},
+                {'label': 'Convergence tolerance', 'default': '1e-4', 'description': 'Tolerance for convergence in optimization'}
             ],
             'pros': [
                 'Automated selection - No manual threshold setting required',
@@ -612,7 +621,8 @@ ATTRIBUTE_DISCARDING = {
     },
 
     'combined_multi_method': {
-        'name': 'Combined Multi-Method Selection',
+        'label': 'Combined Multi-Method Selection',
+        'control_name': 'AtDi_Combined_Multi_Method_Selection',
         'description': 'Apply multiple selection methods and take consensus to identify robustly selected taxa',
         'param_prefix': 'AtDi_CombMulti_',
         'parameters': {
@@ -646,8 +656,8 @@ ATTRIBUTE_DISCARDING = {
             'description': 'Apply multiple selection methods and take consensus to identify robustly selected taxa.',
             'algorithm': 'Apply multiple methods; take intersection/union/weighted consensus of selected taxa',
             'parameters': [
-                {'name': 'Consensus rule', 'default': 'Intersection', 'description': 'How to combine results from multiple methods'},
-                {'name': 'Minimum agreement', 'default': '2', 'description': 'Minimum number of methods that must agree'}
+                {'label': 'Consensus rule', 'default': 'Intersection', 'description': 'How to combine results from multiple methods'},
+                {'label': 'Minimum agreement', 'default': '2', 'description': 'Minimum number of methods that must agree'}
             ],
             'pros': [
                 'Robust selection - Taxa selected by multiple methods are more reliable',

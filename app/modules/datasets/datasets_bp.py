@@ -408,12 +408,8 @@ def get_column_groups(dataset_id):
   try:
     COLUMN_GROUPS = load_metadata_module('COLUMN_GROUPS')
 
-    # Convert to ordered list to preserve the order from the metadata file
-    # Support two metadata shapes:
-    # 1) COLUMN_GROUPS = { 'group_key': [col1, col2, ...], ... }
-    # 2) COLUMN_GROUPS = { 'group_key': {'title': 'Display Name', 'columns': [...]}, ... }
-
-    ordered_groups = []
+    # Convert to array format for frontend with all data from source file
+    column_groups_array = []
     for group_key, value in COLUMN_GROUPS.items():
       if isinstance(value, dict):
         # Copy all fields from the dict, and add group_key for reference
@@ -425,11 +421,11 @@ def get_column_groups(dataset_id):
           'columns': value if value is not None else [],
           'group_key': group_key
         }
-      ordered_groups.append(group_obj)
+      column_groups_array.append(group_obj)
 
     return jsonify({
         'success': True,
-        'column_groups': ordered_groups
+        'column_groups': column_groups_array
     })
   except Exception as e:
     return jsonify({
@@ -441,34 +437,21 @@ def get_column_groups(dataset_id):
 @datasets_bp.route('/dataset/<int:dataset_id>/metadata/attribute-discarding')
 @login_required
 def get_attribute_discarding_policies(dataset_id):
-  """Get attribute discarding policies metadata"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
 
+  """Get attribute discarding policies metadata"""
   try:
     ATTRIBUTE_DISCARDING = load_metadata_module('ATTRIBUTE_DISCARDING')
 
-    # Convert to ordered list to preserve the order from the metadata file
-    # Python 3.7+ dictionaries maintain insertion order
-    ordered_policies = []
+    # Convert to array format for frontend with all data from source file
+    discarding_policies_array = []
     for policy_key, policy_data in ATTRIBUTE_DISCARDING.items():
-      if policy_key != 'DEFAULT_DISCARDING_SETTINGS':  # Skip the default settings
-        ordered_policies.append({
-            'key': policy_key,
-            'name': policy_data.get('name', policy_key),
-            'description': policy_data.get('description', ''),
-            'parameters': policy_data.get('parameters', {}),
-            'enabled': policy_data.get('enabled', False),
-            'order': policy_data.get('order', 999),
-            'info': policy_data.get('info', {})
-        })
-
-    # Sort by order
-    ordered_policies.sort(key=lambda x: x['order'])
+      policy_obj = dict(policy_data)
+      policy_obj['policy_key'] = policy_key
+      discarding_policies_array.append(policy_obj)
 
     return jsonify({
         'success': True,
-        'discarding_policies': ordered_policies
+        'attribute_discarding_policies': discarding_policies_array
     })
   except Exception as e:
     return jsonify({
@@ -481,9 +464,6 @@ def get_attribute_discarding_policies(dataset_id):
 @login_required
 def calculate_remaining_attributes(dataset_id):
   """Calculate how many attributes remain after applying discarding policies"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
   try:
     # For now, return placeholder message as requested
     return jsonify({
@@ -502,33 +482,21 @@ def calculate_remaining_attributes(dataset_id):
 @login_required
 def get_microbial_discarding_policies(dataset_id):
   """Get microbial discarding policies metadata"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
 
   try:
     MICROBIAL_DISCARDING = load_metadata_module('MICROBIAL_DISCARDING')
 
-    # Convert to ordered list to preserve the order from the metadata file
-    # Python 3.7+ dictionaries maintain insertion order
-    ordered_policies = []
+    # Convert to array format for frontend with all data from source file
+    discarding_policies_array = []
     for policy_key, policy_data in MICROBIAL_DISCARDING.items():
       if policy_key != 'DEFAULT_MICROBIAL_DISCARDING_SETTINGS':  # Skip the default settings
-        ordered_policies.append({
-            'key': policy_key,
-            'name': policy_data.get('name', policy_key),
-            'description': policy_data.get('description', ''),
-            'parameters': policy_data.get('parameters', {}),
-            'enabled': policy_data.get('enabled', False),
-            'order': policy_data.get('order', 999),
-            'info': policy_data.get('info', {})
-        })
-
-    # Sort by order
-    ordered_policies.sort(key=lambda x: x['order'])
+        policy_obj = dict(policy_data)
+        policy_obj['policy_key'] = policy_key
+        discarding_policies_array.append(policy_obj)
 
     return jsonify({
         'success': True,
-        'discarding_policies': ordered_policies
+        'microbial_discarding_policies': discarding_policies_array
     })
   except Exception as e:
     return jsonify({
@@ -565,30 +533,21 @@ def get_microbial_grouping_methods(dataset_id):
   dataset = Dataset.query.filter_by(
       id=dataset_id, user_id=current_user.id).first_or_404()
 
+
   try:
     MICROBIAL_GROUPING = load_metadata_module('MICROBIAL_GROUPING')
 
-    # Convert to ordered list to preserve the order from the metadata file
-    # Python 3.7+ dictionaries maintain insertion order
-    ordered_methods = []
+    # Convert to array format for frontend with all data from source file
+    grouping_methods_array = []
     for method_key, method_data in MICROBIAL_GROUPING.items():
       if method_key != 'DEFAULT_MICROBIAL_GROUPING_SETTINGS':  # Skip the default settings
-        ordered_methods.append({
-            'key': method_key,
-            'name': method_data.get('name', method_key),
-            'description': method_data.get('description', ''),
-            'parameters': method_data.get('parameters', {}),
-            'enabled': method_data.get('enabled', False),
-            'order': method_data.get('order', 999),
-            'info': method_data.get('info', {})
-        })
-
-    # Sort by order
-    ordered_methods.sort(key=lambda x: x['order'])
+        method_obj = dict(method_data)
+        method_obj['method_key'] = method_key
+        grouping_methods_array.append(method_obj)
 
     return jsonify({
         'success': True,
-        'grouping_methods': ordered_methods
+        'microbial_grouping_methods': grouping_methods_array
     })
   except Exception as e:
     return jsonify({
@@ -607,22 +566,17 @@ def get_stratifications(dataset_id):
   try:
     POPULATION_SUBGROUPS = load_metadata_module('POPULATION_SUBGROUPS')
 
-    # Flatten stratifications for frontend compatibility
-    flat_stratifications = {}
-    for subgroup_key, subgroup_data in POPULATION_SUBGROUPS.items():
-      if subgroup_key != 'DEFAULT_POPULATION_SUBGROUPS_SETTINGS':
-        flat_stratifications[subgroup_key] = {
-          'name': subgroup_data.get('name', subgroup_key),
-          'description': subgroup_data.get('description', ''),
-          'parameters': subgroup_data.get('parameters', {}),
-          'info': subgroup_data.get('info', {}),
-          'group_info': subgroup_data.get('group_info', ''),
-          'subgroups': subgroup_data.get('subgroups', [])
-        }
+    # Convert to array format for frontend with all data from source file
+    stratifications_array = []
+    for stratification_key, stratification_data in POPULATION_SUBGROUPS.items():
+      if stratification_key != 'DEFAULT_POPULATION_SUBGROUPS_SETTINGS':  # Skip the default settings
+        stratification_obj = dict(stratification_data)
+        stratification_obj['stratification_key'] = stratification_key
+        stratifications_array.append(stratification_obj)
 
     return jsonify({
       'success': True,
-      'stratifications': flat_stratifications
+      'stratifications': stratifications_array
     })
   except Exception as e:
     return jsonify({
@@ -646,9 +600,16 @@ def get_clustering_methods(dataset_id):
     default_method = getattr(
         clustering_module, 'DEFAULT_CLUSTERING_METHOD', 'kmeans')
 
+    # Convert to array format for frontend with all data from source file
+    clustering_methods_array = []
+    for method_key, method_data in CLUSTERING_METHODS.items():
+      method_obj = dict(method_data)
+      method_obj['method_key'] = method_key
+      clustering_methods_array.append(method_obj)
+
     return jsonify({
         'success': True,
-        'methods': CLUSTERING_METHODS,
+        'clustering_methods': clustering_methods_array,
         'default_method': default_method
     })
   except Exception as e:
@@ -710,9 +671,16 @@ def get_cluster_representative_methods(dataset_id):
         cluster_rep_module, 'DEFAULT_REPRESENTATIVE_METHOD', None)
     method_categories = getattr(cluster_rep_module, 'METHOD_CATEGORIES', {})
 
+    # Convert to array format for frontend with all data from source file
+    cluster_representative_methods_array = []
+    for method_key, method_data in CLUSTER_REPRESENTATIVE_METHODS.items():
+      method_obj = dict(method_data)
+      method_obj['method_key'] = method_key
+      cluster_representative_methods_array.append(method_obj)
+
     return jsonify({
         'success': True,
-        'cluster_representative_methods': CLUSTER_REPRESENTATIVE_METHODS,
+        'cluster_representative_methods': cluster_representative_methods_array,
         'default_method': default_method,
         'method_categories': method_categories
     })
@@ -1093,51 +1061,16 @@ def get_bracken_time_points(dataset_id):
     time_points_module = importlib.import_module('metadata.BRACKEN_TIME_POINTS')
     default_time_point = getattr(time_points_module, 'DEFAULT_TIME_POINT', 'pre')
 
-    # Read the file content to extract keys in order
-    metadata_folder = os.path.join(current_app.root_path, '..', 'metadata')
-    file_path = os.path.join(metadata_folder, 'BRACKEN_TIME_POINTS.py')
-
-    with open(file_path, 'r', encoding='utf-8') as f:
-      content = f.read()
-
-    # Extract dictionary keys in the order they appear in the file
-    import re
-    # Find all dictionary keys (quoted strings followed by colon)
-    key_pattern = r"'([^']+)'\s*:\s*\{"
-    keys_in_order = re.findall(key_pattern, content)
-
-    # Filter out nested keys and keep only top-level keys
-    top_level_keys = []
-    lines = content.split('\n')
-    for line in lines:
-      # Look for lines that start with 4 spaces and have a quoted key followed by colon and brace
-      if re.match(r'^\s{4}\'([^\']+)\'\s*:\s*\{', line):
-        match = re.search(r"'([^']+)'\s*:", line)
-        if match:
-          key = match.group(1)
-          if key not in top_level_keys:
-            top_level_keys.append(key)
-
-    keys_in_order = top_level_keys
-
-    # Create ordered data using the keys in file order
-    time_points = []
-    for key in keys_in_order:
-      if key in bracken_time_points:
-        # Use the title field from metadata instead of formatting the key
-        title = bracken_time_points[key].get('title', key.replace('_', ' ').title())
-        time_points.append({
-            'key': key,
-            'title': title,
-            'description': bracken_time_points[key].get('description', ''),
-            'suffix': bracken_time_points[key].get('suffix', ''),
-            'timepoint': bracken_time_points[key].get('timepoint', ''),
-            'function': bracken_time_points[key].get('function', '')
-        })
+    # Convert to array format for frontend
+    time_points_array = []
+    for key, value in bracken_time_points.items():
+      time_point_data = dict(value)
+      time_point_data['key'] = key
+      time_points_array.append(time_point_data)
 
     return jsonify({
         'success': True,
-        'time_points': time_points,
+        'bracken_time_points': time_points_array,
         'default_time_point': default_time_point
     })
   except Exception as e:
@@ -1167,9 +1100,16 @@ def get_analysis_methods(dataset_id):
     method_categories = getattr(analysis_module, 'METHOD_CATEGORIES', {})
     method_descriptions = getattr(analysis_module, 'METHOD_DESCRIPTIONS', {})
 
+    # Convert to array format for frontend with all data from source file
+    analysis_methods_array = []
+    for method_key, method_data in analysis_methods.items():
+      method_obj = dict(method_data)
+      method_obj['method_key'] = method_key
+      analysis_methods_array.append(method_obj)
+
     return jsonify({
         'success': True,
-        'methods': analysis_methods,
+        'analysis_methods': analysis_methods_array,
         'default_method': default_method,
         'categories': method_categories,
         'descriptions': method_descriptions

@@ -41,8 +41,8 @@ class DatasetAnalysisManager {
     });
 
     // Percentage range inputs
-    const topPercentage = document.getElementById("topPercentage");
-    const bottomPercentage = document.getElementById("bottomPercentage");
+    const topPercentage = document.getElementById("extremes_top");
+    const bottomPercentage = document.getElementById("extremes_bottom");
 
     if (topPercentage) {
       topPercentage.addEventListener("input", (e) => this.updateTopPercentage(e.target.value));
@@ -53,13 +53,13 @@ class DatasetAnalysisManager {
     }
 
     // Linked percentages checkbox
-    const linkCheckbox = document.getElementById("linkPercentages");
+    const linkCheckbox = document.getElementById("extremes_linked");
     if (linkCheckbox) {
       linkCheckbox.addEventListener("change", () => this.toggleLinkedPercentages());
     }
 
     // Selection mode toggle
-    const selectionModeToggle = document.getElementById("selectionModeToggle");
+    const selectionModeToggle = document.getElementById("extremes_mode");
     if (selectionModeToggle) {
       selectionModeToggle.addEventListener("change", () => this.toggleSelectionMode());
     }
@@ -620,13 +620,13 @@ class DatasetAnalysisManager {
 
   // Collect extreme time point configuration
   collectExtremeTimePointConfig() {
-    const isValueMode = document.getElementById("selectionModeToggle").checked;
+    const isValueMode = document.getElementById("extremes_mode").checked;
 
     return {
       mode: isValueMode ? "value" : "percentage",
-      topPercentage: parseInt(document.getElementById("topPercentage").value),
-      bottomPercentage: parseInt(document.getElementById("bottomPercentage").value),
-      linked: document.getElementById("linkPercentages").checked,
+      topPercentage: parseInt(document.getElementById("extremes_top").value),
+      bottomPercentage: parseInt(document.getElementById("extremes_bottom").value),
+      linked: document.getElementById("extremes_linked").checked,
     };
   }
 
@@ -846,10 +846,11 @@ class DatasetAnalysisManager {
           const minAttr = paramConfig.min !== undefined ? `min="${paramConfig.min}"` : '';
           const maxAttr = paramConfig.max !== undefined ? `max="${paramConfig.max}"` : '';
           const value = paramConfig.default !== undefined ? paramConfig.default : '';
+          const controlName = paramConfig.control_name || `${policyKey}_param_${paramKey}`;
 
           return `<div class="col-md-6 mb-2">
-                    <label class="form-label fw-bold" for="${policyKey}_param_${paramKey}">${paramConfig.label || paramKey}</label>
-                    <input type="number" class="form-control" id="${policyKey}_param_${paramKey}" name="${policyKey}_param_${paramKey}" value="${value}" step="${step}" ${minAttr} ${maxAttr}>
+                    <label class="form-label fw-bold" for="${controlName}">${paramConfig.label || paramKey}</label>
+                    <input type="number" class="form-control" id="${controlName}" name="${controlName}" value="${value}" step="${step}" ${minAttr} ${maxAttr}>
                     <div class="form-text">${paramConfig.description || ''}</div>
                   </div>`;
         }
@@ -860,18 +861,20 @@ class DatasetAnalysisManager {
             const sel = (o.value === paramConfig.default) ? 'selected' : '';
             return `<option value="${o.value}" ${sel}>${o.label}</option>`;
           }).join('');
+          const controlName = paramConfig.control_name || `${policyKey}_param_${paramKey}`;
 
           return `<div class="col-md-6 mb-2">
-                    <label class="form-label fw-bold" for="${policyKey}_param_${paramKey}">${paramConfig.label || paramKey}</label>
-                    <select class="form-select" id="${policyKey}_param_${paramKey}" name="${policyKey}_param_${paramKey}">${opts}</select>
+                    <label class="form-label fw-bold" for="${controlName}">${paramConfig.label || paramKey}</label>
+                    <select class="form-select" id="${controlName}" name="${controlName}">${opts}</select>
                     <div class="form-text">${paramConfig.description || ''}</div>
                   </div>`;
         }
 
         // FALLBACK: text input
+        const controlName = paramConfig.control_name || `${policyKey}_param_${paramKey}`;
         return `<div class="col-md-6 mb-2">
-                  <label class="form-label fw-bold" for="${policyKey}_param_${paramKey}">${paramConfig.label || paramKey}</label>
-                  <input type="text" class="form-control" id="${policyKey}_param_${paramKey}" name="${policyKey}_param_${paramKey}" value="${paramConfig.default !== undefined ? paramConfig.default : ''}">
+                  <label class="form-label fw-bold" for="${controlName}">${paramConfig.label || paramKey}</label>
+                  <input type="text" class="form-control" id="${controlName}" name="${controlName}" value="${paramConfig.default !== undefined ? paramConfig.default : ''}">
                   <div class="form-text">${paramConfig.description || ''}</div>
                 </div>`;
       })
@@ -910,7 +913,7 @@ class DatasetAnalysisManager {
       const data = await DatasetUtils.api.getBrackenTimePoints(this.datasetId);
 
       if (data.success) {
-        this.displayBrackenTimePoints(data.time_points);
+        this.displayBrackenTimePoints(data.bracken_time_points, data.default_time_point);
       } else {
         this.showBrackenTimePointsError(data.message);
       }
@@ -945,17 +948,31 @@ class DatasetAnalysisManager {
     // Initialize descriptions map
     this.timePointDescriptions = {};
 
+    // Handle different API response formats
+    let timePointsArray = timePoints;
+    if (!Array.isArray(timePoints) && timePoints && typeof timePoints === 'object') {
+      // If timePoints is an object {key: description}, convert to array format
+      timePointsArray = Object.entries(timePoints).map(([key, description]) => ({
+        key: key,
+        title: key, // Use key as title, or format if needed
+        description: description || ''
+      }));
+    } else if (!timePoints) {
+      // If timePoints is null, undefined, or falsy, default to empty array
+      timePointsArray = [];
+    }
+
     // Add time point options
-    timePoints.forEach((timePoint, index) => {
+    timePointsArray.forEach((timePoint, index) => {
       const option = document.createElement("option");
-      option.value = timePoint.key;
-      option.textContent = timePoint.title;
+      option.value = timePoint.value;
+      option.textContent = timePoint.label;
 
       // Store description
-      this.timePointDescriptions[timePoint.key] = timePoint.description;
+      this.timePointDescriptions[timePoint.value] = timePoint.description;
 
       // Set as selected if it's the default, otherwise don't select any by default
-      if (defaultTimePoint && timePoint.key === defaultTimePoint) {
+      if (defaultTimePoint && timePoint.value === defaultTimePoint) {
         option.selected = true;
       }
 
@@ -963,15 +980,15 @@ class DatasetAnalysisManager {
     });
 
     // Store the first option value for later
-    if (timePoints.length > 0) {
-      this.firstTimePointKey = timePoints[0].key;
+    if (timePointsArray.length > 0) {
+      this.firstTimePointKey = timePointsArray[0].value;
     }
 
 
     // Update description - placeholder should be selected initially
     this.updateTimePointDescription();
     // Populate sample timepoints comparison UI
-    try { this.displaySampleTimepoints(timePoints); } catch(e) { /* ignore if UI not present */ }
+    try { this.displaySampleTimepoints(timePointsArray); } catch(e) { /* ignore if UI not present */ }
   }
 
   // Show bracken time points error
@@ -1003,13 +1020,13 @@ class DatasetAnalysisManager {
 
       const card = document.createElement('div');
       card.className = 'card p-2 h-100';
-      card.id = `sample_tp_card_${tp.key}`;
-      card.setAttribute('name', `sample_tp_card_${tp.key}`);
+      card.id = `sample_tp_card_${tp.value}`;
+      card.setAttribute('name', `sample_tp_card_${tp.value}`);
       card.innerHTML = `
         <div class="form-check">
-          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="${tp.key}" id="sample_tp_${tp.key}" name="sample_tp_${tp.key}">
-          <label class="form-check-label" for="sample_tp_${tp.key}">
-            <strong>${tp.title}</strong>
+          <input class="form-check-input sample-timepoint-checkbox" type="checkbox" value="${tp.value}" id="sample_tp_${tp.value}" name="sample_tp_${tp.value}">
+          <label class="form-check-label" for="sample_tp_${tp.value}">
+            <strong>${tp.label}</strong>
             <div class="text-muted small">${(tp.description || '').substring(0,120)}${(tp.description||'').length>120?'...':''}</div>
           </label>
         </div>
@@ -1102,52 +1119,34 @@ class DatasetAnalysisManager {
   // Display stratifications
   displayStratifications(stratifications) {
     const container = document.getElementById("stratificationContainer");
-
-        let groupsArray = [];
-        if (Array.isArray(columnGroups)) {
-          groupsArray = columnGroups.map((g, idx) => ({
-            ...g
-          }));
-        } else if (typeof columnGroups === 'object' && columnGroups !== null) {
-          groupsArray = Object.entries(columnGroups).map(([key, val], idx) => ({
-            ...val
-          }));
-        }
-
-        const groupsHTML = groupsArray
-          .map((group, idx) => {
-            const controlName = group.control_name;
-            const groupName = DatasetUtils.formatGroupName(group.name || controlName);
-            const fieldCount = Array.isArray(group.columns) ? group.columns.length : 0;
-            return `
-                <div class="col-md-6 col-lg-4 mb-3">
-                  <div class="card" id="group_card_${controlName}" name="group_card_${controlName}">
-                    <div class="card-body">
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="${groupName}" id="${controlName}" name="${controlName}" data-field-count="${fieldCount}" onchange="window.analysisManager && window.analysisManager.updateColumnGroupsSummary()" checked>
-                        <label class="form-check-label" for="${controlName}">
-                          <strong>${groupName}</strong>
-                          <small class="text-muted d-block">${fieldCount} fields</small>
-                        </label>
-                      </div>
-                    </div>
+    if (!container) return;
+    // Assume stratifications is an array of objects
+    const stratificationsHTML = Array.isArray(stratifications)
+      ? stratifications.map((strat, idx) => {
+          const controlName = strat.control_name || `strat_${idx}`;
+          const stratName = DatasetUtils.formatGroupName(strat.name || controlName);
+          const description = strat.description || "";
+          const subgroupsHtml = Array.isArray(strat.subgroups)
+            ? `<div class="mt-2">${strat.subgroups.map(sg => `<span class='badge bg-info me-1 mb-1'>${sg}</span>`).join("")}</div>`
+            : "";
+          return `
+            <div class="col-md-6 col-lg-4 mb-3">
+              <div class="card" id="strat_card_${controlName}" name="strat_card_${controlName}">
+                <div class="card-body">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${stratName}" id="${controlName}" name="${controlName}" onchange="window.analysisManager && window.analysisManager.updateStratificationSummary()">
+                    <label class="form-check-label" for="${controlName}">
+                      <strong>${stratName}</strong>
+                      <small class="text-muted d-block">${description}</small>
+                    </label>
                   </div>
-                </div>
-              `;
-          })
-          .join("");
-
-        container.innerHTML = groupsHTML;
-        this.updateColumnGroupsSummary();
-                    </div>
-                    ${subgroupsHtml}
-                  </div>
+                  ${subgroupsHtml}
                 </div>
               </div>
-            `;
-      })
-      .join("");
-
+            </div>
+          `;
+        }).join("")
+      : "";
     container.innerHTML = stratificationsHTML;
     this.updateStratificationSummary();
   }
@@ -1156,12 +1155,10 @@ class DatasetAnalysisManager {
   showStratificationsError(message) {
     const container = document.getElementById("stratificationContainer");
     if (container) {
-      container.innerHTML = `
-                <div class="alert alert-warning" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Unable to load stratifications:</strong> ${message}
-                </div>
-            `;
+      container.innerHTML = `<div class="alert alert-warning" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Unable to load stratifications:</strong> ${message}
+      </div>`;
     }
   }
 
@@ -1481,7 +1478,7 @@ class DatasetAnalysisManager {
 
   // Toggle selection mode
   toggleSelectionMode() {
-    const toggle = document.getElementById("selectionModeToggle");
+    const toggle = document.getElementById("extremes_mode");
     const isValueMode = toggle.checked;
 
     const topLabel = document.getElementById("topPercentageLabel");
@@ -1512,11 +1509,11 @@ class DatasetAnalysisManager {
       topPercentageValue.textContent = value + "%";
     }
 
-    const linkCheckbox = document.getElementById("linkPercentages");
+    const linkCheckbox = document.getElementById("extremes_linked");
     if (linkCheckbox && linkCheckbox.checked) {
       // When linked, update the other input and its display directly to avoid
       // calling the counterpart function which would create a recursive loop.
-      const bottomPercentage = document.getElementById("bottomPercentage");
+      const bottomPercentage = document.getElementById("extremes_bottom");
       const bottomPercentageValue = document.getElementById("bottomPercentageValue");
       if (bottomPercentage) {
         bottomPercentage.value = value;
@@ -1536,11 +1533,11 @@ class DatasetAnalysisManager {
       bottomPercentageValue.textContent = value + "%";
     }
 
-    const linkCheckbox = document.getElementById("linkPercentages");
+    const linkCheckbox = document.getElementById("extremes_linked");
     if (linkCheckbox && linkCheckbox.checked) {
       // When linked, update the other input and its display directly to avoid
       // calling the counterpart function which would create a recursive loop.
-      const topPercentage = document.getElementById("topPercentage");
+      const topPercentage = document.getElementById("extremes_top");
       const topPercentageValue = document.getElementById("topPercentageValue");
       if (topPercentage) {
         topPercentage.value = value;
@@ -1555,11 +1552,11 @@ class DatasetAnalysisManager {
 
   // Toggle linked percentages
   toggleLinkedPercentages() {
-    const linkCheckbox = document.getElementById("linkPercentages");
+    const linkCheckbox = document.getElementById("extremes_linked");
 
     if (linkCheckbox && linkCheckbox.checked) {
-      const topPercentage = document.getElementById("topPercentage");
-      const bottomPercentage = document.getElementById("bottomPercentage");
+      const topPercentage = document.getElementById("extremes_top");
+      const bottomPercentage = document.getElementById("extremes_bottom");
 
       if (topPercentage && bottomPercentage) {
         bottomPercentage.value = topPercentage.value;
@@ -1570,83 +1567,115 @@ class DatasetAnalysisManager {
 
   // Update extreme time point summary
   updateExtremeTimePointSummary() {
+    const topPercentage = document.getElementById("extremes_top");
+    const bottomPercentage = document.getElementById("extremes_bottom");
+    const summaryText = document.getElementById("extremeTimePointSummaryText");
+    const topPatientsCount = document.getElementById("topPatientsCount");
+    const bottomPatientsCount = document.getElementById("bottomPatientsCount");
+    const totalPatientsCount = document.getElementById("totalPatientsCount");
+    const selectionModeToggle = document.getElementById("extremes_mode");
+
+    if (!topPercentage || !bottomPercentage || !summaryText) return;
+
+    const topPercent = parseInt(topPercentage.value);
+    const bottomPercent = parseInt(bottomPercentage.value);
+    const isValueMode = selectionModeToggle ? selectionModeToggle.checked : false;
+
+    // Get total patient count from the selected patient file
     const patientFileSelect = document.getElementById("editorPatientFileSelect");
 
     if (patientFileSelect && patientFileSelect.value) {
-      this.loadPatientCount();
+      // Fetch actual patient count from API
+      DatasetUtils.api.call(`/dataset/${this.datasetId}/file/${patientFileSelect.value}/patient-count`)
+        .then((data) => {
+          if (data.success) {
+            const totalPatients = data.patient_count;
+
+            if (isValueMode) {
+              // Value-based selection mode
+              const topPatients = Math.round((topPercent / 100) * totalPatients);
+              const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
+
+              // Update summary text for value mode
+              summaryText.textContent = `Selecting patients with top ${topPercent}% and bottom ${bottomPercent}% of time variable value range for extreme analysis`;
+
+              // Update patient count badges
+              if (topPatientsCount) {
+                topPatientsCount.textContent = `~${topPatients} patients`;
+              }
+              if (bottomPatientsCount) {
+                bottomPatientsCount.textContent = `~${bottomPatients} patients`;
+              }
+              if (totalPatientsCount) {
+                totalPatientsCount.textContent = `${totalPatients} total`;
+              }
+            } else {
+              // Patient-based selection mode
+              const topPatients = Math.round((topPercent / 100) * totalPatients);
+              const bottomPatients = Math.round((bottomPercent / 100) * totalPatients);
+
+              // Update summary text for patient mode
+              summaryText.textContent = `Selecting ${topPercent}% top and ${bottomPercent}% bottom patients for extreme time point analysis`;
+
+              // Update patient count badges
+              if (topPatientsCount) {
+                topPatientsCount.textContent = `${topPatients} patients`;
+              }
+              if (bottomPatientsCount) {
+                bottomPatientsCount.textContent = `${bottomPatients} patients`;
+              }
+              if (totalPatientsCount) {
+                totalPatientsCount.textContent = `${totalPatients} total`;
+              }
+            }
+          } else {
+            console.error("Error loading patient count:", data.error);
+            this.updateExtremeTimePointSummaryFallback();
+          }
+        })
+        .catch((error) => {
+          console.error("Error loading patient count:", error);
+          this.updateExtremeTimePointSummaryFallback();
+        });
     } else {
       this.updateExtremeTimePointSummaryFallback();
     }
   }
 
-  // Load patient count
-  async loadPatientCount() {
-    const patientFileSelect = document.getElementById("editorPatientFileSelect");
 
-    if (patientFileSelect && patientFileSelect.value) {
-      try {
-        const data = await DatasetUtils.api.call(
-          `/dataset/${this.datasetId}/file/${patientFileSelect.value}/patient-count`
-        );
-
-        if (data.success) {
-          const isValueMode = document.getElementById("selectionModeToggle").checked;
-          const topPercentage = parseInt(document.getElementById("topPercentage").value);
-          const bottomPercentage = parseInt(document.getElementById("bottomPercentage").value);
-
-          const topPatientsCount = Math.round((data.patient_count * topPercentage) / 100);
-          const bottomPatientsCount = Math.round((data.patient_count * bottomPercentage) / 100);
-          const totalPatientsCount = data.patient_count;
-
-          this.updatePatientCounts(topPatientsCount, bottomPatientsCount, totalPatientsCount, isValueMode);
-        }
-      } catch (error) {
-        console.error("Failed to load patient count:", error);
-        this.updateExtremeTimePointSummaryFallback();
-      }
-    }
-  }
-
-  // Update patient counts display
-  updatePatientCounts(topCount, bottomCount, totalCount, isValueMode) {
-    const topPatientsCount = document.getElementById("topPatientsCount");
-    const bottomPatientsCount = document.getElementById("bottomPatientsCount");
-    const totalPatientsCount = document.getElementById("totalPatientsCount");
-    const summaryText = document.getElementById("extremeTimePointSummaryText");
-
-    if (topPatientsCount) topPatientsCount.textContent = `${topCount} patients`;
-    if (bottomPatientsCount) bottomPatientsCount.textContent = `${bottomCount} patients`;
-    if (totalPatientsCount) totalPatientsCount.textContent = `${totalCount} total`;
-
-    if (summaryText) {
-      if (isValueMode) {
-        summaryText.textContent = `Will select patients with highest and lowest time values based on value range percentages`;
-      } else {
-        summaryText.textContent = `Will select patients with highest and lowest time values based on patient count percentages`;
-      }
-    }
-  }
 
   // Update extreme time point summary fallback
   updateExtremeTimePointSummaryFallback() {
+    const topPercentage = document.getElementById("extremes_top");
+    const bottomPercentage = document.getElementById("extremes_bottom");
     const summaryText = document.getElementById("extremeTimePointSummaryText");
-    const isValueMode = document.getElementById("selectionModeToggle").checked;
-
-    if (summaryText) {
-      if (isValueMode) {
-        summaryText.textContent = "Select patient file to see patient counts for value range mode";
-      } else {
-        summaryText.textContent = "Select patient file to see patient counts for percentage mode";
-      }
-    }
-
     const topPatientsCount = document.getElementById("topPatientsCount");
     const bottomPatientsCount = document.getElementById("bottomPatientsCount");
     const totalPatientsCount = document.getElementById("totalPatientsCount");
+    const selectionModeToggle = document.getElementById("extremes_mode");
 
-    if (topPatientsCount) topPatientsCount.textContent = "0 patients";
-    if (bottomPatientsCount) bottomPatientsCount.textContent = "0 patients";
-    if (totalPatientsCount) totalPatientsCount.textContent = "0 total";
+    if (!topPercentage || !bottomPercentage || !summaryText) return;
+
+    const topPercent = parseInt(topPercentage.value);
+    const bottomPercent = parseInt(bottomPercentage.value);
+    const isValueMode = selectionModeToggle ? selectionModeToggle.checked : false;
+
+    // Fallback when no file is selected
+    if (isValueMode) {
+      summaryText.textContent = "Select data files to see time variable value range analysis";
+    } else {
+      summaryText.textContent = "Select data files to see patient counts";
+    }
+
+    if (topPatientsCount) {
+      topPatientsCount.textContent = "0 patients";
+    }
+    if (bottomPatientsCount) {
+      bottomPatientsCount.textContent = "0 patients";
+    }
+    if (totalPatientsCount) {
+      totalPatientsCount.textContent = "0 total";
+    }
   }
 
   // Update time point description
@@ -1730,8 +1759,8 @@ class DatasetAnalysisManager {
     });
 
     // Reset percentages
-    const topPercentage = document.getElementById("topPercentage");
-    const bottomPercentage = document.getElementById("bottomPercentage");
+    const topPercentage = document.getElementById("extremes_top");
+    const bottomPercentage = document.getElementById("extremes_bottom");
     if (topPercentage) topPercentage.value = 25;
     if (bottomPercentage) bottomPercentage.value = 25;
 
@@ -1849,8 +1878,17 @@ class DatasetAnalysisManager {
       const data = await DatasetUtils.api.call(`/dataset/${this.datasetId}/metadata/microbial-discarding`);
 
       if (data.success) {
-        this.displayMicrobialDiscardingPolicies(data.discarding_policies);
-        this.microbialDiscardingPoliciesData = data.discarding_policies;
+        // Convert dictionary to array, skipping any default settings key
+        let policiesArray = [];
+        if (data.discarding_policies && typeof data.discarding_policies === 'object' && !Array.isArray(data.discarding_policies)) {
+          policiesArray = Object.entries(data.discarding_policies)
+            .filter(([key, _]) => key !== 'DEFAULT_MICROBIAL_DISCARDING_SETTINGS')
+            .map(([key, value]) => ({ key, ...value }));
+        } else if (Array.isArray(data.discarding_policies)) {
+          policiesArray = data.discarding_policies;
+        }
+        this.displayMicrobialDiscardingPolicies(policiesArray);
+        this.microbialDiscardingPoliciesData = policiesArray;
       } else {
         this.showMicrobialDiscardingPoliciesError(data.message);
       }
@@ -1868,34 +1906,34 @@ class DatasetAnalysisManager {
 
     const policiesHTML = policies
       .map((policy) => {
-        const parameterInputs = this.generateParameterInputs(policy.key, policy.parameters);
+        const parameterInputs = this.generateParameterInputs(policy.control_name, policy.parameters);
         const isEnabled = policy.enabled ? 'checked' : '';
 
         return `
         <div class="col-12 mb-4">
           <div class="card microbial-discarding-policy-card" id="microbial_policy_card_${policy.key}" name="microbial_policy_card_${policy.key}" data-policy-key="${policy.key}">
-                        <div class="card-header">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="microbial_policy_${policy.key}" name="microbial_policy_${policy.key}" ${isEnabled}>
-                                    <label class="form-check-label" for="microbial_policy_${policy.key}">
-                                        ${policy.name}
-                                        <small class="text-muted d-block">${policy.description}</small>
-                                    </label>
-                                </div>
-                                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('${policy.key}')">
-                                    <i class="fas fa-info-circle me-1"></i>Info
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body" id="microbial_policy_body_${policy.key}" name="microbial_policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
-                            <div class="row">
-                                ${parameterInputs}
-                            </div>
-                        </div>
-                    </div>
+            <div class="card-header">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="${policy.control_name}" name="${policy.control_name}" ${isEnabled}>
+                  <label class="form-check-label" for="${policy.control_name}">
+                    ${policy.name}
+                    <small class="text-muted d-block">${policy.description}</small>
+                  </label>
                 </div>
-            `;
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="showMicrobialDiscardingPolicyInfo('${policy.key}')">
+                  <i class="fas fa-info-circle me-1"></i>Info
+                </button>
+              </div>
+            </div>
+            <div class="card-body" id="microbial_policy_body_${policy.key}" name="microbial_policy_body_${policy.key}" style="display: ${policy.enabled ? 'block' : 'none'}">
+              <div class="row">
+                ${parameterInputs}
+              </div>
+            </div>
+          </div>
+        </div>
+        `;
       })
       .join("");
 
