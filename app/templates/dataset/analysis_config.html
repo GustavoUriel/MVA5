@@ -764,24 +764,22 @@
 
                     <!-- Analysis Method Selection -->
                     <div class="row mb-4">
-                      <div class="col-md-6">
+                      <div class="col-md-12">
                         <label for="analysisMethodSelect" class="form-label">
                           <i class="fas fa-cogs text-primary me-2"></i>
                           Analysis Method
                         </label>
-                        <select class="form-select" id="analysisMethodSelect" name="analysisMethodSelect">
-                          <option value="">Select analysis method...</option>
-                          <!-- Options will be populated dynamically -->
-                        </select>
-                        <div class="form-text" id="analysisMethodDescription">
-                          Choose a method for multivariate survival analysis
-                        </div>
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Method Status</label>
-                        <div class="d-flex align-items-center">
-                          <span class="badge bg-secondary me-2" id="analysisMethodStatus">No method selected</span>
-                          <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo()">
+                        <div class="d-flex gap-2 align-items-start">
+                          <div class="flex-grow-1">
+                            <select class="form-select" id="analysisMethodSelect" name="analysisMethodSelect" onchange="updateAnalysisMethod()">
+                              <option value="">Select analysis method...</option>
+                              <!-- Options will be populated dynamically -->
+                            </select>
+                            <div class="form-text" id="analysisMethodDescription">
+                              Choose a method for multivariate survival analysis
+                            </div>
+                          </div>
+                          <button type="button" class="btn btn-outline-info btn-sm" onclick="showAnalysisMethodInfo(document.getElementById('analysisMethodSelect').value)">
                             <i class="fas fa-info-circle me-1"></i>Info
                           </button>
                         </div>
@@ -846,7 +844,7 @@
                     <p class="text-muted mb-3">
                       Select stratification methods to divide the population into subgroups for comparative analysis:
                     </p>
-                    <div id="stratificationContainer" style="display: none">
+                    <div id="stratificationContainer" style="display: none; grid-template-columns: repeat(2, 1fr); gap: .5rem;">
                       <!-- Stratification options will be dynamically populated here -->
                     </div>
 

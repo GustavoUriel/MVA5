@@ -1,3 +1,5 @@
 the clustering naming should not have a Select a method... placeholder.
 When no clustering method is selected the whole clustering naming section should be disabled
-
+in anaalysis section, fix the info button to be standard width
+in bracken timepoints, remove the spaceholder y select the first option (pre)
+rename population sectors comparison to stratification comparison

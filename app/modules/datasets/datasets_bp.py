@@ -560,23 +560,25 @@ def get_microbial_grouping_methods(dataset_id):
 @login_required
 def get_stratifications(dataset_id):
   """Get stratifications metadata"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
   try:
-    POPULATION_SUBGROUPS = load_metadata_module('POPULATION_SUBGROUPS')
+    # Load stratifications from metadata
+    import importlib
+    stratifications_module = importlib.import_module('metadata.POPULATION_STRATIFICATIONS')
+    POPULATION_STRATIFICATIONS = getattr(stratifications_module, 'POPULATION_STRATIFICATIONS', {})
+    default_stratification = getattr(stratifications_module, 'DEFAULT_STRATIFICATION', None)
 
     # Convert to array format for frontend with all data from source file
     stratifications_array = []
-    for stratification_key, stratification_data in POPULATION_SUBGROUPS.items():
-      if stratification_key != 'DEFAULT_POPULATION_SUBGROUPS_SETTINGS':  # Skip the default settings
+    for stratification_key, stratification_data in POPULATION_STRATIFICATIONS.items():
+      if stratification_key != 'DEFAULT_POPULATION_STRATIFICATIONS_SETTINGS':  # Skip the default settings
         stratification_obj = dict(stratification_data)
         stratification_obj['stratification_key'] = stratification_key
         stratifications_array.append(stratification_obj)
 
     return jsonify({
-      'success': True,
-      'stratifications': stratifications_array
+        'success': True,
+        'stratifications': stratifications_array,
+        'default_stratification': default_stratification
     })
   except Exception as e:
     return jsonify({
@@ -589,16 +591,13 @@ def get_stratifications(dataset_id):
 @login_required
 def get_clustering_methods(dataset_id):
   """Get clustering methods metadata"""
-  dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
-
   try:
     # Load clustering methods from metadata
     import importlib
     clustering_module = importlib.import_module('metadata.CLUSTERING_METHODS')
     CLUSTERING_METHODS = getattr(clustering_module, 'CLUSTERING_METHODS', {})
     default_method = getattr(
-        clustering_module, 'DEFAULT_CLUSTERING_METHOD', 'kmeans')
+        clustering_module, 'DEFAULT_CLUSTERING_METHOD', None)
 
     # Convert to array format for frontend with all data from source file
     clustering_methods_array = []
@@ -1169,7 +1168,6 @@ def get_metadata(metadata_type):
         'analysis_methods': 'ANALYSIS_METHODS.py',
         'clustering_methods': 'CLUSTERING_METHODS.py',
         'grouping_strategies': 'GROUPING_STRATEGIES.py',
-        'grouping_analysis_methods': 'GROUPING_ANALYSIS_METHODS.py',
         'kaplan_mayer_variables': 'KAPLAN_MAYER_VARIABLES.py',
         'columns': 'COLUMNS.py'
     }

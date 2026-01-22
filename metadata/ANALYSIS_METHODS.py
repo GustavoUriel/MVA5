@@ -4,7 +4,9 @@ ANALYSIS_METHODS = {
         'description': 'Supervised extension of PLS adapted for censored survival data. Finds latent variables maximizing covariance between microbial groups and PFS outcomes.',
         'category': 'Machine Learning',
         'control_name': 'AnMe_pls_survival',
+        'control_name_post_analysis': 'AnMe_pls_survival_post',
         'param_prefix': 'AnMe_PLS_',
+        'selected': False,
         'parameters': {
             'n_components': {
                 'name': 'Number of Components',
@@ -48,7 +50,9 @@ ANALYSIS_METHODS = {
         'description': 'Supervised sparse PLS-DA for PFS outcome discrimination and feature selection using microbial groups.',
         'category': 'Machine Learning',
         'control_name': 'AnMe_spls_da',
+        'control_name_post_analysis': 'AnMe_spls_da_post',
         'param_prefix': 'AnMe_SPLSDA_',
+        'selected': False,
         'parameters': {
             'n_components': {
                 'name': 'Number of Components',
@@ -96,6 +100,7 @@ ANALYSIS_METHODS = {
         'category': 'Machine Learning',
         'control_name': 'AnMe_survival_neural_network',
         'param_prefix': 'AnMe_SNN_',
+        'selected': False,
         'parameters': {
             'n_layers': {
                 'name': 'Number of Hidden Layers',
@@ -153,7 +158,9 @@ ANALYSIS_METHODS = {
         'description': 'Statistical model for microbiome compositional data, modeling group abundances as Dirichlet-multinomial distributed for PFS correlation.',
         'category': 'Statistical Modeling',
         'control_name': 'AnMe_dirichlet_multinomial_regression',
+        'control_name_post_analysis': 'AnMe_dirichlet_multinomial_regression_post',
         'param_prefix': 'AnMe_DMR_',
+        'selected': False,
         'parameters': {
             'overdispersion': {
                 'name': 'Overdispersion Parameter',
@@ -191,7 +198,9 @@ ANALYSIS_METHODS = {
         'description': 'Probabilistic modeling of PFS using Bayesian inference with microbial groups, providing uncertainty quantification.',
         'category': 'Statistical Modeling',
         'control_name': 'AnMe_bayesian_survival_model',
+        'control_name_post_analysis': 'AnMe_bayesian_survival_model_post',
         'param_prefix': 'AnMe_BSM_',
+        'selected': False,
         'parameters': {
             'n_samples': {
                 'name': 'Number of Posterior Samples',
@@ -239,7 +248,9 @@ ANALYSIS_METHODS = {
         'description': 'Semi-parametric survival analysis method that models the hazard ratio as a function of covariates while allowing the baseline hazard to be unspecified.',
         'category': 'Survival Analysis',
         'control_name': 'AnMe_cox_proportional_hazards',
+        'control_name_post_analysis': 'AnMe_cox_proportional_hazards_post',
         'param_prefix': 'AnMe_CPH_',
+        'selected': True,
         'parameters': {
             'alpha': {
                 'name': 'Significance Level',
@@ -317,7 +328,9 @@ ANALYSIS_METHODS = {
         'description': 'Parametric survival analysis method that models the logarithm of survival time as a linear function of covariates.',
         'category': 'Survival Analysis',
         'control_name': 'AnMe_accelerated_failure_time',
+        'control_name_post_analysis': 'AnMe_AFT_post',
         'param_prefix': 'AnMe_AFT_',
+        'selected': False,
         'parameters': {
             'distribution': {
                 'name': 'Distribution',
@@ -372,7 +385,9 @@ ANALYSIS_METHODS = {
         'description': 'Non-parametric method for estimating survival probabilities over time, providing the foundation for survival curve visualization.',
         'category': 'Survival Analysis',
         'control_name': 'AnMe_kaplan_meier',
+        'control_name_post_analysis': 'AnMe_kaplan_meier_post',
         'param_prefix': 'AnMe_KM_',
+        'selected': False,
         'parameters': {
             'alpha': {
                 'name': 'Confidence Level',
@@ -425,6 +440,7 @@ ANALYSIS_METHODS = {
         'description': 'Non-parametric statistical test for comparing survival distributions between two or more groups.',
         'category': 'Survival Analysis',
         'control_name': 'AnMe_log_rank_test',
+        'control_name_post_analysis': 'AnMe_log_rank_test_post',
         'param_prefix': 'AnMe_LRT_',
         'parameters': {
             'alpha': {
@@ -471,7 +487,9 @@ ANALYSIS_METHODS = {
         'description': 'Non-parametric method that estimates the mean survival time up to a specified time point, providing an alternative to hazard ratios.',
         'category': 'Survival Analysis',
         'control_name': 'AnMe_restricted_mean_survival_time',
+        'control_name_post_analysis': 'AnMe_RMST_post',
         'param_prefix': 'AnMe_RMST_',
+        'selected': False,
         'parameters': {
             'tau': {
                 'name': 'Restriction Time',
@@ -526,7 +544,9 @@ ANALYSIS_METHODS = {
         'description': 'Machine learning method that extends random forests to survival data, handling high-dimensional covariates and complex interactions.',
         'category': 'Machine Learning',
         'control_name': 'AnMe_random_survival_forest',
+        'control_name_post_analysis': 'AnMe_RSF_post',
         'param_prefix': 'AnMe_RSF_',
+        'selected': False,
         'parameters': {
             'n_estimators': {
                 'name': 'Number of Trees',
@@ -604,7 +624,9 @@ ANALYSIS_METHODS = {
         'description': 'Machine learning method that combines multiple weak learners to create a strong survival prediction model.',
         'category': 'Machine Learning',
         'control_name': 'AnMe_gradient_boosting_survival',
+        'control_name_post_analysis': 'AnMe_GBS_post',
         'param_prefix': 'AnMe_GBS_',
+        'selected': False,
         'parameters': {
             'n_estimators': {
                 'name': 'Number of Estimators',
@@ -674,7 +696,9 @@ ANALYSIS_METHODS = {
         'description': 'Extension of Cox regression that accounts for unobserved heterogeneity or clustering in survival data.',
         'category': 'Survival Analysis',
         'control_name': 'AnMe_frailty_model',
+        'control_name_post_analysis': 'AnMe_FM_post',
         'param_prefix': 'AnMe_FM_',
+        'selected': False,
         'parameters': {
             'frailty_distribution': {
                 'name': 'Frailty Distribution',
@@ -732,7 +756,9 @@ ANALYSIS_METHODS = {
         'description': 'Method for analyzing time-to-event data when multiple types of events can occur, where the occurrence of one event prevents the observation of others.',
         'category': 'Survival Analysis',
         'control_name': 'AnMe_competing_risks',
+        'control_name_post_analysis': 'AnMe_CR_post',
         'param_prefix': 'AnMe_CR_',
+        'selected': False,
         'parameters': {
             'method': {
                 'name': 'Analysis Method',

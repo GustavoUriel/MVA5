@@ -31,3 +31,12 @@ GROUPING_ANALYSIS_METHODS = {
         'validation': 'temporal_cv'
     }
 }
+
+
+
+# standard_multivariate: Applies standard penalized regression techniques across all variables without considering any grouping structure.
+# hierarchical_grouping: Accounts for nested or hierarchical relationships between groups (e.g., variables within subgroups), using models that incorporate group-level effects.
+# pathway_analysis: Focuses on biological pathways as constraints, analyzing variables grouped by functional pathways (e.g., metabolic or signaling pathways).
+# stratified_analysis: Performs separate analyses for different subgroups (e.g., patient cohorts), allowing for subgroup-specific effects.
+# organ_system_analysis: Groups variables by organ systems for functional analysis, treating systems as composite units.
+# temporal_analysis: Handles time-dependent effects, analyzing how relationships change over time (e.g., treatment effects that vary).
