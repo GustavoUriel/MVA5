@@ -3,3 +3,10 @@ When no clustering method is selected the whole clustering naming section should
 in anaalysis section, fix the info button to be standard width
 in bracken timepoints, remove the spaceholder y select the first option (pre)
 rename population sectors comparison to stratification comparison
+It was working, now it doesn't. Need to validate when uploading a file, that the file is the kind of file that was selected
+los textos de porcentaje en extremes no actualizan al mover los sliders
+en Microbial Grouping debería arrancar seleccioando No Grouping
+No deshabilita en post-analysis,  Sample Timepoints Comparison, el valor seleccionado en el combo de select time point
+Al apretar nuevo analisis deberia arrancar con todo oculto y en el primer tab
+Tiene que informar que no guarda el analisis si no tiene nombre
+

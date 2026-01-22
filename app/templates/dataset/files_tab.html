@@ -1,6 +1,11 @@
 {% extends "dataset/base.html" %}
 
 {% block tab_content %}
+<!-- Set dataset ID for JavaScript -->
+<script>
+window.datasetId = {{ dataset.id }};
+</script>
+
 <!-- Upload Progress -->
 {% include 'dataset/partials/progress_indicator.html' with context %}
 

@@ -261,28 +261,22 @@ class DatasetAnalysisManager {
     }
 
     try {
-      const config = this.collectAnalysisConfiguration();
-      // also capture full editor DOM to persist exact state/contents
-      const fullDom = this.collectFullAnalysisEditor();
-      // capture full controls state (values, checked, options, visibility)
+      // Collect hierarchical controls
       const controlsState = this.collectAllControls();
-
-      // attach controls_state into the configuration so it's part of the saved JSON
-      try { config.controls_state = controlsState; } catch (e) { /* ignore if config is not object */ }
 
       const response = await DatasetUtils.api.call(`/dataset/${this.datasetId}/analysis/save`, {
         method: "POST",
         body: JSON.stringify({
           analysis_name: analysisName,
           analysis_description: document.getElementById("analysisDescription").value.trim(),
-          configuration: config,
-          full_dom: fullDom,
+          configuration: controlsState,
         }),
       });
 
       if (response.success) {
         DatasetUtils.showAlert("Analysis saved successfully", "success");
-        this.cancelAnalysisEdit();
+        // Keep the analysis editor open after saving; the user will close it explicitly.
+        // Refresh the analysis list so the newly saved analysis appears in the list.
         this.loadAnalysisList();
       } else {
         DatasetUtils.showAlert(response.message, "error");
@@ -377,54 +371,55 @@ class DatasetAnalysisManager {
     if (!root) return {};
 
     const controls = {};
-    const elems = root.querySelectorAll('input, select, textarea, button');
-    let anonIdx = 0;
+    const tabPanes = root.querySelectorAll('.tab-pane');
 
-    elems.forEach((el) => {
-      const key = el.id || el.name || `elem_${anonIdx++}`;
-      // Only collect the minimal set requested:
-      // - textboxes/textarea: value (string, may be empty)
-      // - sliders (input[type=range]) and numeric inputs: value
-      // - checkboxes/radios: checked (boolean)
-      // - selects: selected option text (for file selects: filename), for multiple selects an array of texts
-      const info = { id: el.id || null, name: el.name || null, tag: el.tagName.toLowerCase() };
+    tabPanes.forEach(tabPane => {
+      const tabId = tabPane.id;
+      controls[tabId] = {};
+      const elems = tabPane.querySelectorAll('input, select, textarea');
+      let anonIdx = 0;
 
-      try {
-        if (el.tagName === 'INPUT') {
-          const t = (el.type || '').toLowerCase();
-          if (t === 'checkbox' || t === 'radio') {
-            info.checked = !!el.checked;
-            info.value = el.value !== undefined ? el.value : '';
-          } else if (t === 'range' || t === 'number') {
-            info.value = el.value !== undefined ? el.value : '';
-          } else if (t === 'text' || t === 'email' || t === 'search' || t === 'password' || t === 'tel' || t === 'url' || t === 'hidden') {
-            info.value = el.value !== undefined ? el.value : '';
-          } else {
-            // fallback: capture value for other input types (e.g., date)
-            info.value = el.value !== undefined ? el.value : '';
-          }
-        } else if (el.tagName === 'SELECT') {
-          if (el.multiple) {
-            info.selected_text = Array.from(el.selectedOptions).map(o => o.text);
-          } else {
-            const sel = el.selectedOptions[0];
-            // special-case the dataset file selects to store filename text
-            if (el.id === 'editorPatientFileSelect' || el.id === 'editorTaxonomyFileSelect' || el.id === 'editorBrackenFileSelect') {
-              info.selected_text = sel ? sel.text : '';
-              info.value = el.value || '';
+      elems.forEach((el) => {
+        const key = el.id || el.name || `elem_${anonIdx++}`;
+        const info = { tag: el.tagName.toLowerCase() };
+
+        try {
+          if (el.tagName === 'INPUT') {
+            const t = (el.type || '').toLowerCase();
+            if (t === 'checkbox' || t === 'radio') {
+              info.checked = !!el.checked;
+              info.value = el.value !== undefined ? el.value : '';
+            } else if (t === 'range' || t === 'number') {
+              info.value = el.value !== undefined ? el.value : '';
+            } else if (t === 'text' || t === 'email' || t === 'search' || t === 'password' || t === 'tel' || t === 'url' || t === 'hidden') {
+              info.value = el.value !== undefined ? el.value : '';
             } else {
-              info.selected_text = sel ? sel.text : '';
-              info.value = el.value || '';
+              // fallback: capture value for other input types (e.g., date)
+              info.value = el.value !== undefined ? el.value : '';
             }
+          } else if (el.tagName === 'SELECT') {
+            if (el.multiple) {
+              info.selected_text = Array.from(el.selectedOptions).map(o => o.text);
+            } else {
+              const sel = el.selectedOptions[0];
+              // special-case the dataset file selects to store filename text
+              if (el.id === 'editorPatientFileSelect' || el.id === 'editorTaxonomyFileSelect' || el.id === 'editorBrackenFileSelect') {
+                info.selected_text = sel ? sel.text : '';
+                info.value = el.value || '';
+              } else {
+                info.selected_text = sel ? sel.text : '';
+                info.value = el.value || '';
+              }
+            }
+          } else if (el.tagName === 'TEXTAREA') {
+            info.value = el.value !== undefined ? el.value : '';
           }
-        } else if (el.tagName === 'TEXTAREA') {
-          info.value = el.value !== undefined ? el.value : '';
+        } catch (e) {
+          // ignore read-only properties
         }
-      } catch (e) {
-        // ignore read-only properties
-      }
 
-      controls[key] = info;
+        controls[tabId][key] = info;
+      });
     });
 
     return controls;
@@ -433,9 +428,9 @@ class DatasetAnalysisManager {
   // Collect data sources
   collectDataSources() {
     return {
-      patientFile: document.getElementById("editorPatientFileSelect").value,
-      taxonomyFile: document.getElementById("editorTaxonomyFileSelect").value,
-      brackenFile: document.getElementById("editorBrackenFileSelect").value,
+      patientFile: document.getElementById("editorPatientFileSelect").selectedOptions[0]?.getAttribute('data-path') || '',
+      taxonomyFile: document.getElementById("editorTaxonomyFileSelect").selectedOptions[0]?.getAttribute('data-path') || '',
+      brackenFile: document.getElementById("editorBrackenFileSelect").selectedOptions[0]?.getAttribute('data-path') || '',
     };
   }
 
@@ -643,12 +638,21 @@ class DatasetAnalysisManager {
     try {
       const data = await DatasetUtils.api.getDatasetFiles(this.datasetId);
 
-      if (data.success) {
+      if (data.files) {
         this.populateFileDropdowns(data.files);
       }
     } catch (error) {
       console.error("Failed to load files for data sources:", error);
     }
+  }
+
+  // Format file size for display
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
   // Populate file dropdowns
@@ -667,7 +671,8 @@ class DatasetAnalysisManager {
         files.forEach((file) => {
           const option = document.createElement("option");
           option.value = file.id;
-          option.textContent = file.filename;
+          option.setAttribute('data-path', file.path);
+          option.textContent = `${file.filename} (${this.formatFileSize(file.size)})`;
 
           // Categorize files by type
           switch (file.file_type) {

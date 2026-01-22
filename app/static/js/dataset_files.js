@@ -214,11 +214,14 @@ class DatasetFilesManager {
                         <button class="btn btn-outline-success" onclick="downloadFile(${file.id})" title="Download">
                             <i class="fas fa-download"></i>
                         </button>
-                        <button class="btn btn-outline-info" onclick="editTable(${file.id})" title="Edit">
-                            <i class="fas fa-edit"></i>
+                        <button class="btn btn-outline-info" onclick="renameFile(${file.id}, '${file.filename}', '${file.file_type}')" title="Rename File">
+                            <i class="fas fa-i-cursor"></i>
                         </button>
-                        <button class="btn btn-outline-warning" onclick="cureData(${file.id})" title="Cure Data">
-                            <i class="fas fa-magic"></i>
+                        <button class="btn btn-outline-warning" onclick="duplicateFile(${file.id})" title="Duplicate File">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="editTable(${file.id})" title="Edit">
+                            <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn btn-outline-danger" onclick="deleteFile(${file.id})" title="Delete">
                             <i class="fas fa-trash"></i>
@@ -345,18 +348,74 @@ window.downloadFile = function(fileId) {
     window.open(`/dataset/file/${fileId}/download`, '_blank');
 };
 
-window.duplicateFile = function(fileId) {
-    if (confirm('Are you sure you want to duplicate this file?')) {
-        // Implementation for file duplication
-        DatasetUtils.showAlert('File duplication feature coming soon', 'info');
+window.duplicateFile = async function(fileId) {
+    if (confirm('Are you sure you want to duplicate this file? A copy will be created with "_copy" appended to the filename.')) {
+        try {
+            const response = await fetch(`/dataset/${window.datasetId}/files/${fileId}/duplicate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                DatasetUtils.showAlert(data.message, 'success');
+                // Reload files table and data stats
+                if (window.datasetFilesManager) {
+                    await window.datasetFilesManager.loadFilesTable();
+                    await window.datasetFilesManager.loadDataStats();
+                }
+            } else {
+                DatasetUtils.showAlert(data.message || 'Failed to duplicate file', 'error');
+            }
+        } catch (error) {
+            console.error('Duplicate file error:', error);
+            DatasetUtils.showAlert('Failed to duplicate file. Please try again.', 'error');
+        }
     }
 };
 
-window.renameFile = function(fileId, currentName, fileType) {
-    const newName = prompt('Enter new file name:', currentName);
-    if (newName && newName !== currentName) {
-        // Implementation for file renaming
-        DatasetUtils.showAlert('File renaming feature coming soon', 'info');
+window.renameFile = async function(fileId, currentName, fileType) {
+    // Extract the base name without extension for better UX
+    const lastDotIndex = currentName.lastIndexOf(".");
+    const baseName = lastDotIndex !== -1 ? currentName.substring(0, lastDotIndex) : currentName;
+    const extension = lastDotIndex !== -1 ? currentName.substring(lastDotIndex) : "";
+
+    const newName = prompt(`Enter new name for ${fileType} file:`, baseName);
+    if (!newName || newName.trim() === "") {
+        return;
+    }
+
+    const finalName = newName.trim() + extension;
+
+    try {
+        const response = await fetch(`/dataset/${window.datasetId}/files/${fileId}/rename`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                new_filename: finalName,
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            DatasetUtils.showAlert(`File renamed to "${finalName}"`, 'success');
+            // Reload files table and data stats
+            if (window.datasetFilesManager) {
+                await window.datasetFilesManager.loadFilesTable();
+                await window.datasetFilesManager.loadDataStats();
+            }
+        } else {
+            DatasetUtils.showAlert(data.message || 'Failed to rename file', 'error');
+        }
+    } catch (error) {
+        console.error('Rename file error:', error);
+        DatasetUtils.showAlert('Failed to rename file. Please try again.', 'error');
     }
 };
 
@@ -371,10 +430,32 @@ window.cureData = function(fileId) {
     }
 };
 
-window.deleteFile = function(fileId) {
+window.deleteFile = async function(fileId) {
     if (confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
-        // Implementation for file deletion
-        DatasetUtils.showAlert('File deletion feature coming soon', 'info');
+        try {
+            const response = await fetch(`/dataset/${window.datasetId}/files/${fileId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                DatasetUtils.showAlert(data.message, 'success');
+                // Reload files table and data stats
+                if (window.datasetFilesManager) {
+                    await window.datasetFilesManager.loadFilesTable();
+                    await window.datasetFilesManager.loadDataStats();
+                }
+            } else {
+                DatasetUtils.showAlert(data.message || 'Failed to delete file', 'error');
+            }
+        } catch (error) {
+            console.error('Delete file error:', error);
+            DatasetUtils.showAlert('Failed to delete file. Please try again.', 'error');
+        }
     }
 };
 
@@ -383,6 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const datasetId = window.datasetId;
     if (datasetId) {
         const filesManager = new DatasetFilesManager(datasetId);
+        window.datasetFilesManager = filesManager; // Make it globally accessible
         filesManager.init();
     }
 });

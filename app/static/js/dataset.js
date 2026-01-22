@@ -58,7 +58,7 @@ function handleUpload(event) {
   const fileInput = uploadSection.querySelector('input[type="file"]');
   
   if (!fileInput.files.length) {
-    showToast('Please select a file to upload', 'warning');
+    showAlert('Please select a file to upload', 'warning');
     return;
   }
   
@@ -68,7 +68,7 @@ function handleUpload(event) {
   const allowedExtensions = ['.csv', '.tsv', '.txt'];
   const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
   if (!allowedExtensions.includes(fileExtension)) {
-    showToast('Please select a valid file (CSV, TSV, or TXT)', 'error');
+    showAlert('Please select a valid file (CSV, TSV, or TXT)', 'error');
     return;
   }
   
@@ -89,7 +89,7 @@ function handleUpload(event) {
   .then(response => response.json())
   .then(data => {
     if (data.success) {
-      showToast(data.message, 'success');
+      showAlert(data.message, 'success');
       
       // Update status display
       updateUploadStatus(fileType, 'success', data.message);
@@ -102,13 +102,13 @@ function handleUpload(event) {
       // Clear file input
       fileInput.value = '';
     } else {
-      showToast(data.message, 'error');
+      showAlert(data.message, 'error');
       updateUploadStatus(fileType, 'error', data.message);
     }
   })
   .catch(error => {
     console.error('Upload error:', error);
-    showToast('Upload failed. Please try again.', 'error');
+    showAlert('Upload failed. Please try again.', 'error');
     updateUploadStatus(fileType, 'error', 'Upload failed');
   })
   .finally(() => {
@@ -540,19 +540,19 @@ function deleteFile(fileId) {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        showToast(data.message, 'success');
+        showAlert(data.message, 'success');
         
         // Reload files table, data stats, and progress indicator
         loadFilesTable();
         loadDataStats();
         loadProgressIndicator();
       } else {
-        showToast(data.message, 'error');
+        showAlert(data.message, 'error');
       }
     })
     .catch(error => {
       console.error('Delete file error:', error);
-      showToast('Error deleting file. Please try again.', 'error');
+      showAlert('Error deleting file. Please try again.', 'error');
     });
   }
 }

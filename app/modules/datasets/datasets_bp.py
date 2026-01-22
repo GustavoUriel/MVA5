@@ -300,6 +300,192 @@ def delete_dataset_file(dataset_id, file_id):
     }), 500
 
 
+@datasets_bp.route('/dataset/<int:dataset_id>/files/<int:file_id>/duplicate', methods=['POST'])
+@login_required
+def duplicate_dataset_file(dataset_id, file_id):
+  """Duplicate a specific file in a dataset"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+  
+  try:
+    # Get original file info
+    original_filename = file.show_filename
+    original_file_path = file.file_path
+    file_type = file.file_type
+    
+    # Create new filename with "_copy" suffix
+    name_parts = original_filename.rsplit('.', 1)
+    if len(name_parts) == 2:
+      base_name = name_parts[0]
+      extension = name_parts[1]
+      new_filename = f"{base_name}_copy.{extension}"
+    else:
+      new_filename = f"{original_filename}_copy"
+    
+    # Ensure the new filename doesn't already exist
+    counter = 1
+    temp_filename = new_filename
+    while DatasetFile.query.filter_by(dataset_id=dataset_id, show_filename=temp_filename).first():
+      name_parts = new_filename.rsplit('.', 1) if '.' in new_filename else [new_filename, '']
+      if name_parts[1]:
+        temp_filename = f"{name_parts[0]}_{counter}.{name_parts[1]}"
+      else:
+        temp_filename = f"{name_parts[0]}_{counter}"
+      counter += 1
+    new_filename = temp_filename
+    
+    # Copy the file in filesystem
+    new_file_path = original_file_path.rsplit('.', 1)
+    if len(new_file_path) == 2:
+      new_file_path = f"{new_file_path[0]}_copy.{new_file_path[1]}"
+    else:
+      new_file_path = f"{original_file_path}_copy"
+    
+    # Ensure unique file path
+    counter = 1
+    temp_file_path = new_file_path
+    while os.path.exists(temp_file_path):
+      path_parts = new_file_path.rsplit('.', 1) if '.' in new_file_path else [new_file_path, '']
+      if path_parts[1]:
+        temp_file_path = f"{path_parts[0]}_{counter}.{path_parts[1]}"
+      else:
+        temp_file_path = f"{path_parts[0]}_{counter}"
+      counter += 1
+    new_file_path = temp_file_path
+    
+    # Copy the file
+    shutil.copy2(original_file_path, new_file_path)
+    
+    # Create new database record
+    new_file = DatasetFile(
+        dataset_id=dataset_id,
+        file_type=file_type,
+        show_filename=new_filename,
+        file_path=new_file_path,
+        file_size=os.path.getsize(new_file_path)
+    )
+    db.session.add(new_file)
+    
+    # Update dataset file count and total size
+    dataset.file_count = DatasetFile.query.filter_by(dataset_id=dataset_id).count() + 1
+    dataset.total_size += new_file.file_size
+    dataset.updated_at = datetime.utcnow()
+    
+    db.session.commit()
+    
+    log_user_action(
+        "file_duplicated",
+        f"File: {original_filename} → {new_filename} in dataset '{dataset.name}'",
+        success=True
+    )
+    
+    return jsonify({
+        'success': True,
+        'message': f'File "{original_filename}" duplicated successfully as "{new_filename}"'
+    })
+    
+  except Exception as e:
+    db.session.rollback()
+    ErrorLogger.log_exception(
+        e,
+        context=f"Duplicating file {file_id} in dataset {dataset_id}",
+        user_action=f"User trying to duplicate file '{file.show_filename}' in dataset '{dataset.name}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'file_id': file_id,
+            'filename': file.show_filename
+        }
+    )
+    log_user_action("file_duplication_failed",
+                    f"File: {file.show_filename} in dataset '{dataset.name}'", success=False)
+    
+    return jsonify({
+        'success': False,
+        'message': f'Error duplicating file: {str(e)}'
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/files/<int:file_id>/rename', methods=['POST'])
+@login_required
+def rename_dataset_file(dataset_id, file_id):
+  """Rename a specific file in a dataset"""
+  dataset = Dataset.query.filter_by(
+      id=dataset_id, user_id=current_user.id).first_or_404()
+  
+  file = DatasetFile.query.filter_by(
+      id=file_id, dataset_id=dataset_id).first_or_404()
+  
+  try:
+    data = request.get_json()
+    if not data or 'new_filename' not in data:
+      return jsonify({'success': False, 'message': 'New filename is required'}), 400
+    
+    new_filename = data['new_filename'].strip()
+    if not new_filename:
+      return jsonify({'success': False, 'message': 'New filename cannot be empty'}), 400
+    
+    # Validate filename (prevent directory traversal and invalid characters)
+    if '..' in new_filename or '/' in new_filename or '\\' in new_filename:
+      return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+    
+    # Check if filename already exists
+    existing_file = DatasetFile.query.filter_by(
+        dataset_id=dataset_id, show_filename=new_filename).first()
+    if existing_file and existing_file.id != file_id:
+      return jsonify({'success': False, 'message': 'A file with this name already exists'}), 400
+    
+    # Get old filename for logging
+    old_filename = file.show_filename
+    
+    # Update the database record
+    file.show_filename = new_filename
+    file.modified_at = datetime.utcnow()
+    
+    db.session.commit()
+    
+    log_user_action(
+        "file_renamed",
+        f"File: {old_filename} → {new_filename} in dataset '{dataset.name}'",
+        success=True
+    )
+    
+    return jsonify({
+        'success': True,
+        'message': f'File renamed successfully',
+        'new_filename': new_filename
+    })
+    
+  except Exception as e:
+    db.session.rollback()
+    ErrorLogger.log_exception(
+        e,
+        context=f"Renaming file {file_id} in dataset {dataset_id}",
+        user_action=f"User trying to rename file '{file.show_filename}' in dataset '{dataset.name}'",
+        extra_data={
+            'dataset_id': dataset_id,
+            'file_id': file_id,
+            'new_filename': request.get_json().get('new_filename') if request.get_json() else None
+        }
+    )
+    log_user_action("file_rename_failed",
+                    f"File: {file.show_filename} in dataset '{dataset.name}'", success=False)
+    
+    return jsonify({
+        'success': False,
+        'message': f'Error renaming file: {str(e)}'
+    }), 500
+
+
+@datasets_bp.route('/dataset/<int:dataset_id>/files/<int:file_id>', methods=['DELETE'])
+@login_required
+def delete_dataset_file_alt(dataset_id, file_id):
+  """Delete a specific file from a dataset (alternative route for frontend compatibility)"""
+  return delete_dataset_file(dataset_id, file_id)
+
+
 @datasets_bp.route('/dataset/<int:dataset_id>/delete', methods=['POST'])
 @login_required
 def delete_dataset(dataset_id):
@@ -377,6 +563,7 @@ def get_dataset_files(dataset_id):
         'file_type': file.file_type,
         'filename': file.show_filename,
         'size': file.file_size,
+        'relative_path': os.path.basename(file.file_path),
         'cure_status': file.cure_status,
         'cure_validation_status': file.cure_validation_status,
         'uploaded_at': file.uploaded_at.isoformat(),
@@ -986,20 +1173,21 @@ def sanitize_dataset_data(dataset_id):
 @datasets_bp.route('/dataset/<int:dataset_id>/file/<int:file_id>/patient-count')
 @login_required
 def get_patient_count(dataset_id, file_id):
-  """Get patient count from a specific file"""
+  """Get patient count from a specific file (by file ID)"""
   dataset = Dataset.query.filter_by(
-      id=dataset_id, user_id=current_user.id).first_or_404()
+    id=dataset_id, user_id=current_user.id).first_or_404()
 
+  # Query file directly by ID and dataset_id
   file = DatasetFile.query.filter_by(
-      id=file_id, dataset_id=dataset_id).first_or_404()
+    id=file_id, dataset_id=dataset_id
+  ).first_or_404()
 
   try:
     import pandas as pd
-    import os
 
     # Log file information for debugging (show both original and processed paths)
     current_app.logger.debug(
-        f"File ID: {file_id}, File Path: {file.file_path}, Processed Path: {getattr(file, 'processed_file_path', None)}, Show Filename: {file.show_filename}")
+      f"File ID: {file_id}, File Path: {file.file_path}, Processed Path: {getattr(file, 'processed_file_path', None)}, Show Filename: {file.show_filename}")
 
     # Prefer processed file path when available (some workflows write a processed file)
     file_path_to_use = file.processed_file_path if getattr(
@@ -1300,7 +1488,7 @@ def save_analysis_configuration(dataset_id):
     # Create analysis folder structure
     user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
     analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
+        current_app.instance_path, 'users', user_email, str(dataset_id), 'analysis')
     os.makedirs(analysis_folder, exist_ok=True)
 
     # Optionally include full DOM snapshot if provided
@@ -1315,7 +1503,7 @@ def save_analysis_configuration(dataset_id):
       'created_at': datetime.utcnow().isoformat(),
       'modified_at': datetime.utcnow().isoformat(),
       # relative path from instance (use a stable, portable relative path)
-      'relative_path': f"users/{user_email}/analysis/{safe_name}.json",
+      'relative_path': f"users/{user_email}/{dataset_id}/analysis/{safe_name}.json",
       # last_run is null until the analysis is executed; run_status is null when never run
       'last_run': None,
       'run_status': None,
@@ -1383,7 +1571,7 @@ def list_saved_analyses(dataset_id):
     # Get user's analysis directory
     user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
     analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
+        current_app.instance_path, 'users', user_email, str(dataset_id), 'analysis')
 
     analyses = []
 
@@ -1466,7 +1654,7 @@ def delete_analysis(dataset_id):
     # Get user's analysis directory
     user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
     analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
+        current_app.instance_path, 'users', user_email, str(dataset_id), 'analysis')
     filepath = os.path.join(analysis_folder, filename)
 
     # Check if file exists
@@ -1529,7 +1717,7 @@ def duplicate_analysis(dataset_id):
     # Get user's analysis directory
     user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
     analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
+        current_app.instance_path, 'users', user_email, str(dataset_id), 'analysis')
     original_filepath = os.path.join(analysis_folder, filename)
 
     # Check if original file exists
@@ -1567,7 +1755,7 @@ def duplicate_analysis(dataset_id):
         original_data['run_status'] = None
         original_data['dataset_id'] = dataset_id
         # Update the relative_path to the new filename
-        original_data['relative_path'] = f"users/{user_email}/analysis/{new_filename}"
+        original_data['relative_path'] = f"users/{user_email}/{dataset_id}/analysis/{new_filename}"
         with open(new_filepath, 'w', encoding='utf-8') as out_f:
           json.dump(original_data, out_f, indent=2, ensure_ascii=False)
 
@@ -1629,7 +1817,7 @@ def rename_analysis(dataset_id):
     # Get user's analysis directory
     user_email = current_user.email.replace('@', '_at_').replace('.', '_dot_')
     analysis_folder = os.path.join(
-        current_app.instance_path, 'users', user_email, 'analysis')
+        current_app.instance_path, 'users', user_email, str(dataset_id), 'analysis')
     filepath = os.path.join(analysis_folder, filename)
 
     # Check if file exists
