@@ -9,4 +9,13 @@ en Microbial Grouping debería arrancar seleccioando No Grouping
 No deshabilita en post-analysis,  Sample Timepoints Comparison, el valor seleccionado en el combo de select time point
 Al apretar nuevo analisis deberia arrancar con todo oculto y en el primer tab
 Tiene que informar que no guarda el analisis si no tiene nombre
+In  Attributes Groups Selection the labels are the name of the element. 
+In  Attributes Groups Selection it doesn't show the columns names when clicking
+ask for leaving without saving changes in analysis editor
+Blur and disable all the page but the analysis editor section
+when coming back from table editor it should update the files list to update the files size
+
+
+
+
 

@@ -20,14 +20,6 @@ def api_config():
 @api_bp.route('/api/datasets')
 @login_required
 def api_datasets():
-  """API endpoint to get user's datasets"""
-  datasets = Dataset.query.filter_by(user_id=current_user.id).all()
-  return jsonify([{
-      'id': d.id,
-      'name': d.name,
-      'description': d.description,
-      'status': d.status,
-      'file_count': d.file_count,
-      'created_at': d.created_at.isoformat(),
-      'updated_at': d.updated_at.isoformat()
-  } for d in datasets])
+  """API endpoint to get user's datasets (delegator to archived implementation)"""
+  from archive.archived_handlers import api_datasets as _archived_api_datasets
+  return _archived_api_datasets()

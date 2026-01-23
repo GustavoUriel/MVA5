@@ -210,6 +210,19 @@ def create_app():
           duration=duration
       )
 
+      # Lightweight request hit recorder: append a simple line to instance logs
+      try:
+        requests_log_dir = os.path.join(app.instance_path, 'logs')
+        os.makedirs(requests_log_dir, exist_ok=True)
+        requests_log_file = os.path.join(requests_log_dir, 'requests.log')
+        with open(requests_log_file, 'a', encoding='utf-8') as fh:
+          fh.write(
+              f"{datetime.utcnow().isoformat()} {g.request_id} {request.method} {request.path} {request.endpoint or ''} {response.status_code}\n"
+          )
+      except Exception:
+        # Don't allow logging failures to affect responses
+        app.logger.exception('Failed to write requests.log')
+
     return response
 
   # Create directory structure
@@ -218,6 +231,54 @@ def create_app():
               exist_ok=True)  # User folders
   os.makedirs(os.path.join(app.instance_path, 'logs', 'notLogged'),
               exist_ok=True)  # Anonymous logs
+
+  @app.route('/__requests/summary')
+  def requests_summary():
+    """Return a small summary of recorded requests (debug/local only).
+
+    Response JSON includes total count, counts by endpoint and by path,
+    plus the last 50 raw log lines.
+    """
+    # Restrict access to debug mode or local requests only
+    if not app.debug and request.remote_addr not in ('127.0.0.1', '::1'):
+      return jsonify({'error': 'forbidden'}), 403
+
+    requests_log_file = os.path.join(app.instance_path, 'logs', 'requests.log')
+    if not os.path.exists(requests_log_file):
+      return jsonify({'error': 'no_log', 'path': requests_log_file}), 404
+
+    by_endpoint = {}
+    by_path = {}
+    total = 0
+    lines = []
+    try:
+      with open(requests_log_file, 'r', encoding='utf-8') as fh:
+        for raw in fh:
+          line = raw.strip()
+          if not line:
+            continue
+          lines.append(line)
+          parts = line.split()
+          # Expected format: TIMESTAMP REQID METHOD PATH ENDPOINT STATUS
+          if len(parts) >= 6:
+            method = parts[2]
+            path = parts[3]
+            endpoint = parts[4]
+          elif len(parts) >= 4:
+            method = parts[2] if len(parts) > 2 else ''
+            path = parts[3] if len(parts) > 3 else ''
+            endpoint = ''
+          else:
+            continue
+          by_endpoint[endpoint] = by_endpoint.get(endpoint, 0) + 1
+          by_path[path] = by_path.get(path, 0) + 1
+          total += 1
+    except Exception as e:
+      app.logger.exception('Failed reading requests.log')
+      return jsonify({'error': 'read_failed', 'detail': str(e)}), 500
+
+    sample = lines[-50:]
+    return jsonify({'total': total, 'by_endpoint': by_endpoint, 'by_path': by_path, 'sample_lines': sample})
 
   # Create database tables
   with app.app_context():
