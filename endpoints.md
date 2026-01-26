@@ -43,12 +43,16 @@ This file lists the project's endpoints. The table is split into two sections:
 
 <!-- files_bp.py (active but some handlers marked UNUSED) -->
 | `/dataset/<int:dataset_id>/file/<int:file_id>/duplicate` | POST | `duplicate_dataset_file` | `files_bp.py` — UNUSED (no hits in requests.log) |
-| `/dataset/<int:dataset_id>/file/<int:file_id>/cure` | POST | `cure_dataset_file` | `files_bp.py` — UNUSED (no hits in requests.log) |
+| `/dataset/<int:dataset_id>/file/<int:file_id>/curate` | POST | `cure_dataset_file` | `files_bp.py` — UNUSED (no hits in requests.log) |
 | `/dataset/<int:dataset_id>/file/<int:file_id>/rename` | POST | `rename_dataset_file` | `files_bp.py` — UNUSED (no hits in requests.log) |
 
 <!-- main_bp.py -->
 | `/` | GET | `index` | `main_bp.py` |
 | `/dashboard` | GET | `dashboard` | `main_bp.py` |
+
+
+
+
 
 ## Archived routes (implementations moved to `archive/archived_handlers.py`)
 

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import db
 
 
@@ -27,13 +27,13 @@ class DatasetFile(db.Model):
 
   # Cure status fields
   # 'not_cured', 'curing', 'cured', 'failed'
-  cure_status = db.Column(db.String(50), default='not_cured')
+  curated = db.Column(db.String(50), default='not_cured')
   # 'pending', 'ok', 'warnings', 'errors'
-  cure_validation_status = db.Column(db.String(50), default='pending')
-  cured_at = db.Column(db.DateTime)
+  curated_validation = db.Column(db.String(50), default='pending')
+  curated_at = db.Column(db.DateTime)
 
   def __repr__(self):
     return f'<DatasetFile {self.show_filename}>'
 
   def update_modified_timestamp(self):
-    self.modified_at = datetime.utcnow()
+    self.modified_at = datetime.now(timezone.utc)

@@ -285,7 +285,7 @@ function displayFilesTable(files, datasetStatus) {
                         <th>Name</th>
                         <th>Type</th>
                         <th>Size</th>
-                        <th>Cure Status</th>
+                        <th>curate Status</th>
                         <th>Uploaded</th>
                         <th>Modified</th>
                         <th>Actions</th>
@@ -296,7 +296,7 @@ function displayFilesTable(files, datasetStatus) {
 
   files.forEach((file) => {
     const sizeFormatted = formatFileSize(file.size);
-    const cureStatusIcon = getCureStatusIcon(file.cure_status, file.cure_validation_status);
+    const curateStatusIcon = getcurateStatusIcon(file.curate_status, file.curate_validation_status);
     const uploadedDate = new Date(file.uploaded_at).toLocaleDateString();
     const modifiedDate = new Date(file.modified_at).toLocaleDateString();
 
@@ -312,7 +312,7 @@ function displayFilesTable(files, datasetStatus) {
                     </span>
                 </td>
                 <td>${sizeFormatted}</td>
-                <td>${cureStatusIcon}</td>
+                <td>${curateStatusIcon}</td>
                 <td>${uploadedDate}</td>
                 <td>${modifiedDate}</td>
                 <td>
@@ -337,14 +337,14 @@ function displayFilesTable(files, datasetStatus) {
                         <i class="fas fa-download"></i>
                     </button>
                     <button class="btn btn-sm ${
-                      file.cure_status === "cured" && file.cure_validation_status === "ok"
+                      file.curate_status === "curated" && file.curate_validation_status === "ok"
                         ? "btn-success disabled"
                         : "btn-outline-secondary"
                     }" 
-                            onclick="cureData(${file.id})" 
-                            ${file.cure_status === "cured" && file.cure_validation_status === "ok" ? "disabled" : ""} 
-                            title="Cure Data">
-                        <i class="fas fa-magic"></i> Cure
+                            onclick="curateData(${file.id})" 
+                            ${file.curate_status === "curated" && file.curate_validation_status === "ok" ? "disabled" : ""} 
+                            title="curate Data">
+                        <i class="fas fa-magic"></i> curate
                     </button>
                     <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteFile(${
                       file.id
@@ -384,33 +384,33 @@ function getFileTypeColor(fileType) {
   return colors[fileType] || "secondary";
 }
 
-function getStatusBadge(cureStatus, validationStatus) {
+function getStatusBadge(curateStatus, validationStatus) {
   if (validationStatus === "validated") {
     return '<span class="badge bg-success">Validated</span>';
   } else if (validationStatus === "failed") {
     return '<span class="badge bg-danger">Failed</span>';
-  } else if (cureStatus === "cured") {
-    return '<span class="badge bg-warning">Cured</span>';
+  } else if (curateStatus === "curated") {
+    return '<span class="badge bg-warning">curated</span>';
   } else {
     return '<span class="badge bg-secondary">Pending</span>';
   }
 }
 
-function getCureStatusIcon(cureStatus, validationStatus) {
-  if (cureStatus === "cured") {
+function getcurateStatusIcon(curateStatus, validationStatus) {
+  if (curateStatus === "curated") {
     if (validationStatus === "ok") {
-      return '<i class="fas fa-check-circle text-success" title="Cured and validation OK"></i>';
+      return '<i class="fas fa-check-circle text-success" title="curated and validation OK"></i>';
     } else if (validationStatus === "warnings") {
-      return '<i class="fas fa-exclamation-triangle text-warning" title="Cured with warnings"></i>';
+      return '<i class="fas fa-exclamation-triangle text-warning" title="curated with warnings"></i>';
     } else if (validationStatus === "errors") {
-      return '<i class="fas fa-times-circle text-danger" title="Cured with errors"></i>';
+      return '<i class="fas fa-times-circle text-danger" title="curated with errors"></i>';
     }
-  } else if (cureStatus === "curing") {
+  } else if (curateStatus === "curing") {
     return '<i class="fas fa-spinner fa-spin text-info" title="Curing in progress"></i>';
-  } else if (cureStatus === "failed") {
-    return '<i class="fas fa-times-circle text-danger" title="Cure failed"></i>';
+  } else if (curateStatus === "failed") {
+    return '<i class="fas fa-times-circle text-danger" title="curate failed"></i>';
   } else {
-    return '<i class="fas fa-clock text-muted" title="Not yet cured"></i>';
+    return '<i class="fas fa-clock text-muted" title="Not yet curated"></i>';
   }
 }
 
@@ -931,20 +931,20 @@ window.editTable = function (fileId) {
   window.location.href = `/file/${fileId}`;
 };
 
-window.cureData = function (fileId) {
+window.curateData = function (fileId) {
   // Show confirmation dialog
-  if (!confirm("Are you sure you want to cure this data? This will process and validate the file.")) {
+  if (!confirm("Are you sure you want to curate this data? This will process and validate the file.")) {
     return;
   }
 
   // Find the button and show loading state
-  const cureBtn = document.querySelector(`button[onclick="cureData(${fileId})"]`);
-  const originalContent = cureBtn.innerHTML;
-  cureBtn.disabled = true;
-  cureBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Curing...';
+  const curateBtn = document.querySelector(`button[onclick="curateData(${fileId})"]`);
+  const originalContent = curateBtn.innerHTML;
+  curateBtn.disabled = true;
+  curateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Curing...';
 
-  // Send cure request
-  fetch(`/dataset/${datasetId}/files/${fileId}/cure`, {
+  // Send curate request
+  fetch(`/dataset/${datasetId}/file/${fileId}/curate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -966,8 +966,8 @@ window.cureData = function (fileId) {
     })
     .finally(() => {
       // Reset button state
-      cureBtn.disabled = false;
-      cureBtn.innerHTML = originalContent;
+      curateBtn.disabled = false;
+      curateBtn.innerHTML = originalContent;
     });
 };
 

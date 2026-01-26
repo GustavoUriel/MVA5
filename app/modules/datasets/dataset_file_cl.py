@@ -27,10 +27,10 @@ class DatasetFile(db.Model):
 
   # Cure status fields
   # 'not_cured', 'curing', 'cured', 'failed'
-  cure_status = db.Column(db.String(50), default='not_cured')
+  curated = db.Column(db.String(50), default='not_cured')
   # 'pending', 'ok', 'warnings', 'errors'
-  cure_validation_status = db.Column(db.String(50), default='pending')
-  cured_at = db.Column(db.DateTime)
+  curated_validation_status = db.Column(db.String(50), default='pending')
+  curated_at = db.Column(db.DateTime)
 
   def __repr__(self):
     return f'<DatasetFile {self.show_filename}>'

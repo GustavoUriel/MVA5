@@ -116,29 +116,40 @@ def upload_dataset_file(dataset_id):
 
     # Save file with unique name to avoid conflicts
     from werkzeug.utils import secure_filename
-    import time
     show_filename = secure_filename(filename_lower)
 
-    # Create unique filename with timestamp to avoid conflicts
+    # Get the file folder path
+    file_folder = get_dataset_files_folder(current_user.email, dataset_id)
+    file_folder = str(file_folder) if file_folder is not None else ""
+
+    # Extract base name and extension
     name_parts = show_filename.rsplit('.', 1)
-    timestamp = str(int(time.time()))
     if len(name_parts) == 2:
       base_name = name_parts[0]
-      filename = f"{base_name}_{timestamp}"
-      show_filename = base_name
+      extension = name_parts[1]
     else:
-      filename = f"{dataset.id}_{show_filename}_{timestamp}"
-      show_filename = show_filename
+      base_name = show_filename
+      extension = ''
 
+    # Check if a file with the same name already exists in the files folder
+    # If it does, append a numeral (1, 2, 3, etc.) until we find a unique name
+    final_filename = show_filename
+    counter = 1
+    file_path = os.path.join(file_folder, final_filename)
+    while os.path.exists(file_path):
+      # Construct new filename with numeral
+      if extension:
+        final_filename = f"{base_name}_{counter}.{extension}"
+      else:
+        final_filename = f"{base_name}_{counter}"
+      file_path = os.path.join(file_folder, final_filename)
+      counter += 1
 
-    # Ensure file.filename is not None
-    file_folder = get_dataset_files_folder(current_user.email, dataset_id)
-    filename_str = file.filename if file.filename is not None else "uploaded_file"
-    # Ensure file_folder and filename_str are both strings
-    file_folder = str(file_folder) if file_folder is not None else ""
-    filename_str = str(filename_str)
-    file_path = os.path.join(file_folder, filename_str)
+    # Save the file with the final filename
     file.save(file_path)
+    
+    # Update show_filename to match the final filename used
+    show_filename = final_filename
 
     # Create database record
     dataset_file = DatasetFile(
@@ -564,8 +575,8 @@ def get_dataset_files(dataset_id):
         'filename': file.show_filename,
         'size': file.file_size,
         'relative_path': os.path.basename(file.file_path),
-        'cure_status': file.cure_status,
-        'cure_validation_status': file.cure_validation_status,
+        'curate_status': file.curated,
+        'curate_validation_status': file.curated_validation_status,
         'uploaded_at': file.uploaded_at.isoformat(),
         'modified_at': file.modified_at.isoformat()
     })

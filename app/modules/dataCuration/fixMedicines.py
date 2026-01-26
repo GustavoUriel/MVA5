@@ -46,7 +46,15 @@ def parse_date_series(df: pd.DataFrame, col: str) -> pd.Series:
     """Parse a date column in m/d/YYYY format; return datetime64[ns] or NaT."""
     if col not in df.columns:
         return pd.Series(pd.NaT, index=df.index)
-    return pd.to_datetime(df[col], format="%m/%d/%Y", errors="coerce")
+    # Handle duplicate column names by selecting the first occurrence
+    try:
+        return pd.to_datetime(df[col], format="%m/%d/%Y", errors="coerce")
+    except (ValueError, KeyError):
+        # If there are duplicate columns, use iloc to select the first occurrence
+        col_indices = [i for i, c in enumerate(df.columns) if c == col]
+        if col_indices:
+            return pd.to_datetime(df.iloc[:, col_indices[0]], format="%m/%d/%Y", errors="coerce")
+        return pd.Series(pd.NaT, index=df.index)
 
 
 def fix_medicines_file(path: str | Path) -> Path:
@@ -73,13 +81,29 @@ def fix_medicines_df(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
-    # Parse transplant date column
-    if "First_Transplant_Date" not in df.columns:
+    # Parse transplant date column (case-insensitive)
+    transplant_col = None
+    for col in df.columns:
+        if col.lower() == "first_transplant_date":
+            transplant_col = col
+            break
+    if transplant_col is None:
         raise KeyError("Column 'First_Transplant_Date' not found in DataFrame")
-    transplant = pd.to_datetime(df["First_Transplant_Date"], format="%m/%d/%Y", errors="coerce")
+    transplant = pd.to_datetime(df[transplant_col], format="%m/%d/%Y", errors="coerce")
     transplant = pd.Series(transplant, index=df.index)
 
     cols = list(df.columns)
+    
+    def find_column_case_insensitive(target_name: str) -> str | None:
+        """Find a column by case-insensitive name matching.
+        
+        Returns the actual column name if found, None otherwise.
+        """
+        target_lower = target_name.lower()
+        for col in cols:
+            if col.lower() == target_lower:
+                return col
+        return None
 
     def find_adjacent_dates(col_name: str, start_keywords=("start", "Start", "Start_Date", "Start_date")):
         """Find next two columns after `col_name` and return them as (start_col, end_col) if they look like dates.
@@ -89,18 +113,28 @@ def fix_medicines_df(df: pd.DataFrame) -> pd.DataFrame:
         If the exact paired columns aren't present by name, we use position-based
         inference: next two columns after the drug column are treated as start/end.
         """
-        if col_name not in cols:
+        # First try case-insensitive match
+        actual_col = find_column_case_insensitive(col_name)
+        if actual_col is None:
             return (None, None)
-        idx = cols.index(col_name)
+        idx = cols.index(actual_col)
         # candidate by position
         start_col = cols[idx + 1] if idx + 1 < len(cols) else None
         end_col = cols[idx + 2] if idx + 2 < len(cols) else None
         return (start_col, end_col)
 
     for drug in iterate_drug_names(MEDICINES):
-        main_col = drug
-        eng_col = f"{drug}_Eng"
+        # Find actual column names (case-insensitive)
+        main_col_target = drug
+        eng_col_target = f"{drug}_Eng"
+        main_col = find_column_case_insensitive(main_col_target)
+        eng_col = find_column_case_insensitive(eng_col_target)
 
+        # If columns don't exist, use lowercase names (will be created)
+        if main_col is None:
+            main_col = main_col_target
+        if eng_col is None:
+            eng_col = eng_col_target
 
         start_col, end_col = find_adjacent_dates(main_col)
         start_eng, end_eng = find_adjacent_dates(eng_col)
@@ -137,7 +171,14 @@ def fix_medicines_df(df: pd.DataFrame) -> pd.DataFrame:
 
         # Merge the two indicator columns into the main column (keep 1 if any is 1)
         merged = ((df[main_col].fillna(0).astype(int)) | (df[eng_col].fillna(0).astype(int))).astype(int)
-        df[drug] = merged
+        
+        # Use lowercase drug name as the final column name
+        final_col_name = drug.lower()
+        df[final_col_name] = merged
+        
+        # If main_col was different (capitalized), drop it and keep the lowercase version
+        if main_col != final_col_name and main_col in df.columns:
+            df.drop(columns=[main_col], inplace=True)
 
         # Drop date columns if present (drop only those we detected)
         for c in (start_col, end_col, start_eng, end_eng):
@@ -145,8 +186,11 @@ def fix_medicines_df(df: pd.DataFrame) -> pd.DataFrame:
                 df.drop(columns=[c], inplace=True)
 
         # Also drop the _Eng indicator column (we kept merged into main)
-        if eng_col in df.columns:
+        if eng_col in df.columns and eng_col != final_col_name:
             df.drop(columns=[eng_col], inplace=True)
+        
+        # Update cols list after dropping columns
+        cols = list(df.columns)
 
     return df
 
